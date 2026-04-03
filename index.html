@@ -12,6 +12,7 @@
             --bg-color: #000000;
             --text-color: #ffffff;
             --accent-color: #e52521; /* ファミコンレッド */
+            --link-color: #0055aa; /* リンクブルー */
             --code-color: #33ff33; /* レトロな緑 */
             --border-style: 4px solid #ffffff;
         }
@@ -116,16 +117,27 @@
             flex-direction: column;
             gap: 10px;
         }
+        
+        .action-row {
+            display: flex;
+            gap: 5px;
+        }
 
         .action-btn {
             background-color: var(--accent-color);
             color: var(--text-color);
             border: var(--border-style);
             font-family: 'DotGothic16', sans-serif;
-            padding: 15px;
-            font-size: 1.2rem;
+            padding: 15px 5px;
+            font-size: 1.1rem;
             cursor: pointer;
             box-shadow: 4px 4px 0px #888;
+            flex: 2;
+        }
+
+        .action-btn.link-btn {
+            background-color: var(--link-color);
+            flex: 1;
         }
 
         .action-btn:active {
@@ -176,8 +188,14 @@
     </div>
 
     <div class="actions">
-        <button class="action-btn" onclick="saveToGitHub('test.html')">💾 test.html に セーブ</button>
-        <button class="action-btn" onclick="saveToGitHub('index.html')">💾 index.html に セーブ</button>
+        <div class="action-row">
+            <button class="action-btn" onclick="saveToGitHub('test.html')">💾 test に セーブ</button>
+            <button class="action-btn link-btn" onclick="openPage('test.html')">🌍 ひらく</button>
+        </div>
+        <div class="action-row">
+            <button class="action-btn" onclick="saveToGitHub('index.html')">💾 index に セーブ</button>
+            <button class="action-btn link-btn" onclick="openPage('index.html')">🌍 ひらく</button>
+        </div>
     </div>
 
     <script>
@@ -215,6 +233,20 @@
             }
         }
 
+        // 🌟 新機能：公開ページを直接開く処理
+        function openPage(filename) {
+            const owner = document.getElementById('gh-owner').value;
+            const repo = document.getElementById('gh-repo').value;
+            
+            if(!owner || !repo) {
+                alert('【エラー】\n「⚙️せってい」で ユーザー名と リポジトリ名を いれてね！');
+                return;
+            }
+
+            const url = `https://${owner}.github.io/${repo}/${filename}`;
+            window.open(url, '_blank'); // 新しいタブで開く
+        }
+
         // GitHubへ保存（コミット）する処理
         async function saveToGitHub(filename) {
             const token = document.getElementById('gh-token').value;
@@ -244,7 +276,7 @@
 
                 if (getRes.ok) {
                     const data = await getRes.json();
-                    sha = data.sha;
+                    sha = data.sha; // ★これが上書きの鍵です！
                 }
 
                 // 2. ファイルを作成または更新するためのデータを準備
@@ -254,7 +286,7 @@
                 };
                 // 更新の場合はSHAを含める必要がある
                 if (sha) {
-                    body.sha = sha;
+                    body.sha = sha; // ★既存ファイルがある場合は上書き指示を出す
                 }
 
                 // 3. GitHub APIに書き込みリクエストを送信
@@ -269,7 +301,7 @@
                 });
 
                 if (putRes.ok) {
-                    alert(`【せいこう！】\n${filename} に セーブ しました。\nGitHub Pages に はんえい されるまで すこし まってね！`);
+                    alert(`【せいこう！】\n${filename} に セーブ しました。\nすこし まってから「🌍 ひらく」ボタンを おしてね！`);
                 } else {
                     const errData = await putRes.json();
                     alert(`【エラー！】\nセーブに しっぱい しました。\nりゆう: ${errData.message}`);
