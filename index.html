@@ -69,12 +69,34 @@
         }
 
         .panel.active {
-            display: block;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* エディタ専用ツールバー */
+        .editor-toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .tool-btn {
+            background-color: #444;
+            color: var(--text-color);
+            border: 2px solid #fff;
+            font-family: 'DotGothic16', sans-serif;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .tool-btn:active {
+            background-color: #666;
         }
 
         textarea {
             width: 100%;
-            height: 100%;
+            flex-grow: 1;
             background-color: var(--bg-color);
             color: var(--code-color);
             border: none;
@@ -82,16 +104,17 @@
             font-size: 1rem;
             resize: none;
             outline: none;
+            box-sizing: border-box;
         }
 
         iframe {
             width: 100%;
             height: 100%;
-            background-color: #fff; /* プレビューは白背景基準 */
+            background-color: #fff;
             border: none;
         }
 
-        /* 設定画面の入力欄 */
+        /* 設定・入力欄 */
         .config-item {
             margin-bottom: 15px;
         }
@@ -101,7 +124,7 @@
             margin-bottom: 5px;
         }
 
-        .config-item input {
+        .config-item input, .custom-file-input {
             width: 100%;
             padding: 8px;
             background-color: #222;
@@ -115,12 +138,13 @@
         .actions {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 15px;
         }
         
         .action-row {
             display: flex;
             gap: 5px;
+            align-items: stretch;
         }
 
         .action-btn {
@@ -128,7 +152,7 @@
             color: var(--text-color);
             border: var(--border-style);
             font-family: 'DotGothic16', sans-serif;
-            padding: 15px 5px;
+            padding: 10px 5px;
             font-size: 1.1rem;
             cursor: pointer;
             box-shadow: 4px 4px 0px #888;
@@ -151,6 +175,12 @@
             margin-top: 10px;
         }
 
+        .section-label {
+            font-size: 0.9rem;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+
     </style>
 </head>
 <body>
@@ -164,14 +194,18 @@
     </div>
 
     <div id="panel-edit" class="panel active">
+        <div class="editor-toolbar">
+            <button class="tool-btn" onclick="clearEditor()">🗑️ クリア</button>
+            <button class="tool-btn" onclick="pasteCode()">📋 ペースト</button>
+        </div>
         <textarea id="code-editor" placeholder="ここに HTML を にゅうりょく してね！"></textarea>
     </div>
 
-    <div id="panel-preview" class="panel">
+    <div id="panel-preview" class="panel" style="display: none;">
         <iframe id="preview-frame"></iframe>
     </div>
 
-    <div id="panel-config" class="panel" style="overflow-y: auto;">
+    <div id="panel-config" class="panel" style="display: none; overflow-y: auto;">
         <div class="config-item">
             <label>GITHUB トークン (PAT)</label>
             <input type="password" id="gh-token" placeholder="ghp_xxxxxxxx...">
@@ -188,23 +222,32 @@
     </div>
 
     <div class="actions">
-        <div class="action-row">
-            <button class="action-btn" onclick="saveToGitHub('test.html')">💾 test に セーブ</button>
-            <button class="action-btn link-btn" onclick="openPage('test.html')">🌍 ひらく</button>
+        <div>
+            <div class="section-label">▼ テスト用 (test.html)</div>
+            <div class="action-row">
+                <button class="action-btn" onclick="saveToGitHub('test.html')">💾 セーブ</button>
+                <button class="action-btn link-btn" onclick="openPage('test.html')">🌍 ひらく</button>
+            </div>
         </div>
-        <div class="action-row">
-            <button class="action-btn" onclick="saveToGitHub('index.html')">💾 index に セーブ</button>
-            <button class="action-btn link-btn" onclick="openPage('index.html')">🌍 ひらく</button>
+
+        <div>
+            <div class="section-label">▼ ほんばん用 (なまえをきめる)</div>
+            <input type="text" id="custom-filename" class="custom-file-input" placeholder="例: app1.html または tool/index.html" style="margin-bottom: 5px;">
+            <div class="action-row">
+                <button class="action-btn" onclick="saveCustom()">💾 セーブ</button>
+                <button class="action-btn link-btn" onclick="openCustom()">🌍 ひらく</button>
+            </div>
         </div>
     </div>
 
     <script>
-        // ページ読み込み時に設定を復元
+        // ページ読み込み時に設定を復元 (初期コードは空欄に変更)
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('gh-token').value = localStorage.getItem('ghToken') || '';
             document.getElementById('gh-owner').value = localStorage.getItem('ghOwner') || '';
             document.getElementById('gh-repo').value = localStorage.getItem('ghRepo') || '';
-            document.getElementById('code-editor').value = localStorage.getItem('savedCode') || '<h1>Hello World!</h1>';
+            document.getElementById('code-editor').value = localStorage.getItem('savedCode') || '';
+            document.getElementById('custom-filename').value = localStorage.getItem('lastCustomFile') || '';
         });
 
         // 入力内容をローカルストレージに自動保存
@@ -212,28 +255,78 @@
         document.getElementById('gh-owner').addEventListener('input', (e) => localStorage.setItem('ghOwner', e.target.value));
         document.getElementById('gh-repo').addEventListener('input', (e) => localStorage.setItem('ghRepo', e.target.value));
         document.getElementById('code-editor').addEventListener('input', (e) => localStorage.setItem('savedCode', e.target.value));
+        document.getElementById('custom-filename').addEventListener('input', (e) => localStorage.setItem('lastCustomFile', e.target.value));
+
+        // 🗑️ エディタをクリア
+        function clearEditor() {
+            if(confirm('かきかけの コードを ぜんぶ けしますか？')) {
+                document.getElementById('code-editor').value = '';
+                localStorage.setItem('savedCode', '');
+            }
+        }
+
+        // 📋 クリップボードからペースト
+        async function pasteCode() {
+            try {
+                const text = await navigator.clipboard.readText();
+                const editor = document.getElementById('code-editor');
+                editor.value = text;
+                localStorage.setItem('savedCode', text);
+            } catch (err) {
+                alert('【ペースト エラー】\nブラウザの きょかが ひつようかも！\nがめんを ながおしして ペースト してね。');
+            }
+        }
 
         // タブ切り替え処理
         function switchTab(tabName) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
+            
+            // 強制的に表示をリセット
+            document.querySelectorAll('.panel').forEach(panel => panel.style.display = 'none');
 
             if (tabName === 'edit') {
                 document.querySelectorAll('.tab-btn')[0].classList.add('active');
-                document.getElementById('panel-edit').classList.add('active');
+                const panel = document.getElementById('panel-edit');
+                panel.classList.add('active');
+                panel.style.display = 'flex';
             } else if (tabName === 'preview') {
                 document.querySelectorAll('.tab-btn')[1].classList.add('active');
-                document.getElementById('panel-preview').classList.add('active');
+                const panel = document.getElementById('panel-preview');
+                panel.classList.add('active');
+                panel.style.display = 'block';
                 // プレビューの更新
                 const code = document.getElementById('code-editor').value;
                 document.getElementById('preview-frame').srcdoc = code;
             } else if (tabName === 'config') {
                 document.querySelectorAll('.tab-btn')[2].classList.add('active');
-                document.getElementById('panel-config').classList.add('active');
+                const panel = document.getElementById('panel-config');
+                panel.classList.add('active');
+                panel.style.display = 'block';
             }
         }
 
-        // 🌟 新機能：公開ページを直接開く処理
+        // カスタムファイル名で開く
+        function openCustom() {
+            let filename = document.getElementById('custom-filename').value.trim();
+            if(!filename) {
+                alert('【エラー】\nファイルめいを にゅうりょく してね！');
+                return;
+            }
+            openPage(filename);
+        }
+
+        // カスタムファイル名でセーブ
+        function saveCustom() {
+            let filename = document.getElementById('custom-filename').value.trim();
+            if(!filename) {
+                alert('【エラー】\nファイルめいを にゅうりょく してね！');
+                return;
+            }
+            saveToGitHub(filename);
+        }
+
+        // 公開ページを直接開く処理
         function openPage(filename) {
             const owner = document.getElementById('gh-owner').value;
             const repo = document.getElementById('gh-repo').value;
@@ -244,7 +337,7 @@
             }
 
             const url = `https://${owner}.github.io/${repo}/${filename}`;
-            window.open(url, '_blank'); // 新しいタブで開く
+            window.open(url, '_blank');
         }
 
         // GitHubへ保存（コミット）する処理
@@ -265,7 +358,6 @@
             const encodedContent = btoa(unescape(encodeURIComponent(content)));
 
             try {
-                // 1. ファイルが既に存在するかチェックして、存在する場合はSHA（ハッシュ値）を取得する
                 let sha = null;
                 const getRes = await fetch(apiUrl, {
                     headers: {
@@ -276,20 +368,17 @@
 
                 if (getRes.ok) {
                     const data = await getRes.json();
-                    sha = data.sha; // ★これが上書きの鍵です！
+                    sha = data.sha;
                 }
 
-                // 2. ファイルを作成または更新するためのデータを準備
                 const body = {
                     message: `📝 ${filename} を更新 (via 8-BIT STUDIO)`,
                     content: encodedContent
                 };
-                // 更新の場合はSHAを含める必要がある
                 if (sha) {
-                    body.sha = sha; // ★既存ファイルがある場合は上書き指示を出す
+                    body.sha = sha;
                 }
 
-                // 3. GitHub APIに書き込みリクエストを送信
                 const putRes = await fetch(apiUrl, {
                     method: 'PUT',
                     headers: {
