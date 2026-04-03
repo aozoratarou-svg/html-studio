@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>8-BIT HTML STUDIO</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --accent-color: #e52521; /* ファミコンレッド */
+            --code-color: #33ff33; /* レトロな緑 */
+            --border-style: 4px solid #ffffff;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'DotGothic16', sans-serif;
+            margin: 0;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.5rem;
+            color: var(--accent-color);
+            text-shadow: 2px 2px 0 #fff;
+            margin-bottom: 20px;
+        }
+
+        /* タブメニュー */
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border: var(--border-style);
+            font-family: 'DotGothic16', sans-serif;
+            padding: 10px 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 2px 2px 0px #888;
+        }
+
+        .tab-btn.active {
+            background-color: var(--text-color);
+            color: var(--bg-color);
+        }
+
+        /* パネル */
+        .panel {
+            display: none;
+            border: var(--border-style);
+            padding: 10px;
+            margin-bottom: 15px;
+            height: 50vh;
+            box-sizing: border-box;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            color: var(--code-color);
+            border: none;
+            font-family: 'DotGothic16', monospace;
+            font-size: 1rem;
+            resize: none;
+            outline: none;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            background-color: #fff; /* プレビューは白背景基準 */
+            border: none;
+        }
+
+        /* 設定画面の入力欄 */
+        .config-item {
+            margin-bottom: 15px;
+        }
+        
+        .config-item label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .config-item input {
+            width: 100%;
+            padding: 8px;
+            background-color: #222;
+            color: #fff;
+            border: 2px solid #fff;
+            font-family: 'DotGothic16', sans-serif;
+            box-sizing: border-box;
+        }
+
+        /* アクションボタン群 */
+        .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .action-btn {
+            background-color: var(--accent-color);
+            color: var(--text-color);
+            border: var(--border-style);
+            font-family: 'DotGothic16', sans-serif;
+            padding: 15px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            box-shadow: 4px 4px 0px #888;
+        }
+
+        .action-btn:active {
+            box-shadow: inset 4px 4px 0px #888;
+            transform: translate(2px, 2px);
+        }
+
+        .system-msg {
+            color: yellow;
+            font-size: 0.8rem;
+            margin-top: 10px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>HTML STUDIO</h1>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('edit')">🔨つくる</button>
+        <button class="tab-btn" onclick="switchTab('preview')">👁みる</button>
+        <button class="tab-btn" onclick="switchTab('config')">⚙️せってい</button>
+    </div>
+
+    <div id="panel-edit" class="panel active">
+        <textarea id="code-editor" placeholder="ここに HTML を にゅうりょく してね！"></textarea>
+    </div>
+
+    <div id="panel-preview" class="panel">
+        <iframe id="preview-frame"></iframe>
+    </div>
+
+    <div id="panel-config" class="panel" style="overflow-y: auto;">
+        <div class="config-item">
+            <label>GITHUB トークン (PAT)</label>
+            <input type="password" id="gh-token" placeholder="ghp_xxxxxxxx...">
+        </div>
+        <div class="config-item">
+            <label>ユーザー名 (Owner)</label>
+            <input type="text" id="gh-owner" placeholder="例: octocat">
+        </div>
+        <div class="config-item">
+            <label>リポジトリ名 (Repo)</label>
+            <input type="text" id="gh-repo" placeholder="例: my-website">
+        </div>
+        <p class="system-msg">※にゅうりょくした じょうほうは ブラウザに ほぞん されます。</p>
+    </div>
+
+    <div class="actions">
+        <button class="action-btn" onclick="saveToGitHub('test.html')">💾 test.html に セーブ</button>
+        <button class="action-btn" onclick="saveToGitHub('index.html')">💾 index.html に セーブ</button>
+    </div>
+
+    <script>
+        // ページ読み込み時に設定を復元
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('gh-token').value = localStorage.getItem('ghToken') || '';
+            document.getElementById('gh-owner').value = localStorage.getItem('ghOwner') || '';
+            document.getElementById('gh-repo').value = localStorage.getItem('ghRepo') || '';
+            document.getElementById('code-editor').value = localStorage.getItem('savedCode') || '<h1>Hello World!</h1>';
+        });
+
+        // 入力内容をローカルストレージに自動保存
+        document.getElementById('gh-token').addEventListener('input', (e) => localStorage.setItem('ghToken', e.target.value));
+        document.getElementById('gh-owner').addEventListener('input', (e) => localStorage.setItem('ghOwner', e.target.value));
+        document.getElementById('gh-repo').addEventListener('input', (e) => localStorage.setItem('ghRepo', e.target.value));
+        document.getElementById('code-editor').addEventListener('input', (e) => localStorage.setItem('savedCode', e.target.value));
+
+        // タブ切り替え処理
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
+
+            if (tabName === 'edit') {
+                document.querySelectorAll('.tab-btn')[0].classList.add('active');
+                document.getElementById('panel-edit').classList.add('active');
+            } else if (tabName === 'preview') {
+                document.querySelectorAll('.tab-btn')[1].classList.add('active');
+                document.getElementById('panel-preview').classList.add('active');
+                // プレビューの更新
+                const code = document.getElementById('code-editor').value;
+                document.getElementById('preview-frame').srcdoc = code;
+            } else if (tabName === 'config') {
+                document.querySelectorAll('.tab-btn')[2].classList.add('active');
+                document.getElementById('panel-config').classList.add('active');
+            }
+        }
+
+        // GitHubへ保存（コミット）する処理
+        async function saveToGitHub(filename) {
+            const token = document.getElementById('gh-token').value;
+            const owner = document.getElementById('gh-owner').value;
+            const repo = document.getElementById('gh-repo').value;
+            const content = document.getElementById('code-editor').value;
+
+            if(!token || !owner || !repo) {
+                alert('【エラー】\n「⚙️せってい」から GitHubの じょうほうを にゅうりょく してね！');
+                return;
+            }
+
+            const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filename}`;
+            
+            // 日本語が文字化けしないようにBase64エンコード
+            const encodedContent = btoa(unescape(encodeURIComponent(content)));
+
+            try {
+                // 1. ファイルが既に存在するかチェックして、存在する場合はSHA（ハッシュ値）を取得する
+                let sha = null;
+                const getRes = await fetch(apiUrl, {
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+
+                if (getRes.ok) {
+                    const data = await getRes.json();
+                    sha = data.sha;
+                }
+
+                // 2. ファイルを作成または更新するためのデータを準備
+                const body = {
+                    message: `📝 ${filename} を更新 (via 8-BIT STUDIO)`,
+                    content: encodedContent
+                };
+                // 更新の場合はSHAを含める必要がある
+                if (sha) {
+                    body.sha = sha;
+                }
+
+                // 3. GitHub APIに書き込みリクエストを送信
+                const putRes = await fetch(apiUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                if (putRes.ok) {
+                    alert(`【せいこう！】\n${filename} に セーブ しました。\nGitHub Pages に はんえい されるまで すこし まってね！`);
+                } else {
+                    const errData = await putRes.json();
+                    alert(`【エラー！】\nセーブに しっぱい しました。\nりゆう: ${errData.message}`);
+                }
+            } catch (error) {
+                alert(`【つうしんエラー！】\nネットワークを かくにん してね。\n${error}`);
+            }
+        }
+    </script>
+</body>
+</html>
