@@ -2,7 +2,11 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="HTML STUDIO">
+    
     <title>8-BIT HTML STUDIO</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,9 +15,9 @@
         :root {
             --bg-color: #000000;
             --text-color: #ffffff;
-            --accent-color: #e52521; /* ファミコンレッド */
-            --link-color: #0055aa; /* リンクブルー */
-            --code-color: #33ff33; /* レトロな緑 */
+            --accent-color: #e52521;
+            --link-color: #0055aa;
+            --code-color: #33ff33;
             --border-style: 4px solid #ffffff;
         }
 
@@ -24,6 +28,8 @@
             margin: 0;
             padding: 10px;
             box-sizing: border-box;
+            /* iOSの余計なスクロールやバウンスを抑える */
+            overscroll-behavior-y: none;
         }
 
         h1 {
@@ -34,7 +40,6 @@
             margin-bottom: 20px;
         }
 
-        /* タブメニュー */
         .tabs {
             display: flex;
             gap: 5px;
@@ -58,13 +63,13 @@
             color: var(--bg-color);
         }
 
-        /* パネル */
         .panel {
             display: none;
             border: var(--border-style);
             padding: 10px;
             margin-bottom: 15px;
-            height: 50vh;
+            /* パネルの高さを少し小さくしました */
+            height: 40vh;
             box-sizing: border-box;
         }
 
@@ -73,10 +78,10 @@
             flex-direction: column;
         }
 
-        /* エディタ専用ツールバー */
+        /* ツールバー（右寄せに変更） */
         .editor-toolbar {
             display: flex;
-            gap: 10px;
+            justify-content: flex-end;
             margin-bottom: 10px;
         }
 
@@ -114,7 +119,6 @@
             border: none;
         }
 
-        /* 設定・入力欄 */
         .config-item {
             margin-bottom: 15px;
         }
@@ -134,7 +138,6 @@
             box-sizing: border-box;
         }
 
-        /* アクションボタン群 */
         .actions {
             display: flex;
             flex-direction: column;
@@ -196,7 +199,6 @@
     <div id="panel-edit" class="panel active">
         <div class="editor-toolbar">
             <button class="tool-btn" onclick="clearEditor()">🗑️ クリア</button>
-            <button class="tool-btn" onclick="pasteCode()">📋 ペースト</button>
         </div>
         <textarea id="code-editor" placeholder="ここに HTML を にゅうりょく してね！"></textarea>
     </div>
@@ -222,12 +224,9 @@
     </div>
 
     <div class="actions">
-        <div>
-            <div class="section-label">▼ テスト用 (test.html)</div>
-            <div class="action-row">
-                <button class="action-btn" onclick="saveToGitHub('test.html')">💾 セーブ</button>
-                <button class="action-btn link-btn" onclick="openPage('test.html')">🌍 ひらく</button>
-            </div>
+        <div class="action-row">
+            <button class="action-btn" onclick="saveToGitHub('test.html')">💾 TESTセーブ</button>
+            <button class="action-btn link-btn" onclick="openPage('test.html')">🌍 ひらく</button>
         </div>
 
         <div>
@@ -241,7 +240,6 @@
     </div>
 
     <script>
-        // ページ読み込み時に設定を復元 (初期コードは空欄に変更)
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('gh-token').value = localStorage.getItem('ghToken') || '';
             document.getElementById('gh-owner').value = localStorage.getItem('ghOwner') || '';
@@ -250,14 +248,12 @@
             document.getElementById('custom-filename').value = localStorage.getItem('lastCustomFile') || '';
         });
 
-        // 入力内容をローカルストレージに自動保存
         document.getElementById('gh-token').addEventListener('input', (e) => localStorage.setItem('ghToken', e.target.value));
         document.getElementById('gh-owner').addEventListener('input', (e) => localStorage.setItem('ghOwner', e.target.value));
         document.getElementById('gh-repo').addEventListener('input', (e) => localStorage.setItem('ghRepo', e.target.value));
         document.getElementById('code-editor').addEventListener('input', (e) => localStorage.setItem('savedCode', e.target.value));
         document.getElementById('custom-filename').addEventListener('input', (e) => localStorage.setItem('lastCustomFile', e.target.value));
 
-        // 🗑️ エディタをクリア
         function clearEditor() {
             if(confirm('かきかけの コードを ぜんぶ けしますか？')) {
                 document.getElementById('code-editor').value = '';
@@ -265,24 +261,10 @@
             }
         }
 
-        // 📋 クリップボードからペースト
-        async function pasteCode() {
-            try {
-                const text = await navigator.clipboard.readText();
-                const editor = document.getElementById('code-editor');
-                editor.value = text;
-                localStorage.setItem('savedCode', text);
-            } catch (err) {
-                alert('【ペースト エラー】\nブラウザの きょかが ひつようかも！\nがめんを ながおしして ペースト してね。');
-            }
-        }
-
-        // タブ切り替え処理
         function switchTab(tabName) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
             
-            // 強制的に表示をリセット
             document.querySelectorAll('.panel').forEach(panel => panel.style.display = 'none');
 
             if (tabName === 'edit') {
@@ -295,7 +277,6 @@
                 const panel = document.getElementById('panel-preview');
                 panel.classList.add('active');
                 panel.style.display = 'block';
-                // プレビューの更新
                 const code = document.getElementById('code-editor').value;
                 document.getElementById('preview-frame').srcdoc = code;
             } else if (tabName === 'config') {
@@ -306,7 +287,6 @@
             }
         }
 
-        // カスタムファイル名で開く
         function openCustom() {
             let filename = document.getElementById('custom-filename').value.trim();
             if(!filename) {
@@ -316,7 +296,6 @@
             openPage(filename);
         }
 
-        // カスタムファイル名でセーブ
         function saveCustom() {
             let filename = document.getElementById('custom-filename').value.trim();
             if(!filename) {
@@ -326,7 +305,6 @@
             saveToGitHub(filename);
         }
 
-        // 公開ページを直接開く処理
         function openPage(filename) {
             const owner = document.getElementById('gh-owner').value;
             const repo = document.getElementById('gh-repo').value;
@@ -340,7 +318,6 @@
             window.open(url, '_blank');
         }
 
-        // GitHubへ保存（コミット）する処理
         async function saveToGitHub(filename) {
             const token = document.getElementById('gh-token').value;
             const owner = document.getElementById('gh-owner').value;
@@ -354,7 +331,6 @@
 
             const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filename}`;
             
-            // 日本語が文字化けしないようにBase64エンコード
             const encodedContent = btoa(unescape(encodeURIComponent(content)));
 
             try {
