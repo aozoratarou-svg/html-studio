@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>般若心経 現代語訳＆解説アプリ</title>
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="般若心経">
+
 <style>
     body {
         /* 横文字(横書き)・筆文字(明朝体)風のスタイリング */
@@ -15,7 +20,9 @@
         margin: 0;
         display: flex;
         flex-direction: column;
-        min-height: 100vh;
+        /* iPhoneのツールバーを含まない正確な高さを指定し、画面のガタつきを防ぐ */
+        height: 100dvh; 
+        overflow: hidden; 
     }
     header {
         background-color: #e5d9c5;
@@ -31,6 +38,7 @@
         align-items: center;
         padding: 20px 15px;
         box-sizing: border-box;
+        overflow-y: auto; /* 万が一画面が小さい場合はここだけスクロールさせる */
     }
     .sutra-kanji {
         /* スマホ画面に合わせて可変するフォントサイズに調整 */
@@ -75,6 +83,7 @@
         display: flex;
         justify-content: center;
         gap: 8px; /* ボタンの間隔 */
+        padding-bottom: env(safe-area-inset-bottom, 15px); /* iPhone下のバー(ホームインジケータ)対策 */
     }
     button {
         font-family: "Yu Gothic", "MS Gothic", sans-serif;
@@ -169,7 +178,6 @@
 </div>
 
 <script>
-    // 般若心経のデータ
     const sutraData = [
         { kanji: "<span class='term' data-term='仏'>仏</span>説<span class='term' data-term='摩訶'>摩訶</span><span class='term' data-term='般若'>般若</span><span class='term' data-term='波羅蜜多'>波羅蜜多</span>心経", meaning: "仏が説かれた、偉大なる真実の知恵によって悟りの彼岸に至るための、最も大切な教え。" },
         { kanji: "<span class='term' data-term='観自在菩薩'>観自在菩薩</span>行深般若波羅蜜多時、照見<span class='term' data-term='五蘊'>五蘊</span>皆<span class='term' data-term='空'>空</span>、度一切苦厄。", meaning: "観音菩薩が、真実の知恵を完成するための深い修行をされていた時、人間の心身を構成する5つの要素にはすべて実体がないと見極められ、あらゆる苦しみや災厄から抜け出されました。" },
@@ -233,19 +241,15 @@
         });
     }
 
-    // 最初に戻る
     function firstSutra() {
         currentIndex = 0;
         render();
-        // オート再生中なら止める気遣い
         if (autoInterval) toggleAuto();
     }
 
-    // 次へ進む
     function nextSutra() {
         currentIndex++;
         if (currentIndex >= sutraData.length) {
-            // 最後に到達したら最初に戻してオート再生をストップ
             currentIndex = 0;
             render();
             if (autoInterval) toggleAuto();
@@ -254,7 +258,6 @@
         }
     }
 
-    // 前へ戻る
     function prevSutra() {
         currentIndex--;
         if (currentIndex < 0) {
@@ -263,23 +266,21 @@
         render();
     }
 
-    // オート再生の切り替え
     function toggleAuto() {
         const btn = document.getElementById('auto-btn');
         if (autoInterval) {
             clearInterval(autoInterval);
             autoInterval = null;
             btn.classList.remove('active-auto');
-            btn.innerHTML = "▶"; // 再生マークに戻す
+            btn.innerHTML = "▶"; 
         } else {
-            // もし最後の文節で再生ボタンを押されたら最初から始める
             if (currentIndex === sutraData.length - 1) {
                 currentIndex = 0;
                 render();
             }
             autoInterval = setInterval(nextSutra, 5000);
             btn.classList.add('active-auto');
-            btn.innerHTML = "⏸"; // 一時停止マークに変更
+            btn.innerHTML = "⏸"; 
         }
     }
 
