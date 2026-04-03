@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="HTML STUDIO">
     
     <title>8-BIT HTML STUDIO</title>
@@ -26,9 +26,9 @@
             color: var(--text-color);
             font-family: 'DotGothic16', sans-serif;
             margin: 0;
-            padding: 10px;
+            /* ✨新機能：iPhoneのノッチや下のバーに被らないよう、自動で余白を確保する（env機能） */
+            padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom)) 10px;
             box-sizing: border-box;
-            /* iOSの余計なスクロールやバウンスを抑える */
             overscroll-behavior-y: none;
         }
 
@@ -68,7 +68,6 @@
             border: var(--border-style);
             padding: 10px;
             margin-bottom: 15px;
-            /* パネルの高さを少し小さくしました */
             height: 40vh;
             box-sizing: border-box;
         }
@@ -78,7 +77,6 @@
             flex-direction: column;
         }
 
-        /* ツールバー（右寄せに変更） */
         .editor-toolbar {
             display: flex;
             justify-content: flex-end;
