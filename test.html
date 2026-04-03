@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>般若心経 現代語訳＆解説アプリ</title>
+<style>
+    body {
+        /* 横文字(横書き)・筆文字(明朝体)風のスタイリング */
+        font-family: "Yu Mincho", "MS Mincho", "Hiragino Mincho ProN", serif;
+        background-color: #f7f5f0;
+        color: #2c2c2c;
+        text-align: center;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+    }
+    header {
+        background-color: #e5d9c5;
+        padding: 15px;
+        font-weight: bold;
+        font-size: 1.2em;
+    }
+    #main-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+    }
+    .sutra-kanji {
+        font-size: 2.5rem;
+        line-height: 1.6;
+        letter-spacing: 0.1em;
+        margin-bottom: 30px;
+        word-break: keep-all;
+    }
+    .sutra-meaning {
+        font-family: "Yu Gothic", "MS Gothic", sans-serif;
+        font-size: 1.2rem;
+        color: #555;
+        max-width: 800px;
+        line-height: 1.8;
+        padding: 20px;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    /* 用語タップ用の装飾 */
+    .term {
+        color: #900;
+        cursor: pointer;
+        border-bottom: 2px dashed #900;
+        transition: background-color 0.2s;
+    }
+    .term:hover {
+        background-color: #ffe6e6;
+    }
+    
+    /* コントロールボタン群 */
+    .controls {
+        padding: 20px;
+        background-color: #fff;
+        border-top: 1px solid #ddd;
+    }
+    button {
+        font-family: inherit;
+        font-size: 1.1rem;
+        padding: 12px 24px;
+        margin: 0 10px;
+        cursor: pointer;
+        background-color: #f7f5f0;
+        border: 1px solid #ccc;
+        border-radius: 30px;
+        transition: all 0.2s;
+    }
+    button:hover {
+        background-color: #e5d9c5;
+    }
+    button.active-auto {
+        background-color: #900;
+        color: #fff;
+        border-color: #900;
+    }
+
+    /* モーダル（深掘り解説ウィンドウ） */
+    #modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.6);
+        z-index: 999;
+    }
+    #modal {
+        display: none;
+        position: fixed;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        background: #fff;
+        padding: 30px;
+        border-radius: 10px;
+        z-index: 1000;
+        width: 80%;
+        max-width: 400px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+    #modal h2 {
+        margin-top: 0;
+        color: #900;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 10px;
+    }
+    #modal p {
+        font-family: "Yu Gothic", "MS Gothic", sans-serif;
+        line-height: 1.6;
+        text-align: left;
+    }
+    #close-btn {
+        margin-top: 20px;
+        background-color: #333;
+        color: #fff;
+        border: none;
+        width: 100%;
+        border-radius: 5px;
+    }
+</style>
+</head>
+<body>
+
+<header>般若心経 現代語訳＆解説アプリ</header>
+
+<div id="main-content">
+    <div id="kanji-display" class="sutra-kanji"></div>
+    <div id="meaning-display" class="sutra-meaning"></div>
+</div>
+
+<div class="controls">
+    <button onclick="prevSutra()">◁ 戻る</button>
+    <button id="auto-btn" onclick="toggleAuto()">オート再生</button>
+    <button onclick="nextSutra()">進む ▷</button>
+</div>
+
+<div id="modal-overlay" onclick="closeModal()"></div>
+<div id="modal">
+    <h2 id="modal-title"></h2>
+    <p id="modal-desc"></p>
+    <button id="close-btn" onclick="closeModal()">閉じる</button>
+</div>
+
+<script>
+    // 般若心経のデータ（文節ごとの漢字と意味）
+    const sutraData = [
+        {
+            kanji: "<span class='term' data-term='仏'>仏</span>説<span class='term' data-term='摩訶'>摩訶</span><span class='term' data-term='般若'>般若</span><span class='term' data-term='波羅蜜多'>波羅蜜多</span>心経",
+            meaning: "仏が説かれた、偉大なる真実の知恵によって悟りの彼岸に至るための、最も大切な教え。"
+        },
+        {
+            kanji: "<span class='term' data-term='観自在菩薩'>観自在菩薩</span>行深般若波羅蜜多時、照見<span class='term' data-term='五蘊'>五蘊</span>皆<span class='term' data-term='空'>空</span>、度一切苦厄。",
+            meaning: "観音菩薩が、真実の知恵を完成するための深い修行をされていた時、人間の心身を構成する5つの要素にはすべて実体がないと見極められ、あらゆる苦しみや災厄から抜け出されました。"
+        },
+        {
+            kanji: "<span class='term' data-term='舎利子'>舎利子</span>。<span class='term' data-term='色'>色</span>不異空、空不異色、色即是空、空即是色。",
+            meaning: "シャーリプトラよ。形ある物質は実体がないことと同じであり、実体がないからこそ形ある物質として存在できるのです。つまり、形あるものはそのまま実体がなく、実体がない状態がそのまま形あるものなのです。"
+        },
+        {
+            kanji: "<span class='term' data-term='受想行識'>受想行識</span>亦復如是。",
+            meaning: "物質だけでなく、感覚、イメージ、意志、認識といった精神の働きについても、また同じように実体がない（空である）のです。"
+        },
+        {
+            kanji: "舎利子。是<span class='term' data-term='諸法'>諸法</span>空相、不生不滅、不垢不浄、不増不減。",
+            meaning: "シャーリプトラよ。この世のすべての現象は「空」という性質を持っています。ですから、本来は生じることも滅することもなく、汚れることも清らかになることもなく、増えることも減ることもありません。"
+        },
+        {
+            kanji: "是故空中、無色、無受想行識。",
+            meaning: "それゆえに、「空」の視点から見れば、物質もなく、感覚、イメージ、意志、認識といった精神の働きも実体としては存在しません。"
+        },
+        {
+            kanji: "無<span class='term' data-term='眼耳鼻舌身意'>眼耳鼻舌身意</span>、無<span class='term' data-term='色声香味触法'>色声香味触法</span>。無眼界、乃至、無意識界。",
+            meaning: "眼・耳・鼻・舌・身体・心といった感覚器官（六根）もなく、形・声・香り・味・触感・心の対象といった感覚の対象（六境）もありません。さらに、それらによって生じる視覚から意識に至る認識の領域（十八界）もありません。"
+        },
+        {
+            kanji: "無<span class='term' data-term='無明'>無明</span>、亦無無明尽、乃至、無老死、亦無老死尽。",
+            meaning: "悟りを妨げる根本的な無知（無明）もなく、またその無知が尽きることもありません。そこから生じて連鎖する老いと死もなく、また老いや死が尽きることもありません。"
+        },
+        {
+            kanji: "無<span class='term' data-term='苦集滅道'>苦集滅道</span>。無智亦無得。",
+            meaning: "苦しみ、苦しみの原因、苦しみの滅却、苦しみを滅する道という基本の教え（四諦）もありません。悟りを得るための知恵もなく、悟りを得るということすらありません。"
+        },
+        {
+            kanji: "以無所得故、<span class='term' data-term='菩提薩埵'>菩提薩埵</span>、依般若波羅蜜多故、心無<span class='term' data-term='罣礙'>罣礙</span>。",
+            meaning: "何も得るものがないという真理を知っているからこそ、悟りを求める者（菩薩）は、真実の知恵に拠り所を置くため、心に何の妨げもこだわりもありません。"
+        },
+        {
+            kanji: "無罣礙故、無有恐怖、遠離一切<span class='term' data-term='顚倒夢想'>顚倒夢想</span>、<span class='term' data-term='究竟涅槃'>究竟涅槃</span>。",
+            meaning: "心に妨げがないので、恐れを持つこともなく、あらゆる誤った考えや迷いから遠く離れ、完全な安らぎの境地に入っているのです。"
+        },
+        {
+            kanji: "<span class='term' data-term='三世諸仏'>三世諸仏</span>、依般若波羅蜜多故、得<span class='term' data-term='阿耨多羅三藐三菩提'>阿耨多羅三藐三菩提</span>。",
+            meaning: "過去・現在・未来のすべての仏たちも、この真実の知恵に拠り所を置いたからこそ、この上ない正しい悟りを得たのです。"
+        },
+        {
+            kanji: "故知、般若波羅蜜多、是大神<span class='term' data-term='呪'>呪</span>、是大明呪、是無上呪、是無等等呪、能除一切苦、真実不虚。",
+            meaning: "したがって知りなさい。この真実の知恵は、偉大なる神秘の言葉であり、大いなる悟りの言葉であり、この上ない言葉であり、比類なき言葉です。あらゆる苦しみを取り除くことができ、真実であって偽りはありません。"
+        },
+        {
+            kanji: "故説、般若波羅蜜多呪。即説呪曰、",
+            meaning: "そこで最後に、真実の知恵の呪文を説きましょう。その呪文はこうです。"
+        },
+        {
+            kanji: "<span class='term' data-term='羯諦'>羯諦</span>羯諦波羅羯諦波羅僧羯諦菩提<span class='term' data-term='薩婆訶'>薩婆訶</span>。般若心経",
+            meaning: "往ける者よ、往ける者よ、彼岸に往ける者よ、彼岸に完全に往ける者よ、悟りよ、幸いあれ。般若心経。"
+        }
+    ];
+
+    // 用語解説辞典
+    const termDict = {
+        "仏": "完全に悟りを開いた者。仏教における最高の階層です。ここでは教えを説いたお釈迦様を指します。",
+        "摩訶": "「偉大な」「大いなる」を意味するサンスクリット語「マハー」の音写です。",
+        "般若": "物事のありのままの姿を見抜く「真実の知恵」のこと。",
+        "波羅蜜多": "迷いのあるこちら側の岸から、悟りのあるあちら側の岸（彼岸）へ至ること。",
+        "観自在菩薩": "観音様のこと。「菩薩」は仏に次ぐ階層で、自らの悟りだけでなく他者を救うために活動する修行者のことです。",
+        "五蘊": "人間の肉体と精神を構成する5つの要素（色・受・想・行・識）。",
+        "空": "般若心経の核心。すべての存在には固定された不変の実体がないということ。何もない「無」ではなく、縁によって変化し続ける状態を指します。",
+        "舎利子": "お釈迦様の弟子の一人、シャーリプトラ（舎利弗）。智慧第一と呼ばれました。",
+        "色": "目に見える形あるもの。物質全般。",
+        "受想行識": "心の働きのこと。「受(感覚)」「想(イメージ)」「行(意志)」「識(認識)」。",
+        "諸法": "この世のあらゆる存在や現象のこと。",
+        "眼耳鼻舌身意": "六根（ろっこん）。人間の6つの感覚器官のこと。",
+        "色声香味触法": "六境（ろっきょう）。6つの感覚器官が感じ取る対象物のこと。",
+        "無明": "迷いの根本原因である無知。ここから老いと死に至る12の苦しみの連鎖（十二因縁）すらも「空」であると説いています。",
+        "苦集滅道": "仏教の最も基本的な4つの真理（四諦）。こうした基礎の教えすらも、究極の視点では実体がなく執着してはならないと説きます。",
+        "菩提薩埵": "菩薩（ぼさつ）の正式名称。悟りを求める者。",
+        "罣礙": "心の妨げ、障壁、こだわり。",
+        "顚倒夢想": "物事を逆さまに捉えてしまう誤った考えや、ありもしない妄想。",
+        "究竟涅槃": "煩悩の火が吹き消された、究極の完全な安らぎの境地（悟り）。",
+        "三世諸仏": "過去・現在・未来に存在するすべての仏様。",
+        "阿耨多羅三藐三菩提": "仏が到達する、この上ない最高の正しい悟り（無上正等覚）。",
+        "呪": "真言（マントラ）。仏の真理を込めた神秘的な言葉。",
+        "羯諦": "サンスクリット語の音写。「行く者よ」「往ける者よ」の意。",
+        "薩婆訶": "サンスクリット語の音写。「幸いあれ」「成就あれ」を意味する結びの言葉。"
+    };
+
+    let currentIndex = 0;
+    let autoInterval = null;
+
+    // 画面の更新処理
+    function render() {
+        const kanjiDiv = document.getElementById('kanji-display');
+        const meaningDiv = document.getElementById('meaning-display');
+        
+        kanjiDiv.innerHTML = sutraData[currentIndex].kanji;
+        meaningDiv.innerHTML = sutraData[currentIndex].meaning;
+
+        // 用語クリックイベントの再設定
+        const terms = document.querySelectorAll('.term');
+        terms.forEach(termEl => {
+            termEl.addEventListener('click', () => {
+                openModal(termEl.getAttribute('data-term'));
+            });
+        });
+    }
+
+    // 次へ進む
+    function nextSutra() {
+        currentIndex++;
+        if (currentIndex >= sutraData.length) currentIndex = 0; // ループする
+        render();
+    }
+
+    // 前へ戻る
+    function prevSutra() {
+        currentIndex--;
+        if (currentIndex < 0) currentIndex = sutraData.length - 1;
+        render();
+    }
+
+    // オート再生の切り替え（5秒間隔）
+    function toggleAuto() {
+        const btn = document.getElementById('auto-btn');
+        if (autoInterval) {
+            clearInterval(autoInterval);
+            autoInterval = null;
+            btn.classList.remove('active-auto');
+            btn.innerText = "オート再生";
+        } else {
+            autoInterval = setInterval(nextSutra, 5000);
+            btn.classList.add('active-auto');
+            btn.innerText = "オート停止";
+        }
+    }
+
+    // モーダルを開く
+    function openModal(termKey) {
+        document.getElementById('modal-title').innerText = termKey;
+        document.getElementById('modal-desc').innerText = termDict[termKey] || "解説がありません。";
+        document.getElementById('modal-overlay').style.display = 'block';
+        document.getElementById('modal').style.display = 'block';
+        
+        // オート再生中なら一時停止する気遣い
+        if (autoInterval) toggleAuto(); 
+    }
+
+    // モーダルを閉じる
+    function closeModal() {
+        document.getElementById('modal-overlay').style.display = 'none';
+        document.getElementById('modal').style.display = 'none';
+    }
+
+    // 初期描画
+    window.onload = render;
+</script>
+
+</body>
+</html>
