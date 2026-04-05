@@ -18,6 +18,7 @@
             -webkit-touch-callout: none;
             -webkit-user-select: none;
             overscroll-behavior: none; /* スクロール時のバウンス防止 */
+            height: 100vh;
         }
         .nes-container {
             border: 4px solid #fff;
@@ -37,23 +38,23 @@
         }
     </style>
 </head>
-<body class="flex flex-col items-center p-4 min-h-screen">
+<body class="flex flex-col items-center p-4">
 
-    <div class="w-full max-w-md mb-6 flex justify-between items-center border-b-2 border-white pb-2 pt-8">
+    <div class="w-full max-w-md mb-6 flex justify-between items-center border-b-2 border-white pb-2 pt-10">
         <div id="home-btn" class="cursor-pointer"> [HOME] </div>
         <div class="text-xl">TRIALS</div>
         <div id="progress">01/10 SET</div>
     </div>
 
-    <div id="trial-container" class="w-full max-w-md space-y-4">
-        </div>
+    <div id="trial-container" class="w-full max-w-md space-y-4"></div>
 
     <div class="fixed bottom-10 flex space-x-8">
-        <button id="prev-btn" class="btn-pixel px-4 py-2 text-red-500">BACK</button>
-        <button id="next-btn" class="btn-pixel px-4 py-2 text-green-500">NEXT</button>
+        <button id="prev-btn" class="btn-pixel px-6 py-2 text-red-500">BACK</button>
+        <button id="next-btn" class="btn-pixel px-6 py-2 text-green-500">NEXT</button>
     </div>
 
     <script type="module">
+        // 本番ではここに「金のフレーズ」から抽出したデータを流し込みます
         const dummyData = [
             { word: "attribute", meaning: "〜のせいにする", example: "He attributes his success to hard work.", pronunciation: "/ətríbjuːt/" },
             { word: "compliance", meaning: "遵守", example: "in compliance with safety regulations", pronunciation: "/kəmpláiəns/" },
@@ -76,12 +77,15 @@
         function renderSet() {
             const container = document.getElementById('trial-container');
             container.innerHTML = '';
-            openedCount = 0; // 開いた数をリセット
+            openedCount = 0;
             
             const startIdx = currentSetIndex * wordsPerSet;
             const currentSet = displayWords.slice(startIdx, startIdx + wordsPerSet);
 
-            currentSet.forEach((item) => {
+            // 同じセット内でのシャッフルを適用
+            const shuffledSet = [...currentSet].sort(() => Math.random() - 0.5);
+
+            shuffledSet.forEach((item) => {
                 const card = document.createElement('div');
                 card.className = "nes-container p-4 panel-hidden min-h-[140px] flex flex-col justify-center items-center text-center transition-all";
                 card.innerHTML = `
@@ -89,7 +93,7 @@
                     <div class="detail hidden">
                         <div class="text-yellow-400 text-sm mb-1">${item.pronunciation}</div>
                         <div class="text-xl text-green-400 mb-2">${item.meaning}</div>
-                        <div class="text-xs italic text-gray-300 border-t border-gray-700 pt-2">${item.example}</div>
+                        <div class="text-[10px] leading-tight italic text-gray-300 border-t border-gray-700 pt-2 px-2">${item.example}</div>
                     </div>
                 `;
 
@@ -100,11 +104,10 @@
                         card.querySelector('.detail').classList.remove('hidden');
                         openedCount++;
                         
-                        // 全て開いたら同じセット内でシャッフル
+                        // 三枚全部開いたら0.5秒後に無言でシャッフル
                         if (openedCount === wordsPerSet) {
                             setTimeout(() => {
-                                alert("ALL CLEAR! RE-SHUFFLE THIS SET.");
-                                renderSet(); // 同じインデックスで再描画（openedCountが0に戻る）
+                                renderSet(); 
                             }, 500);
                         }
                     }
@@ -115,17 +118,18 @@
             document.getElementById('progress').innerText = `${currentSetIndex + 1}/${Math.ceil(displayWords.length / wordsPerSet)} SET`;
         }
 
+        // 次のセットへ（手動）
         document.getElementById('next-btn').onclick = () => {
             if ((currentSetIndex + 1) * wordsPerSet < displayWords.length) {
                 currentSetIndex++;
                 renderSet();
             } else {
-                alert("FINAL SET CLEARED! NEW SHUFFLE.");
                 currentSetIndex = 0;
                 initGame();
             }
         };
 
+        // 前のセットへ
         document.getElementById('prev-btn').onclick = () => {
             if (currentSetIndex > 0) {
                 currentSetIndex--;
@@ -133,6 +137,7 @@
             }
         };
 
+        // ホーム（リロード）
         document.getElementById('home-btn').onclick = () => { location.reload(); };
 
         initGame();
