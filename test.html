@@ -1,287 +1,143 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>般若心経 梵漢・解説アプリ</title>
-
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="般若心経">
-
-<style>
-    body {
-        font-family: "Yu Mincho", "MS Mincho", "Hiragino Mincho ProN", serif;
-        background-color: #f7f5f0;
-        color: #2c2c2c;
-        text-align: center;
-        padding: 0;
-        margin: 0;
-        display: flex;
-        flex-direction: column;
-        height: 100dvh; 
-        overflow: hidden; 
-    }
-    header {
-        background-color: #e5d9c5;
-        padding: 10px 15px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-weight: bold;
-    }
-    /* 切り替えスイッチ */
-    .toggle-container {
-        background: #fff;
-        border-radius: 20px;
-        padding: 2px;
-        display: flex;
-        border: 1px solid #ccc;
-    }
-    .toggle-btn {
-        padding: 5px 12px;
-        border-radius: 18px;
-        cursor: pointer;
-        font-size: 0.8rem;
-        transition: 0.3s;
-    }
-    .toggle-btn.active {
-        background-color: #900;
-        color: #fff;
-    }
-
-    #main-content {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        padding: 15px;
-        box-sizing: border-box;
-        overflow-y: auto;
-    }
-    .sutra-display {
-        width: 100%;
-        margin-bottom: 20px;
-    }
-    .devanagari {
-        font-size: 1.8rem;
-        margin-bottom: 10px;
-        color: #333;
-        line-height: 1.4;
-    }
-    .reading-kana {
-        font-family: "Yu Gothic", sans-serif;
-        font-size: 0.9rem;
-        color: #888;
-        margin-bottom: 15px;
-    }
-    .kanji-text {
-        font-size: clamp(1.8rem, 8vw, 2.5rem); 
-        line-height: 1.6;
-        overflow-wrap: break-word;
-    }
-    .meaning-box {
-        font-family: "Yu Gothic", sans-serif;
-        font-size: 1rem;
-        color: #444;
-        width: 100%;
-        max-width: 600px;
-        line-height: 1.6;
-        padding: 15px;
-        background: #fff;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    }
-    .term {
-        color: #900;
-        cursor: pointer;
-        border-bottom: 1px dashed #900;
-    }
-
-    .controls {
-        padding: 15px;
-        background-color: #fff;
-        border-top: 1px solid #ddd;
-        display: flex;
-        justify-content: center;
-        gap: 12px;
-        padding-bottom: env(safe-area-inset-bottom, 20px);
-    }
-    button.nav-btn {
-        font-size: 1.2rem;
-        width: 50px;
-        height: 50px;
-        background-color: #f7f5f0;
-        border: 1px solid #ccc;
-        border-radius: 50%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-    button.active-auto {
-        background-color: #900;
-        color: #fff;
-    }
-
-    /* モーダル */
-    #modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 999; }
-    #modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; padding: 25px; border-radius: 10px; z-index: 1000; width: 85%; max-width: 400px; box-sizing: border-box; }
-    #close-btn { margin-top: 20px; background: #333; color: #fff; border: none; width: 100%; height: 45px; border-radius: 5px; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOEIC 800 - 三枚の試練</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'DotGothic16', sans-serif;
+            image-rendering: pixelated;
+        }
+        .nes-container {
+            border: 4px solid #fff;
+            box-shadow: 5px 5px 0px #555;
+            background: #000;
+        }
+        .panel-hidden {
+            background: #222;
+            border: 2px dashed #666;
+            cursor: pointer;
+        }
+        .panel-open {
+            background: #1a1a2e;
+            border: 2px solid #4ecca3;
+        }
+        .btn-pixel {
+            padding: 8px 16px;
+            border: 4px solid #fff;
+            background: #000;
+            transition: all 0.1s;
+        }
+        .btn-pixel:active {
+            transform: translate(2px, 2px);
+            box-shadow: none;
+        }
+    </style>
 </head>
-<body>
+<body class="flex flex-col items-center p-4">
 
-<header>
-    <span>般若心経</span>
-    <div class="toggle-container">
-        <div id="btn-jp" class="toggle-btn active" onclick="setMode('jp')">漢字</div>
-        <div id="btn-sk" class="toggle-btn" onclick="setMode('sk')">梵語</div>
+    <div class="w-full max-w-md mb-6 flex justify-between items-center border-b-2 border-white pb-2">
+        <div id="home-btn" class="cursor-pointer"> < HOME </div>
+        <div class="text-xl">TOEIC 800: TRIAL</div>
+        <div id="progress">01/10 SET</div>
     </div>
-</header>
 
-<div id="main-content">
-    <div class="sutra-display">
-        <div id="sk-area" style="display:none;">
-            <div id="deva-display" class="devanagari"></div>
-            <div id="reading-display" class="reading-kana"></div>
+    <div id="trial-container" class="w-full max-w-md space-y-4">
         </div>
-        <div id="kanji-display" class="kanji-text"></div>
+
+    <div class="fixed bottom-10 flex space-x-8">
+        <button id="prev-btn" class="btn-pixel text-red-500">BACK</button>
+        <button id="next-btn" class="btn-pixel text-green-500">NEXT ></button>
     </div>
-    <div id="meaning-display" class="meaning-box"></div>
-</div>
 
-<div class="controls">
-    <button class="nav-btn" onclick="firstSutra()">|◁</button>
-    <button class="nav-btn" onclick="prevSutra()">◁</button>
-    <button id="auto-btn" class="nav-btn" onclick="toggleAuto()">▶</button>
-    <button class="nav-btn" onclick="nextSutra()">▷</button>
-</div>
+    <script type="module">
+        // 仮のデータ（本来は「金のフレーズ」から抽出したデータを入れる）
+        const dummyData = [
+            { word: "attribute", meaning: "〜のせいにする", example: "He attributes his success to hard work.", pronunciation: "/ətríbjuːt/" },
+            { word: "compliance", meaning: "遵守", example: "in compliance with safety regulations", pronunciation: "/kəmpláiəns/" },
+            { word: "subscription", meaning: "購読", example: "renew a magazine subscription", pronunciation: "/səbskrípʃən/" },
+            { word: "versatile", meaning: "多才な、多目的な", example: "a versatile performer", pronunciation: "/və́ːrsətl/" },
+            { word: "expedite", meaning: "早める、促進させる", example: "expedite the process", pronunciation: "/ékspədàit/" },
+            { word: "incentive", meaning: "動機、報奨金", example: "a tax incentive", pronunciation: "/inséntiv/" },
+        ];
 
-<div id="modal-overlay" onclick="closeModal()"></div>
-<div id="modal">
-    <h2 id="modal-title" style="color:#900; margin-top:0;"></h2>
-    <p id="modal-desc" style="text-align:left; line-height:1.6;"></p>
-    <button id="close-btn" onclick="closeModal()">閉じる</button>
-</div>
+        let currentSetIndex = 0;
+        let wordsPerSet = 3;
+        let displayWords = [];
 
-<script>
-    let mode = 'jp'; // 'jp' or 'sk'
-    let currentIndex = 0;
-    let autoInterval = null;
-
-    const sutraData = [
-        { 
-            kanji: "仏説摩訶般若波羅蜜多心経", 
-            deva: "प्रज्ञापारमिताहृदयसूत्र", 
-            reading: "プラジュニャーパーラミター フリダヤ スートラム",
-            meaning: "偉大なる真実の知恵の、核心を説いた教え。"
-        },
-        { 
-            kanji: "<span class='term' data-term='観自在菩薩'>観自在菩薩</span>行深般若波羅蜜多時、照見<span class='term' data-term='五蘊'>五蘊</span>皆<span class='term' data-term='空'>空</span>、度一切苦厄。", 
-            deva: "आर्यावलोकितेश्वरो बोधिसत्त्वो...", 
-            reading: "アーリヤー ヴァローキテーシュヴァロー ボーディサットヴォー...",
-            meaning: "聖なる観自在菩薩が、深遠な知恵の修行をされていた時、五蘊（人間の構成要素）はすべて空であると見抜き、苦しみから解放されました。"
-        },
-        { 
-            kanji: "<span class='term' data-term='舎利子'>舎利子</span>。色不異空、空不異色、色即是空、空即是色。", 
-            deva: "इह शारिपुत्र रूपं शून्यता शून्यतैव रूपम्।", 
-            reading: "イハ シャーリプトラ ルーパム シューニャター...",
-            meaning: "シャーリプトラよ、物質的現象（色）は空にほかならず、空は物質的現象にほかなりません。"
-        },
-        {
-            kanji: "受想行識亦復如是。",
-            deva: "एवमेव वेदनासंज्ञासंस्कारविज्ञानानि।",
-            reading: "エーヴァメーヴァ ヴェーダナー サンジュニャー...",
-            meaning: "感覚、イメージ、意志、認識といった心の働きも、また同様に空なのです。"
-        },
-        {
-            kanji: "故説、般若波羅蜜多呪。即説呪曰、",
-            deva: "तद्यथा गते गते पारगते पारसंगते बोधि स्वाहा।",
-            reading: "タドヤター ガテー ガテー パーラガテー...",
-            meaning: "ゆえに真実の知恵の真言を説く。すなわち「ガテー・ガテー...」である。"
-        },
-        {
-            kanji: "<span class='term' data-term='羯諦'>羯諦</span>羯諦波羅羯諦波羅僧羯諦菩提<span class='term' data-term='薩婆訶'>薩婆訶</span>。",
-            deva: "गते गते पारगते पारसंगते बोधि स्वाहा॥",
-            reading: "ガテー ガテー パーラガテー パーラサンガテー ボーディ スヴァーハー",
-            meaning: "往ける者よ、往ける者よ、彼岸へ往ける者よ、完全に往ける者よ、悟りよ、幸いあれ。"
+        function initGame() {
+            // シャッフルして30問（ここでは仮に全データ）をセット
+            displayWords = [...dummyData].sort(() => Math.random() - 0.5);
+            renderSet();
         }
-        // ※長文化を避けるため代表的な節を抜粋。全ての節を同様に追加可能です。
-    ];
 
-    const termDict = {
-        "観自在菩薩": "アヴァローキテーシュヴァラ。自由自在に世の中を観察し、人々を救う菩薩様。",
-        "五蘊": "パンチャ・スカンダ。色・受・想・行・識の5つの集まり。人間を構成する要素。",
-        "空": "シューニャター。実体がないこと。縁によって存在していること。",
-        "舎利子": "シャーリプトラ。お釈迦様の知恵第一の弟子。",
-        "羯諦": "ガテー。行く、往く。迷いの世界から悟りの世界へ渡ること。",
-        "薩婆訶": "スヴァーハー。祈りが成就することを願う言葉。"
-    };
+        function renderSet() {
+            const container = document.getElementById('trial-container');
+            container.innerHTML = '';
+            
+            const startIdx = currentSetIndex * wordsPerSet;
+            const currentSet = displayWords.slice(startIdx, startIdx + wordsPerSet);
 
-    function setMode(m) {
-        mode = m;
-        document.getElementById('btn-jp').classList.toggle('active', mode === 'jp');
-        document.getElementById('btn-sk').classList.toggle('active', mode === 'sk');
-        render();
-    }
+            currentSet.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = "nes-container p-4 panel-hidden min-h-[120px] flex flex-col justify-center items-center text-center transition-all";
+                card.innerHTML = `
+                    <div class="text-2xl mb-2">${item.word}</div>
+                    <div class="detail hidden">
+                        <div class="text-yellow-400 text-sm mb-1">${item.pronunciation}</div>
+                        <div class="text-xl text-green-400 mb-2">${item.meaning}</div>
+                        <div class="text-xs italic text-gray-300 border-t border-gray-700 pt-2">${item.example}</div>
+                    </div>
+                `;
 
-    function render() {
-        const item = sutraData[currentIndex];
-        const kanjiArea = document.getElementById('kanji-display');
-        const skArea = document.getElementById('sk-area');
-        
-        if (mode === 'jp') {
-            kanjiArea.style.display = 'block';
-            skArea.style.display = 'none';
-            kanjiArea.innerHTML = item.kanji;
-        } else {
-            kanjiArea.style.display = 'none';
-            skArea.style.display = 'block';
-            document.getElementById('deva-display').innerText = item.deva;
-            document.getElementById('reading-display').innerText = item.reading;
+                card.onclick = () => {
+                    card.classList.remove('panel-hidden');
+                    card.classList.add('panel-open');
+                    card.querySelector('.detail').classList.remove('hidden');
+                    playAudio(item.word);
+                };
+
+                container.appendChild(card);
+            });
+
+            document.getElementById('progress').innerText = `${currentSetIndex + 1}/${Math.ceil(displayWords.length / wordsPerSet)} SET`;
         }
-        document.getElementById('meaning-display').innerText = item.meaning;
 
-        document.querySelectorAll('.term').forEach(el => {
-            el.onclick = () => openModal(el.dataset.term);
-        });
-    }
-
-    function firstSutra() { currentIndex = 0; render(); if(autoInterval) toggleAuto(); }
-    function prevSutra() { currentIndex = (currentIndex - 1 + sutraData.length) % sutraData.length; render(); }
-    function nextSutra() { 
-        currentIndex++; 
-        if(currentIndex >= sutraData.length) {
-            currentIndex = 0; render(); if(autoInterval) toggleAuto();
-        } else { render(); }
-    }
-
-    function toggleAuto() {
-        const btn = document.getElementById('auto-btn');
-        if (autoInterval) {
-            clearInterval(autoInterval); autoInterval = null;
-            btn.innerHTML = "▶"; btn.classList.remove('active-auto');
-        } else {
-            autoInterval = setInterval(nextSutra, 5000);
-            btn.innerHTML = "⏸"; btn.classList.add('active-auto');
+        function playAudio(word) {
+            console.log(`Playing audio for: ${word}`);
+            // ここに Audio オブジェクトの再生処理を入れる
+            // const audio = new Audio(`audio/${word}.mp3`);
+            // audio.play();
         }
-    }
 
-    function openModal(term) {
-        document.getElementById('modal-title').innerText = term;
-        document.getElementById('modal-desc').innerText = termDict[term];
-        document.getElementById('modal-overlay').style.display = 'block';
-        document.getElementById('modal').style.display = 'block';
-        if(autoInterval) toggleAuto();
-    }
+        document.getElementById('next-btn').onclick = () => {
+            if ((currentSetIndex + 1) * wordsPerSet < displayWords.length) {
+                currentSetIndex++;
+                renderSet();
+            } else {
+                alert("全ての試練を終えた！再シャッフルします。");
+                currentSetIndex = 0;
+                initGame();
+            }
+        };
 
-    function closeModal() {
-        document.getElementById('modal-overlay').style.display = 'none';
-        document.getElementById('modal').style.display = 'none';
-    }
+        document.getElementById('prev-btn').onclick = () => {
+            if (currentSetIndex > 0) {
+                currentSetIndex--;
+                renderSet();
+            }
+        };
 
-    window.onload = render;
-</script>
+        document.getElementById('home-btn').onclick = () => {
+            if(confirm("ホームに戻りますか？")) location.reload();
+        };
+
+        initGame();
+    </script>
 </body>
 </html>
