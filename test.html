@@ -2,7 +2,11 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="三枚の試練">
+    
     <title>TOEIC 800 - 三枚の試練</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
@@ -11,39 +15,33 @@
             background-color: #000;
             color: #fff;
             font-family: 'DotGothic16', sans-serif;
-            image-rendering: pixelated;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            overscroll-behavior: none; /* スクロール時のバウンス防止 */
         }
         .nes-container {
             border: 4px solid #fff;
-            box-shadow: 5px 5px 0px #555;
             background: #000;
         }
         .panel-hidden {
             background: #222;
             border: 2px dashed #666;
-            cursor: pointer;
         }
         .panel-open {
             background: #1a1a2e;
             border: 2px solid #4ecca3;
         }
         .btn-pixel {
-            padding: 8px 16px;
             border: 4px solid #fff;
             background: #000;
-            transition: all 0.1s;
-        }
-        .btn-pixel:active {
-            transform: translate(2px, 2px);
-            box-shadow: none;
         }
     </style>
 </head>
-<body class="flex flex-col items-center p-4">
+<body class="flex flex-col items-center p-4 min-h-screen">
 
-    <div class="w-full max-w-md mb-6 flex justify-between items-center border-b-2 border-white pb-2">
-        <div id="home-btn" class="cursor-pointer"> < HOME </div>
-        <div class="text-xl">TOEIC 800: TRIAL</div>
+    <div class="w-full max-w-md mb-6 flex justify-between items-center border-b-2 border-white pb-2 pt-8">
+        <div id="home-btn" class="cursor-pointer"> [HOME] </div>
+        <div class="text-xl">TRIALS</div>
         <div id="progress">01/10 SET</div>
     </div>
 
@@ -51,12 +49,11 @@
         </div>
 
     <div class="fixed bottom-10 flex space-x-8">
-        <button id="prev-btn" class="btn-pixel text-red-500">BACK</button>
-        <button id="next-btn" class="btn-pixel text-green-500">NEXT ></button>
+        <button id="prev-btn" class="btn-pixel px-4 py-2 text-red-500">BACK</button>
+        <button id="next-btn" class="btn-pixel px-4 py-2 text-green-500">NEXT</button>
     </div>
 
     <script type="module">
-        // 仮のデータ（本来は「金のフレーズ」から抽出したデータを入れる）
         const dummyData = [
             { word: "attribute", meaning: "〜のせいにする", example: "He attributes his success to hard work.", pronunciation: "/ətríbjuːt/" },
             { word: "compliance", meaning: "遵守", example: "in compliance with safety regulations", pronunciation: "/kəmpláiəns/" },
@@ -69,9 +66,9 @@
         let currentSetIndex = 0;
         let wordsPerSet = 3;
         let displayWords = [];
+        let openedCount = 0;
 
         function initGame() {
-            // シャッフルして30問（ここでは仮に全データ）をセット
             displayWords = [...dummyData].sort(() => Math.random() - 0.5);
             renderSet();
         }
@@ -79,13 +76,14 @@
         function renderSet() {
             const container = document.getElementById('trial-container');
             container.innerHTML = '';
+            openedCount = 0; // 開いた数をリセット
             
             const startIdx = currentSetIndex * wordsPerSet;
             const currentSet = displayWords.slice(startIdx, startIdx + wordsPerSet);
 
-            currentSet.forEach((item, index) => {
+            currentSet.forEach((item) => {
                 const card = document.createElement('div');
-                card.className = "nes-container p-4 panel-hidden min-h-[120px] flex flex-col justify-center items-center text-center transition-all";
+                card.className = "nes-container p-4 panel-hidden min-h-[140px] flex flex-col justify-center items-center text-center transition-all";
                 card.innerHTML = `
                     <div class="text-2xl mb-2">${item.word}</div>
                     <div class="detail hidden">
@@ -96,23 +94,25 @@
                 `;
 
                 card.onclick = () => {
-                    card.classList.remove('panel-hidden');
-                    card.classList.add('panel-open');
-                    card.querySelector('.detail').classList.remove('hidden');
-                    playAudio(item.word);
+                    if (card.classList.contains('panel-hidden')) {
+                        card.classList.remove('panel-hidden');
+                        card.classList.add('panel-open');
+                        card.querySelector('.detail').classList.remove('hidden');
+                        openedCount++;
+                        
+                        // 全て開いたら同じセット内でシャッフル
+                        if (openedCount === wordsPerSet) {
+                            setTimeout(() => {
+                                alert("ALL CLEAR! RE-SHUFFLE THIS SET.");
+                                renderSet(); // 同じインデックスで再描画（openedCountが0に戻る）
+                            }, 500);
+                        }
+                    }
                 };
-
                 container.appendChild(card);
             });
 
             document.getElementById('progress').innerText = `${currentSetIndex + 1}/${Math.ceil(displayWords.length / wordsPerSet)} SET`;
-        }
-
-        function playAudio(word) {
-            console.log(`Playing audio for: ${word}`);
-            // ここに Audio オブジェクトの再生処理を入れる
-            // const audio = new Audio(`audio/${word}.mp3`);
-            // audio.play();
         }
 
         document.getElementById('next-btn').onclick = () => {
@@ -120,7 +120,7 @@
                 currentSetIndex++;
                 renderSet();
             } else {
-                alert("全ての試練を終えた！再シャッフルします。");
+                alert("FINAL SET CLEARED! NEW SHUFFLE.");
                 currentSetIndex = 0;
                 initGame();
             }
@@ -133,9 +133,7 @@
             }
         };
 
-        document.getElementById('home-btn').onclick = () => {
-            if(confirm("ホームに戻りますか？")) location.reload();
-        };
+        document.getElementById('home-btn').onclick = () => { location.reload(); };
 
         initGame();
     </script>
