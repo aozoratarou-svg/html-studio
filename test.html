@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AWS IoT Quest</title>
+    <title>AWS IoT Quest II</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
@@ -14,6 +14,7 @@
             --accent-color: #f8b800; /* ファミコン風の黄色 */
             --border-color: #ffffff;
             --line-color: #44aaff;
+            --sub-line-color: #ff44aa; /* 特殊な接続用 */
         }
 
         body {
@@ -21,24 +22,24 @@
             color: var(--text-color);
             font-family: 'DotGothic16', sans-serif;
             margin: 0;
-            padding: 10px;
+            padding: 5px; /* スマホ用に余白を詰める */
             overflow-x: hidden;
             user-select: none;
         }
 
         h1 {
             text-align: center;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             border: 4px double var(--border-color);
-            padding: 10px;
-            margin-bottom: 20px;
+            padding: 8px;
+            margin: 10px 0 15px 0;
             text-shadow: 2px 2px 0 #888;
         }
 
         #tree-wrapper {
             position: relative;
             width: 100%;
-            padding-bottom: 50px;
+            padding-bottom: 80px; /* 下部余白を多めに */
         }
 
         #svg-canvas {
@@ -56,49 +57,57 @@
             display: flex;
             justify-content: center;
             flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 50px;
+            gap: 10px; /* スマホ用に間隔を詰める */
+            margin-bottom: 40px; /* 各レベルの間隔 */
             position: relative;
             z-index: 10;
         }
 
         .node {
             background-color: var(--bg-color);
-            border: 4px double var(--border-color);
-            padding: 10px;
-            border-radius: 8px; /* 少しの丸み */
+            border: 3px double var(--border-color); /* 少し細く */
+            padding: 8px;
+            border-radius: 6px;
             text-align: center;
             cursor: pointer;
-            box-shadow: 4px 4px 0 #555;
-            min-width: 120px;
-            max-width: 90%;
+            box-shadow: 3px 3px 0 #555;
+            min-width: 90px; /* スマホ用に少し小さく */
+            max-width: 45%; /* グリッド状に並ぶように */
             transition: transform 0.1s, box-shadow 0.1s;
         }
 
         .node:active {
             transform: translate(2px, 2px);
-            box-shadow: 2px 2px 0 #555;
+            box-shadow: 1px 1px 0 #555;
         }
 
         .node-title {
-            font-size: 1.1rem;
+            font-size: 0.9rem;
             color: var(--accent-color);
-            margin-bottom: 5px;
+            margin-bottom: 4px;
         }
 
         .node-tags {
-            font-size: 0.7rem;
+            font-size: 0.6rem;
             color: #aaa;
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 4px;
+            gap: 2px;
         }
 
         .tag {
             border: 1px solid #aaa;
-            padding: 2px 4px;
-            border-radius: 4px;
+            padding: 1px 3px;
+            border-radius: 3px;
+        }
+
+        /* Level 4: 目的別サービスをグリッド状に配置 */
+        #level-4 {
+            justify-content: space-around;
+        }
+        #level-4 .node {
+            max-width: 40%;
         }
 
         /* モーダル (RPG風メッセージウィンドウ) */
@@ -115,45 +124,45 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 85%;
+            width: 90%; /* スマホ用に少し広く */
             max-width: 400px;
             background-color: var(--bg-color);
             border: 6px double var(--border-color);
-            padding: 20px;
+            padding: 15px; /* スマホ用に少し狭く */
             z-index: 1000;
             box-shadow: 0 0 20px rgba(255,255,255,0.2);
         }
 
         #modal h2 {
-            margin-top: 0;
+            margin: 0 0 10px 0;
             color: var(--accent-color);
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             border-bottom: 2px dashed #555;
-            padding-bottom: 10px;
+            padding-bottom: 8px;
         }
 
         #modal p {
-            font-size: 0.9rem;
+            font-size: 0.8rem;
             line-height: 1.6;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
         }
 
         .term-list {
             background: #111;
-            padding: 10px;
+            padding: 8px;
             border: 1px solid #444;
-            margin-bottom: 15px;
-            font-size: 0.8rem;
+            margin-bottom: 12px;
+            font-size: 0.7rem;
         }
 
         .term-list dt {
             color: #4af;
             font-weight: bold;
-            margin-top: 5px;
+            margin-top: 4px;
         }
 
         .term-list dd {
-            margin: 0 0 5px 10px;
+            margin: 0 0 4px 8px;
             color: #ccc;
         }
 
@@ -163,11 +172,11 @@
             background: transparent;
             color: var(--text-color);
             border: 2px solid var(--border-color);
-            padding: 10px;
+            padding: 8px;
             font-family: inherit;
             cursor: pointer;
             text-align: center;
-            font-size: 1rem;
+            font-size: 0.9rem;
         }
         .close-btn:active {
             background: #333;
@@ -182,7 +191,7 @@
 </head>
 <body>
 
-    <h1>▼ AWS IoT クエスト ▼<br><span style="font-size:0.7rem; color:#aaa;">〜エッジからクラウドへの旅〜</span></h1>
+    <h1>▼ AWS IoT クエスト II ▼<br><span style="font-size:0.6rem; color:#aaa;">〜目的別スペシャルサービスへ〜</span></h1>
 
     <div id="tree-wrapper">
         <svg id="svg-canvas"></svg>
@@ -198,7 +207,7 @@
 
         <div class="level" id="level-2">
             <div class="node" id="node-gg" onclick="showModal('greengrass')">
-                <div class="node-title">AWS IoT Greengrass</div>
+                <div class="node-title">AWS IoT<br>Greengrass</div>
                 <div class="node-tags">
                     <span class="tag">エッジ処理</span><span class="tag">オフライン稼働</span>
                 </div>
@@ -209,19 +218,35 @@
             <div class="node" id="node-core" onclick="showModal('core')">
                 <div class="node-title">AWS IoT Core</div>
                 <div class="node-tags">
-                    <span class="tag">MQTTブローカー</span><span class="tag">Device Shadow</span><span class="tag">ルールエンジン</span>
+                    <span class="tag">MQTTブローカー</span><span class="tag">ルールエンジン</span>
                 </div>
             </div>
         </div>
 
         <div class="level" id="level-4">
-            <div class="node" id="node-s3" onclick="showModal('s3')">
-                <div class="node-title">Amazon S3<br>/ DynamoDB</div>
-                <div class="node-tags"><span class="tag">データ蓄積</span></div>
+            <div class="node" id="node-sitewise" onclick="showModal('sitewise')">
+                <div class="node-title">SiteWise</div>
+                <div class="node-tags"><span class="tag">産業データ</span><span class="tag">見える化</span></div>
             </div>
-            <div class="node" id="node-lambda" onclick="showModal('lambda')">
-                <div class="node-title">AWS Lambda<br>/ SNS</div>
-                <div class="node-tags"><span class="tag">分析・アラート</span></div>
+            <div class="node" id="node-analytics" onclick="showModal('analytics')">
+                <div class="node-title">Analytics</div>
+                <div class="node-tags"><span class="tag">データ分析</span><span class="tag">クレンジング</span></div>
+            </div>
+            <div class="node" id="node-events" onclick="showModal('events')">
+                <div class="node-title">Events</div>
+                <div class="node-tags"><span class="tag">異常検知</span><span class="tag">ステートマシン</span></div>
+            </div>
+            <div class="node" id="node-management" onclick="showModal('management')">
+                <div class="node-title">Device<br>Management</div>
+                <div class="node-tags"><span class="tag">デバイス管理</span><span class="tag">OTA</span></div>
+            </div>
+            <div class="node" id="node-defender" onclick="showModal('defender')">
+                <div class="node-title">Device<br>Defender</div>
+                <div class="node-tags"><span class="tag">セキュリティ</span><span class="tag">挙動監視</span></div>
+            </div>
+            <div class="node" id="node-twinmaker" onclick="showModal('twinmaker')">
+                <div class="node-title">TwinMaker</div>
+                <div class="node-tags"><span class="tag">デジタルツイン</span><span class="tag">3D可視化</span></div>
             </div>
         </div>
 
@@ -244,75 +269,112 @@
     </div>
 
     <script>
-        // --- データ定義 ---
+        // --- データ定義 (追加分・修正分) ---
         const data = {
             'device': {
                 title: 'エッジデバイス (現場の機器)',
                 desc: '工場や設備のセンサー、モーターなどのIoT機器。現場の物理データを取得し、デジタルデータに変換してクラウドへ送る冒険の出発点だ！',
                 terms: {
                     'JSON (ジェイソン)': 'データを送る際の標準的なフォーマット。{"温度": 25.5, "状態": "正常"} のように、軽量でプログラムが読みやすい。',
-                    'Publisher (パブリッシャー)': 'データの発信者のこと。センサーが温度データを「出版(Publish)」する役割を担う。',
-                    'MQTT': 'IoTでよく使われる軽量な通信規格。回線が不安定な移動中のネットワーク等でも確実にデータを送れるスグレモノ。'
+                    'Publisher (パブリッシャー)': 'データの発信者のこと。センサーが温度データを「出版(Publish)」する役割を担う。'
                 }
             },
             'greengrass': {
                 title: 'AWS IoT Greengrass',
                 desc: '現場（エッジ）に設置するゲートウェイ用ソフトウェア。クラウドの知能を現場に持ち込み、通信が切れてもローカルで自律的に動くことができる！',
                 terms: {
-                    'エッジコンピューティング': 'すべてのデータをクラウドに送らず、現場(エッジ)でフィルタリングや一次分析を行うことで、通信量と遅延を減らす技術。',
-                    'オフライン稼働': 'インターネットが切断されても、ローカル内でデバイス同士を連携させ、データを保持し続ける機能。'
+                    'エッジコンピューティング': 'すべてのデータをクラウドに送らず、現場(エッジ)でフィルタリングや一次分析を行うことで、通信量と遅延を減らす技術。'
                 }
             },
             'core': {
                 title: 'AWS IoT Core',
-                desc: '数十億のデバイスとAWSを安全につなぐ巨大な関所(マネージドサービス)。送られてきたデータをさばき、各AWSサービスへと振り分ける心臓部だ。',
+                desc: '数十億のデバイスとAWSを安全につなぐ巨大な関所(マネージドサービス)。送られてきたデータをさばき、各目的別のスペシャルサービスへと振り分ける心臓部だ。',
                 terms: {
                     'MQTTブローカー': '無数のPublisher(送信者)とSubscriber(受信者)の間に入り、適切にメッセージを中継する郵便局のような役割。',
-                    'Device Shadow': 'デバイスの「影(最新状態)」をクラウド上に保持する機能。デバイスがオフラインでも、アプリは影を見て状態を確認・変更できる。',
-                    'ルールエンジン': '「温度が30度を超えたらLambdaを起動する」といったSQL風の条件式で、データを後続のサービスに自動ルーティングする機能。'
+                    'ルールエンジン': 'SQL風の条件式で、データを後続のサービスに自動ルーティングする機能。例えば「 SiteWise へ送る」といったルールを決める。'
                 }
             },
-            's3': {
-                title: 'S3 / DynamoDB (データ保存)',
-                desc: 'IoT Coreから送られてきた膨大なデータを保管する宝物庫。',
+            'sitewise': {
+                title: 'AWS IoT SiteWise',
+                desc: '産業機器からのデータ収集、モデリング、そしてノーコードでのダッシュボード可視化をまるごと担うサービス。前回の「なんとかサイト」の正体はこれだ！',
                 terms: {
-                    'Amazon S3': '容量無制限のストレージ。過去数年分の大量のセンサーデータを「データレイク」として安価に保存し、AIの学習データなどに使う。',
-                    'Amazon DynamoDB': '超高速なNoSQLデータベース。現在の最新ステータスや、素早く検索したい「ホットデータ」の保存に使う。'
+                    '産業機器モデリング': '発電機、空調設備といった現場の機器を階層構造で定義し、データを整理しやすくする。',
+                    'ノーコード可視化': 'プログラムを書かずに、ドラッグ＆ドロップで設備の稼働状況や温度グラフを表示する画面（SiteWise Monitor）を作れる。'
                 }
             },
-            'lambda': {
-                title: 'Lambda / SNS (アクション)',
-                desc: '異常を検知した際に、自動的に呪文(プログラム)を唱えたり、人間に知らせたりするアクション部隊だ。',
+            'analytics': {
+                title: 'AWS IoT Analytics',
+                desc: 'IoT特有の「ノイズが多いデータ」や「欠損があるデータ」をきれいに整え（クレンジング）、長期保存し、SQLなどを使って分析しやすくするサービスだ。',
                 terms: {
-                    'AWS Lambda': 'サーバーを意識せずにコードを実行できるサービス。異常値の判定や、データフォーマットの変換ロジックを担う。',
-                    'Amazon SNS': '異常を検知した際に、管理者のスマホにSMSやメールで「アラート(警告)」をプッシュ通知する。'
+                    'データクレンジング': 'センサーの誤検知や通信エラーなどで発生した異常な数値を除去・補正すること。',
+                    'データレイク': '分析のために、大量のデータを生のまま（または少し加工して）長期間保存する場所。'
+                }
+            },
+            'events': {
+                title: 'AWS IoT Events',
+                desc: '複数のセンサーデータを監視し、特定の「状態」に変化したときだけアクションを起こすサービス。現場の異常を瞬時に察知する！',
+                terms: {
+                    '複雑な条件検知': 「温度が高く、かつドアが開いている場合」といった複数の条件を組み合わせた判定。
+                    'ステートマシン': 「正常」「注意」「異常」といったデバイスの「状態」を管理し、状態が変化した際のロジックを組む仕組み。'
+                }
+            },
+            'management': {
+                title: 'AWS IoT Device Management',
+                desc: '数千、数万というデバイスをグループ分けして管理し、遠隔アップデート（OTA）や再起動などの指示を一括で行うサービスだ。',
+                terms: {
+                    'OTA (Over-The-Air)': 'クラウド経由で、デバイスのファームウェアやプログラムを無線で安全にアップデートする機能。現地に行かなくて済む！'
+                }
+            },
+            'defender': {
+                title: 'AWS IoT Device Defender',
+                desc: 'デバイスの挙動を監視し、セキュリティリスク（異常な通信、設定不備など）を検知するセキュリティ専門の監視員だ。',
+                terms: {
+                    'セキュリティプロファイル': 「このデバイスは1時間に10回以上通信しない」といった安全な挙動の基準を定義し、それを超えた場合にアラートを出す。'
+                }
+            },
+            'twinmaker': {
+                title: 'AWS IoT TwinMaker',
+                desc: '現実の設備を、3DでPC上に完全に再現する（デジタルツイン）ためのサービス。SiteWiseなどで集めたデータを3Dモデルに重ね合わせて表示する！',
+                terms: {
+                    'デジタルツイン': '現実世界の物体やシステムの双子（Twin）を、デジタル空間上に構築し、リアルタイムに連動させる技術。'
                 }
             },
             'user': {
                 title: '最終ユーザー / アプリケーション',
-                desc: '現場から集まり、AWSで分析されたデータを受け取る最終地点。PCのダッシュボードやスマホアプリを通じて、現実世界に価値をもたらす！',
+                desc: '現場から集まり、目的別のスペシャルサービスで分析・加工されたデータを受け取る最終地点。PCやスマホアプリを通じて、現実世界に価値をもたらす！',
                 terms: {
-                    'Subscriber (サブスクライバー)': 'データの受信者。スマホアプリがIoT Coreの特定の情報（トピック）を「購読(Subscribe)」して最新情報を受け取る。',
-                    '予知保全': '蓄積したセンサーデータとAI分析から「壊れる前に部品の寿命を予測」し、メンテナンスを行うこと。ダウンタイムを劇的に減らせる。',
-                    '遠隔操作': 'Device Shadowを通じて、自宅のスマホから遠く離れた工場のバルブを閉めたり、空調を操作したりすること。'
+                    'Subscriber (サブスクライバー)': 'データの受信者。スマホアプリがIoT Coreや他のサービスからの情報（トピック）を「購読(Subscribe)」して最新情報を受け取る。',
+                    '予知保全': '蓄積したセンサーデータとAI分析から「壊れる前に部品の寿命を予測」し、メンテナンスを行うこと。'
                 }
             }
         };
 
-        // --- 描画処理 (SVGでの曲線描画) ---
+        // --- 描画処理 (SVGでの曲線描画・グリッド対応) ---
         function drawTreeLines() {
             const svg = document.getElementById('svg-canvas');
             const wrapper = document.getElementById('tree-wrapper');
             svg.innerHTML = ''; // クリア
 
-            // 接続定義 [from, to]
+            // 接続定義 [from, to, type]
             const connections = [
-                ['node-device', 'node-gg'],
-                ['node-gg', 'node-core'],
-                ['node-core', 'node-s3'],
-                ['node-core', 'node-lambda'],
-                ['node-s3', 'node-user'],
-                ['node-lambda', 'node-user']
+                ['node-device', 'node-gg', 'main'],
+                ['node-gg', 'node-core', 'main'],
+                // Core -> 目的別専門サービス
+                ['node-core', 'node-sitewise', 'main'],
+                ['node-core', 'node-analytics', 'main'],
+                ['node-core', 'node-events', 'main'],
+                ['node-core', 'node-management', 'main'],
+                ['node-core', 'node-defender', 'main'],
+                ['node-core', 'node-twinmaker', 'main'],
+                // 専門サービス -> ユーザー
+                ['node-sitewise', 'node-user', 'main'],
+                ['node-analytics', 'node-user', 'main'],
+                ['node-events', 'node-user', 'main'],
+                ['node-management', 'node-user', 'main'],
+                ['node-defender', 'node-user', 'main'],
+                ['node-twinmaker', 'node-user', 'main'],
+                // SiteWise -> TwinMaker の特別な連携
+                ['node-sitewise', 'node-twinmaker', 'sub']
             ];
 
             const wrapperRect = wrapper.getBoundingClientRect();
@@ -320,6 +382,7 @@
             connections.forEach(conn => {
                 const el1 = document.getElementById(conn[0]);
                 const el2 = document.getElementById(conn[1]);
+                const type = conn[2];
                 if(!el1 || !el2) return;
 
                 const rect1 = el1.getBoundingClientRect();
@@ -333,24 +396,51 @@
 
                 // SVGパスの生成 (ベジェ曲線)
                 const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                // 下へ向かう曲線
-                const d = `M ${x1} ${y1} C ${x1} ${(y1+y2)/2}, ${x2} ${(y1+y2)/2}, ${x2} ${y2}`;
+                
+                let d;
+                if (conn[0] === 'node-sitewise' && conn[1] === 'node-twinmaker') {
+                    // SiteWise -> TwinMaker (横方向または上から下への連携)
+                    const offset = 20; // 制御点のずらし
+                    d = `M ${x1} ${y1+rect1.height/2} C ${x1} ${y1+rect1.height/2+offset}, ${x2} ${y2-rect2.height/2-offset}, ${x2} ${y2-rect2.height/2}`;
+                } else if (conn[0] === 'node-core') {
+                    // Core -> 各専門サービス (上から下、グリッド対応)
+                    const ctrlY = (y1 + y2) / 2;
+                    // スマホでは曲線が重なりすぎないよう制御点を少しずらす
+                    const yOffset = rect2.top < 300 ? -20 : 0; // 上段、下段で制御点をずらす(目安のy座標で判定)
+                    d = `M ${x1} ${y1} C ${x1} ${ctrlY + yOffset}, ${x2} ${ctrlY + yOffset}, ${x2} ${y2}`;
+                } else {
+                    // 通常の下へ向かう曲線
+                    const ctrlY = (y1 + y2) / 2;
+                    d = `M ${x1} ${y1} C ${x1} ${ctrlY}, ${x2} ${ctrlY}, ${x2} ${y2}`;
+                }
                 
                 path.setAttribute('d', d);
-                path.setAttribute('stroke', 'var(--line-color)');
-                path.setAttribute('stroke-width', '4');
-                path.setAttribute('stroke-dasharray', '8 4'); // 点線で通信っぽく
-                path.setAttribute('fill', 'none');
                 
-                // アニメーション用にクラス追加
-                const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
-                style.textContent = `
-                    @keyframes dash { to { stroke-dashoffset: -24; } }
-                    path { animation: dash 1s linear infinite; }
-                `;
-                svg.appendChild(style);
+                if (type === 'sub') {
+                    // SiteWise -> TwinMaker の連携用
+                    path.setAttribute('stroke', 'var(--sub-line-color)');
+                    path.setAttribute('stroke-width', '2');
+                    path.setAttribute('stroke-dasharray', '4 2'); // 細かい点線
+                } else {
+                    path.setAttribute('stroke', 'var(--line-color)');
+                    path.setAttribute('stroke-width', '4');
+                    path.setAttribute('stroke-dasharray', '8 4'); // 点線で通信っぽく
+                }
+                path.setAttribute('fill', 'none');
+                path.setAttribute('class', type === 'sub' ? 'path-sub' : 'path-main');
+                
                 svg.appendChild(path);
             });
+
+            // アニメーション用スタイル (type ごとに速度を変える)
+            const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+            style.textContent = `
+                @keyframes dash-main { to { stroke-dashoffset: -24; } }
+                @keyframes dash-sub { to { stroke-dashoffset: -12; } }
+                .path-main { animation: dash-main 1s linear infinite; }
+                .path-sub { animation: dash-sub 0.5s linear infinite; }
+            `;
+            svg.appendChild(style);
         }
 
         // --- モーダル制御 ---
