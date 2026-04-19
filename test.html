@@ -3,504 +3,254 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AWS IoT Quest II - Refined</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+    <title>Pancake - Recipe & Timer</title>
     <style>
         :root {
-            --bg-color: #000000;
-            --text-color: #ffffff;
-            --accent-color: #f8b800; /* ファミコン風の黄色 */
-            --border-color: #ffffff;
-            --line-color: #44aaff;
-            --sub-line-color: #ff44aa; /* 特殊な連携用 */
+            --bg: #ffffff;
+            --accent: #d4a373;
+            --text: #333333;
+            --soft-gold: #fffdfa;
+            --gray: #999999;
         }
 
         body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: 'DotGothic16', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: "Helvetica Neue", Arial, "Hiragino Sans", sans-serif;
             margin: 0;
-            padding: 5px;
-            overflow-x: hidden;
-            user-select: none;
+            display: flex;
+            justify-content: center;
+            padding: 5vh 20px;
+            line-height: 1.7;
+        }
+
+        .container {
+            max-width: 400px;
+            width: 100%;
+        }
+
+        /* Symbolic Pancake Icon */
+        .symbol {
+            width: 44px;
+            height: 22px;
+            margin: 0 auto 30px;
+            background: var(--accent);
+            border-radius: 50% / 80% 80% 20% 20%;
+            position: relative;
+            box-shadow: 0 4px 0 #bc8a5f;
         }
 
         h1 {
+            font-size: 1.2rem;
+            font-weight: 300;
+            text-align: center;
+            letter-spacing: 0.4em;
+            margin-bottom: 60px;
+            text-transform: uppercase;
+        }
+
+        /* Control UI */
+        .servings-ui {
+            text-align: center;
+            margin-bottom: 50px;
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+
+        input[type="number"] {
+            width: 45px;
+            border: none;
+            border-bottom: 1px solid var(--accent);
             text-align: center;
             font-size: 1.1rem;
-            border: 4px double var(--border-color);
-            padding: 8px;
-            margin: 10px 5px 20px 5px;
-            text-shadow: 2px 2px 0 #888;
-        }
-
-        #tree-wrapper {
-            position: relative;
-            width: 100%;
-            padding-bottom: 80px;
-        }
-
-        #svg-canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1;
-        }
-
-        /* ツリーレイアウト共通 */
-        .level {
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 45px;
-            position: relative;
-            z-index: 10;
-        }
-
-        .node {
-            background-color: var(--bg-color);
-            border: 3px double var(--border-color);
-            padding: 10px 5px;
-            border-radius: 6px;
-            text-align: center;
-            cursor: pointer;
-            box-shadow: 3px 3px 0 #555;
-            min-width: 130px;
-            transition: transform 0.1s, box-shadow 0.1s;
-        }
-
-        .node:active {
-            transform: translate(2px, 2px);
-            box-shadow: 1px 1px 0 #555;
-        }
-
-        .node-title {
-            font-size: 1rem;
-            color: var(--accent-color);
-            margin-bottom: 6px;
-        }
-
-        .node-tags {
-            font-size: 0.65rem;
-            color: #aaa;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 3px;
-        }
-
-        .tag {
-            border: 1px solid #aaa;
-            padding: 1px 4px;
-            border-radius: 3px;
-            background: rgba(255,255,255,0.1);
-        }
-
-        /* Level 4: 目的別サービスを2列のグリッドで整頓 */
-        #level-4 {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-            width: 96%;
-            max-width: 380px;
-            margin: 0 auto 50px auto;
-        }
-        #level-4 .node {
-            min-width: unset;
-            width: 100%;
-            margin: 0;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-
-        /* モーダル (RPG風メッセージウィンドウ) */
-        #modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 999;
-        }
-
-        #modal {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 88%;
-            max-width: 400px;
-            background-color: var(--bg-color);
-            border: 6px double var(--border-color);
-            padding: 15px;
-            z-index: 1000;
-            box-shadow: 0 0 20px rgba(255,255,255,0.2);
-        }
-
-        #modal h2 {
-            margin: 0 0 10px 0;
-            color: var(--accent-color);
-            font-size: 1.1rem;
-            border-bottom: 2px dashed #555;
-            padding-bottom: 8px;
-        }
-
-        #modal p {
-            font-size: 0.85rem;
-            line-height: 1.6;
-            margin-bottom: 12px;
-        }
-
-        .term-list {
-            background: #111;
-            padding: 8px;
-            border: 1px solid #444;
-            margin-bottom: 12px;
-            font-size: 0.75rem;
-        }
-
-        .term-list dt {
-            color: #4af;
-            font-weight: bold;
-            margin-top: 4px;
-        }
-
-        .term-list dd {
-            margin: 0 0 6px 8px;
-            color: #ccc;
-        }
-
-        .close-btn {
-            display: block;
-            width: 100%;
+            color: var(--accent);
+            outline: none;
             background: transparent;
-            color: var(--text-color);
-            border: 2px solid var(--border-color);
-            padding: 10px;
-            font-family: inherit;
-            cursor: pointer;
-            text-align: center;
-            font-size: 1rem;
-            margin-top: 5px;
-        }
-        .close-btn:active {
-            background: #333;
+            font-family: serif;
         }
 
-        /* 点滅カーソル */
-        .cursor {
-            animation: blink 1s step-end infinite;
+        .section-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--accent);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            display: block;
+            border-bottom: 1px solid #f0f0f0;
         }
-        @keyframes blink { 50% { opacity: 0; } }
+
+        .ing-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 50px 0;
+            font-size: 0.9rem;
+        }
+
+        .ing-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #fafafa;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .ing-amount {
+            font-weight: 500;
+            font-family: "Courier New", monospace;
+        }
+
+        /* Step Guide */
+        .how-to {
+            margin-bottom: 50px;
+            font-size: 0.85rem;
+        }
+
+        .how-to p { margin: 0 0 20px 0; }
+        .how-to b { color: var(--accent); font-weight: 600; margin-right: 5px; }
+
+        /* Timer UI */
+        .timer-panel {
+            background: var(--soft-gold);
+            padding: 25px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #f5f0e8;
+        }
+
+        #time-left {
+            font-size: 2.8rem;
+            font-weight: 200;
+            color: var(--accent);
+            margin: 5px 0 20px 0;
+            font-family: "Times New Roman", serif;
+        }
+
+        .btn-group {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 6px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: opacity 0.2s;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+        }
+
+        .btn:active { opacity: 0.6; }
+
+        footer {
+            margin-top: 80px;
+            text-align: center;
+            font-size: 0.55rem;
+            color: var(--gray);
+            letter-spacing: 0.1em;
+        }
     </style>
 </head>
 <body>
+    <div class="container">
+        <div class="symbol"></div>
+        <h1>Pancake</h1>
 
-    <h1>▼ AWS IoT クエスト II ▼<br><span style="font-size:0.65rem; color:#aaa;">〜目的別スペシャルサービスへ〜</span></h1>
+        <div class="servings-ui">
+            Yield: <input type="number" id="servings" value="1" step="0.5" min="0.5"> Person
+        </div>
 
-    <div id="tree-wrapper">
-        <svg id="svg-canvas"></svg>
+        <span class="section-label">Ingredients</span>
+        <ul class="ing-list">
+            <li><span>ホットケーキミックス</span> <span><span class="calc" data-unit="100">100</span> g</span></li>
+            <li><span>牛乳</span> <span><span class="calc" data-unit="160">160</span> ml</span></li>
+            <li><span>卵</span> <span><span class="calc" data-unit="1">1</span> 個</span></li>
+            <li><span>溶かしバター</span> <span><span class="calc" data-unit="15">15</span> g</span></li>
+        </ul>
 
-        <div class="level" id="level-1">
-            <div class="node" id="node-device" onclick="showModal('device')">
-                <div class="node-title">エッジデバイス</div>
-                <div class="node-tags">
-                    <span class="tag">センサー</span><span class="tag">Publisher</span>
-                </div>
+        <span class="section-label">Process</span>
+        <div class="how-to">
+            <p><b>01.</b> 卵・牛乳・バターを先に混ぜ、最後に粉を。ダマが少し残る程度で混ぜるのを止めます。</p>
+            <p><b>02.</b> 20分ほど冷蔵庫で休ませます。これで生地が落ち着き、薄くきれいに広がります。</p>
+            <p><b>03.</b> フライパンを熱し、一度「濡れ布巾」で冷まします。弱火で生地を薄く流し入れます。</p>
+        </div>
+
+        <div class="timer-panel">
+            <span class="section-label" style="border:none">Timer</span>
+            <div id="time-left">01:00</div>
+            <div class="btn-group">
+                <button class="btn btn-outline" onclick="initTimer(60)">表面 60s</button>
+                <button class="btn btn-outline" onclick="initTimer(30)">裏面 30s</button>
+                <button class="btn" id="toggle-btn" onclick="toggle()">START</button>
             </div>
         </div>
 
-        <div class="level" id="level-2">
-            <div class="node" id="node-gg" onclick="showModal('greengrass')">
-                <div class="node-title">Greengrass</div>
-                <div class="node-tags">
-                    <span class="tag">エッジ処理</span><span class="tag">オフライン稼働</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="level" id="level-3">
-            <div class="node" id="node-core" onclick="showModal('core')">
-                <div class="node-title">AWS IoT Core</div>
-                <div class="node-tags">
-                    <span class="tag">MQTTブローカー</span><span class="tag">ルールエンジン</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="level" id="level-4">
-            <div class="node" id="node-sitewise" onclick="showModal('sitewise')">
-                <div class="node-title">SiteWise</div>
-                <div class="node-tags"><span class="tag">産業データ</span><span class="tag">見える化</span></div>
-            </div>
-            <div class="node" id="node-twinmaker" onclick="showModal('twinmaker')">
-                <div class="node-title">TwinMaker</div>
-                <div class="node-tags"><span class="tag">デジタルツイン</span><span class="tag">3D可視化</span></div>
-            </div>
-            <div class="node" id="node-analytics" onclick="showModal('analytics')">
-                <div class="node-title">Analytics</div>
-                <div class="node-tags"><span class="tag">データ分析</span><span class="tag">蓄積</span></div>
-            </div>
-            <div class="node" id="node-events" onclick="showModal('events')">
-                <div class="node-title">Events</div>
-                <div class="node-tags"><span class="tag">異常検知</span><span class="tag">状態管理</span></div>
-            </div>
-            <div class="node" id="node-management" onclick="showModal('management')">
-                <div class="node-title">Management</div>
-                <div class="node-tags"><span class="tag">デバイス管理</span><span class="tag">OTA</span></div>
-            </div>
-            <div class="node" id="node-defender" onclick="showModal('defender')">
-                <div class="node-title">Defender</div>
-                <div class="node-tags"><span class="tag">セキュリティ</span><span class="tag">監視</span></div>
-            </div>
-        </div>
-
-        <div class="level" id="level-5">
-            <div class="node" id="node-user" onclick="showModal('user')">
-                <div class="node-title">最終ユーザー / App</div>
-                <div class="node-tags">
-                    <span class="tag">予知保全</span><span class="tag">遠隔操作</span><span class="tag">Subscriber</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="modal-overlay" onclick="closeModal()"></div>
-    <div id="modal" style="display:none;">
-        <h2 id="modal-title">タイトル</h2>
-        <p id="modal-desc"></p>
-        <dl class="term-list" id="modal-terms" style="display:none;"></dl>
-        <button class="close-btn" onclick="closeModal()">とじる <span class="cursor">▼</span></button>
+        <footer>
+            DYNAMICAL CALCULATOR & TIMER / VER. 2026
+        </footer>
     </div>
 
     <script>
-        // --- データ定義 (バグ修正済) ---
-        const data = {
-            'device': {
-                title: 'エッジデバイス (現場の機器)',
-                desc: '工場や設備のセンサー、モーターなどのIoT機器。現場の物理データを取得し、デジタルデータに変換してクラウドへ送る冒険の出発点だ！',
-                terms: {
-                    'JSON (ジェイソン)': 'データを送る際の標準的なフォーマット。{"温度": 25.5} のように、軽量でプログラムが読みやすい。',
-                    'Publisher (パブリッシャー)': 'データの発信者のこと。センサーがデータを「出版(Publish)」する役割を担う。'
-                }
-            },
-            'greengrass': {
-                title: 'AWS IoT Greengrass',
-                desc: '現場（エッジ）に設置するゲートウェイ用ソフトウェア。クラウドの知能を現場に持ち込み、通信が切れてもローカルで自律的に動くことができる！',
-                terms: {
-                    'エッジコンピューティング': 'すべてのデータをクラウドに送らず、現場でフィルタリングや一次分析を行うことで、通信量と遅延を減らす技術。'
-                }
-            },
-            'core': {
-                title: 'AWS IoT Core',
-                desc: '数十億のデバイスとAWSを安全につなぐ巨大な関所(マネージドサービス)。送られてきたデータをさばき、各目的別のスペシャルサービスへと振り分ける心臓部だ。',
-                terms: {
-                    'MQTTブローカー': '無数のPublisher(送信者)とSubscriber(受信者)の間に入り、適切にメッセージを中継する郵便局のような役割。',
-                    'ルールエンジン': 'SQL風の条件式で、データを後続のサービスに自動ルーティングする機能。'
-                }
-            },
-            'sitewise': {
-                title: 'AWS IoT SiteWise',
-                desc: '産業機器からのデータ収集、モデリング、そしてノーコードでのダッシュボード可視化をまるごと担うサービス。現場の「見える化」はこれだ！',
-                terms: {
-                    '産業機器モデリング': '発電機、空調設備といった現場の機器を階層構造で定義し、データを整理しやすくする。',
-                    'ノーコード可視化': 'プログラムを書かずに、ドラッグ＆ドロップで設備の稼働状況グラフを作る機能。'
-                }
-            },
-            'analytics': {
-                title: 'AWS IoT Analytics',
-                desc: 'IoT特有の「ノイズが多いデータ」や「欠損があるデータ」をきれいに整え（クレンジング）、長期保存し、SQLなどを使って分析しやすくするサービスだ。',
-                terms: {
-                    'データクレンジング': 'センサーの誤検知や通信エラーなどで発生した異常な数値を除去・補正すること。'
-                }
-            },
-            'events': {
-                title: 'AWS IoT Events',
-                desc: '複数のセンサーデータを監視し、特定の「状態」に変化したときだけアクションを起こすサービス。現場の異常を瞬時に察知する！',
-                terms: {
-                    '複雑な条件検知': '「温度が高く、かつドアが開いている場合」といった複数の条件を組み合わせた判定。',
-                    'ステートマシン': '「正常」「注意」「異常」といったデバイスの状態を管理し、ロジックを組む仕組み。'
-                }
-            },
-            'management': {
-                title: 'AWS IoT Device Management',
-                desc: '数千、数万というデバイスをグループ分けして管理し、遠隔アップデート（OTA）や再起動などの指示を一括で行うサービスだ。',
-                terms: {
-                    'OTA (Over-The-Air)': 'クラウド経由で、デバイスのファームウェアやプログラムを無線で安全にアップデートする機能。'
-                }
-            },
-            'defender': {
-                title: 'AWS IoT Device Defender',
-                desc: 'デバイスの挙動を監視し、セキュリティリスク（異常な通信、設定不備など）を検知するセキュリティ専門の監視員だ。',
-                terms: {
-                    'セキュリティプロファイル': '「このデバイスは1時間に10回以上通信しない」といった安全基準を定義し、超えた場合にアラートを出す機能。'
-                }
-            },
-            'twinmaker': {
-                title: 'AWS IoT TwinMaker',
-                desc: '現実の設備を、3DでPC上に完全に再現する（デジタルツイン）ためのサービス。SiteWiseなどで集めたデータを3Dモデルに重ね合わせて表示する！',
-                terms: {
-                    'デジタルツイン': '現実世界の物体やシステムの双子（Twin）を、デジタル空間上に構築し、リアルタイムに連動させる技術。'
-                }
-            },
-            'user': {
-                title: '最終ユーザー / App',
-                desc: '現場から集まり、目的別のスペシャルサービスで分析・加工されたデータを受け取る最終地点。PCやスマホアプリを通じて、現実世界に価値をもたらす！',
-                terms: {
-                    'Subscriber (サブスクライバー)': 'データの受信者。スマホアプリが情報を「購読(Subscribe)」して受け取る。',
-                    '予知保全': '蓄積したセンサーデータとAI分析から、壊れる前に部品の寿命を予測してメンテナンスを行うこと。'
-                }
-            }
-        };
+        // Calculation Logic
+        const input = document.getElementById('servings');
+        const calcs = document.querySelectorAll('.calc');
 
-        // --- 描画処理 (SVGでの曲線描画) ---
-        function drawTreeLines() {
-            const svg = document.getElementById('svg-canvas');
-            const wrapper = document.getElementById('tree-wrapper');
-            svg.innerHTML = ''; 
-
-            // 接続定義 [from, to, type]
-            const connections = [
-                ['node-device', 'node-gg', 'main'],
-                ['node-gg', 'node-core', 'main'],
-                
-                // Core -> 目的別専門サービス
-                ['node-core', 'node-sitewise', 'main'],
-                ['node-core', 'node-twinmaker', 'main'],
-                ['node-core', 'node-analytics', 'main'],
-                ['node-core', 'node-events', 'main'],
-                ['node-core', 'node-management', 'main'],
-                ['node-core', 'node-defender', 'main'],
-                
-                // 専門サービス -> ユーザー
-                ['node-sitewise', 'node-user', 'main'],
-                ['node-twinmaker', 'node-user', 'main'],
-                ['node-analytics', 'node-user', 'main'],
-                ['node-events', 'node-user', 'main'],
-                ['node-management', 'node-user', 'main'],
-                ['node-defender', 'node-user', 'main'],
-                
-                // SiteWise -> TwinMaker の特別な連携 (横移動)
-                ['node-sitewise', 'node-twinmaker', 'sub']
-            ];
-
-            const wrapperRect = wrapper.getBoundingClientRect();
-
-            connections.forEach(conn => {
-                const el1 = document.getElementById(conn[0]);
-                const el2 = document.getElementById(conn[1]);
-                const type = conn[2];
-                if(!el1 || !el2) return;
-
-                const rect1 = el1.getBoundingClientRect();
-                const rect2 = el2.getBoundingClientRect();
-
-                // 中心座標の計算
-                const x1 = rect1.left + rect1.width / 2 - wrapperRect.left;
-                const y1 = rect1.top + rect1.height / 2 - wrapperRect.top;
-                const x2 = rect2.left + rect2.width / 2 - wrapperRect.left;
-                const y2 = rect2.top + rect2.height / 2 - wrapperRect.top;
-
-                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                let d;
-
-                if (type === 'sub') {
-                    // SiteWise -> TwinMaker (隣接するノードを繋ぐ曲線)
-                    const yOffset = 25; // 下に少し膨らませる
-                    d = `M ${x1} ${y1} C ${x1} ${y1 + yOffset}, ${x2} ${y2 + yOffset}, ${x2} ${y2}`;
-                } else {
-                    // 通常の縦に流れる曲線
-                    const ctrlY = (y1 + y2) / 2;
-                    d = `M ${x1} ${y1} C ${x1} ${ctrlY}, ${x2} ${ctrlY}, ${x2} ${y2}`;
-                }
-                
-                path.setAttribute('d', d);
-                
-                if (type === 'sub') {
-                    path.setAttribute('stroke', 'var(--sub-line-color)');
-                    path.setAttribute('stroke-width', '3');
-                    path.setAttribute('stroke-dasharray', '4 2'); 
-                    path.setAttribute('class', 'path-sub');
-                } else {
-                    path.setAttribute('stroke', 'var(--line-color)');
-                    path.setAttribute('stroke-width', '4');
-                    path.setAttribute('stroke-dasharray', '8 4');
-                    path.setAttribute('class', 'path-main');
-                }
-                path.setAttribute('fill', 'none');
-                
-                svg.appendChild(path);
+        function update() {
+            const val = parseFloat(input.value) || 0;
+            calcs.forEach(el => {
+                const base = parseFloat(el.getAttribute('data-unit'));
+                el.textContent = Math.round(base * val * 10) / 10;
             });
+        }
+        input.addEventListener('input', update);
 
-            // アニメーション用スタイルを追加
-            const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
-            style.textContent = `
-                @keyframes dash-main { to { stroke-dashoffset: -24; } }
-                @keyframes dash-sub { to { stroke-dashoffset: -12; } }
-                .path-main { animation: dash-main 1s linear infinite; }
-                .path-sub { animation: dash-sub 0.5s linear infinite; }
-            `;
-            svg.appendChild(style);
+        // Timer Logic
+        let seconds = 60;
+        let running = null;
+        const display = document.getElementById('time-left');
+        const btn = document.getElementById('toggle-btn');
+
+        function draw() {
+            const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const s = (seconds % 60).toString().padStart(2, '0');
+            display.textContent = `${m}:${s}`;
         }
 
-        // --- モーダル制御 ---
-        let typeInterval;
+        function initTimer(sec) {
+            stop();
+            seconds = sec;
+            draw();
+        }
 
-        function showModal(id) {
-            const info = data[id];
-            if (!info) return;
+        function stop() {
+            clearInterval(running);
+            running = null;
+            btn.textContent = 'START';
+        }
 
-            document.getElementById('modal-overlay').style.display = 'block';
-            document.getElementById('modal').style.display = 'block';
-            
-            document.getElementById('modal-title').innerText = info.title;
-            
-            const termsEl = document.getElementById('modal-terms');
-            termsEl.innerHTML = '';
-            if (info.terms && Object.keys(info.terms).length > 0) {
-                termsEl.style.display = 'block';
-                for (let key in info.terms) {
-                    termsEl.innerHTML += `<dt>▶ ${key}</dt><dd>${info.terms[key]}</dd>`;
-                }
+        function toggle() {
+            if (running) {
+                stop();
             } else {
-                termsEl.style.display = 'none';
+                btn.textContent = 'STOP';
+                running = setInterval(() => {
+                    seconds--;
+                    draw();
+                    if (seconds <= 0) {
+                        stop();
+                        alert('Time is up!');
+                    }
+                }, 1000);
             }
-
-            const descEl = document.getElementById('modal-desc');
-            descEl.innerHTML = '';
-            clearInterval(typeInterval);
-            let i = 0;
-            const text = info.desc;
-            
-            typeInterval = setInterval(() => {
-                descEl.innerHTML += text.charAt(i);
-                i++;
-                if (i >= text.length) {
-                    clearInterval(typeInterval);
-                }
-            }, 30);
         }
-
-        function closeModal() {
-            document.getElementById('modal-overlay').style.display = 'none';
-            document.getElementById('modal').style.display = 'none';
-            clearInterval(typeInterval);
-        }
-
-        // 初期化とリサイズ時の再描画
-        window.addEventListener('load', drawTreeLines);
-        window.addEventListener('resize', drawTreeLines);
-        
-        document.fonts.ready.then(function() {
-            drawTreeLines();
-        });
     </script>
 </body>
 </html>
