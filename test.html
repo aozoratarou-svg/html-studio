@@ -3,254 +3,258 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pancake - Recipe & Timer</title>
+    <title>Kira AI - Creative Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #ffffff;
-            --accent: #d4a373;
-            --text: #333333;
-            --soft-gold: #fffdfa;
-            --gray: #999999;
+            --pastel-blue: #A5D6FF;
+            --pastel-pink: #FF9EC1;
+            --pastel-mint: #A7F3D0;
+            --soft-gray: #F3F4F6;
         }
 
         body {
-            background-color: var(--bg);
-            color: var(--text);
-            font-family: "Helvetica Neue", Arial, "Hiragino Sans", sans-serif;
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            padding: 5vh 20px;
-            line-height: 1.7;
+            font-family: 'Nunito', sans-serif;
+            background-color: #F8FAFC;
+            overflow: hidden;
+            color: #334155;
         }
 
-        .container {
-            max-width: 400px;
-            width: 100%;
+        /* アニメーション定義 */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Symbolic Pancake Icon */
-        .symbol {
-            width: 44px;
-            height: 22px;
-            margin: 0 auto 30px;
-            background: var(--accent);
-            border-radius: 50% / 80% 80% 20% 20%;
-            position: relative;
-            box-shadow: 0 4px 0 #bc8a5f;
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
         }
 
-        h1 {
-            font-size: 1.2rem;
-            font-weight: 300;
-            text-align: center;
-            letter-spacing: 0.4em;
-            margin-bottom: 60px;
-            text-transform: uppercase;
+        @keyframes sway {
+            0%, 100% { transform: rotate(-3deg); }
+            50% { transform: rotate(3deg); }
         }
 
-        /* Control UI */
-        .servings-ui {
-            text-align: center;
-            margin-bottom: 50px;
-            font-size: 0.9rem;
-            color: var(--gray);
+        @keyframes sparkle {
+            0%, 100% { opacity: 0; transform: scale(0.5); }
+            50% { opacity: 1; transform: scale(1.2); }
         }
 
-        input[type="number"] {
-            width: 45px;
-            border: none;
-            border-bottom: 1px solid var(--accent);
-            text-align: center;
-            font-size: 1.1rem;
-            color: var(--accent);
-            outline: none;
-            background: transparent;
-            font-family: serif;
+        @keyframes progressMove {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 100% 50%; }
         }
 
-        .section-label {
-            font-size: 0.65rem;
+        .stagger-in > * {
+            opacity: 0;
+            animation: fadeInUp 0.6s ease-out forwards;
+        }
+
+        .card-hover:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+        }
+
+        .card-hover:hover .chibi-char {
+            animation: float 1s ease-in-out infinite;
+        }
+
+        .sparkle-icon {
+            animation: sparkle 2s infinite;
+        }
+
+        .progress-bar-inner {
+            background: linear-gradient(90deg, #FF9EC1, #C084FC, #A5D6FF);
+            background-size: 200% 200%;
+            animation: progressMove 3s linear infinite;
+        }
+
+        .bubble {
+            animation: sway 3s ease-in-out infinite;
+        }
+
+        /* カスタム角丸 */
+        .rounded-4xl { border-radius: 2.5rem; }
+
+        /* サイドバー選択時 */
+        .nav-active {
+            background-color: #F1F5F9;
+            color: #1E293B;
             font-weight: 700;
-            color: var(--accent);
-            letter-spacing: 0.15em;
-            text-transform: uppercase;
-            margin-bottom: 12px;
-            display: block;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        .ing-list {
-            list-style: none;
-            padding: 0;
-            margin: 0 0 50px 0;
-            font-size: 0.9rem;
-        }
-
-        .ing-list li {
-            padding: 8px 0;
-            border-bottom: 1px solid #fafafa;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .ing-amount {
-            font-weight: 500;
-            font-family: "Courier New", monospace;
-        }
-
-        /* Step Guide */
-        .how-to {
-            margin-bottom: 50px;
-            font-size: 0.85rem;
-        }
-
-        .how-to p { margin: 0 0 20px 0; }
-        .how-to b { color: var(--accent); font-weight: 600; margin-right: 5px; }
-
-        /* Timer UI */
-        .timer-panel {
-            background: var(--soft-gold);
-            padding: 25px;
-            border-radius: 8px;
-            text-align: center;
-            border: 1px solid #f5f0e8;
-        }
-
-        #time-left {
-            font-size: 2.8rem;
-            font-weight: 200;
-            color: var(--accent);
-            margin: 5px 0 20px 0;
-            font-family: "Times New Roman", serif;
-        }
-
-        .btn-group {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .btn {
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 6px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.75rem;
-            transition: opacity 0.2s;
-        }
-
-        .btn-outline {
-            background: transparent;
-            border: 1px solid var(--accent);
-            color: var(--accent);
-        }
-
-        .btn:active { opacity: 0.6; }
-
-        footer {
-            margin-top: 80px;
-            text-align: center;
-            font-size: 0.55rem;
-            color: var(--gray);
-            letter-spacing: 0.1em;
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <div class="symbol"></div>
-        <h1>Pancake</h1>
+<body class="p-6 h-screen flex">
 
-        <div class="servings-ui">
-            Yield: <input type="number" id="servings" value="1" step="0.5" min="0.5"> Person
+    <aside class="w-72 bg-white rounded-4xl shadow-sm flex flex-col p-8 mr-8 relative border border-gray-50 stagger-in" style="animation-delay: 0.1s;">
+        <div class="flex items-center mb-12 ml-2">
+            <div class="w-10 h-10 bg-[#E0F2FE] rounded-full flex items-center justify-center mr-3">
+                <svg viewBox="0 0 40 40" class="w-8 h-8">
+                    <circle cx="20" cy="20" r="16" fill="white" stroke="#A5D6FF" stroke-width="2"/>
+                    <circle cx="15" cy="18" r="1.5" fill="#334155"/>
+                    <circle cx="25" cy="18" r="1.5" fill="#334155"/>
+                    <path d="M16 25 Q20 28 24 25" fill="none" stroke="#334155" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Kira AI</h1>
         </div>
 
-        <span class="section-label">Ingredients</span>
-        <ul class="ing-list">
-            <li><span>ホットケーキミックス</span> <span><span class="calc" data-unit="100">100</span> g</span></li>
-            <li><span>牛乳</span> <span><span class="calc" data-unit="160">160</span> ml</span></li>
-            <li><span>卵</span> <span><span class="calc" data-unit="1">1</span> 個</span></li>
-            <li><span>溶かしバター</span> <span><span class="calc" data-unit="15">15</span> g</span></li>
-        </ul>
+        <nav class="space-y-2 flex-1">
+            <a href="#" class="nav-active flex items-center p-4 rounded-2xl transition-all duration-300">
+                <svg class="w-6 h-6 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                Home
+            </a>
+            <a href="#" class="flex items-center p-4 rounded-2xl text-slate-400 hover:bg-gray-50 transition-all duration-300">
+                <svg class="w-6 h-6 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+                Projects
+            </a>
+            <a href="#" class="flex items-center p-4 rounded-2xl text-slate-400 hover:bg-gray-50 transition-all duration-300">
+                <svg class="w-6 h-6 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                Creative Canvas
+            </a>
+            <a href="#" class="flex items-center p-4 rounded-2xl text-slate-400 hover:bg-gray-50 transition-all duration-300">
+                <svg class="w-6 h-6 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                Settings
+            </a>
+        </nav>
 
-        <span class="section-label">Process</span>
-        <div class="how-to">
-            <p><b>01.</b> 卵・牛乳・バターを先に混ぜ、最後に粉を。ダマが少し残る程度で混ぜるのを止めます。</p>
-            <p><b>02.</b> 20分ほど冷蔵庫で休ませます。これで生地が落ち着き、薄くきれいに広がります。</p>
-            <p><b>03.</b> フライパンを熱し、一度「濡れ布巾」で冷まします。弱火で生地を薄く流し入れます。</p>
-        </div>
-
-        <div class="timer-panel">
-            <span class="section-label" style="border:none">Timer</span>
-            <div id="time-left">01:00</div>
-            <div class="btn-group">
-                <button class="btn btn-outline" onclick="initTimer(60)">表面 60s</button>
-                <button class="btn btn-outline" onclick="initTimer(30)">裏面 30s</button>
-                <button class="btn" id="toggle-btn" onclick="toggle()">START</button>
+        <div class="mt-auto relative pb-4">
+            <div class="bubble absolute -top-12 right-0 bg-slate-100 text-slate-600 px-4 py-2 rounded-2xl text-sm font-bold shadow-sm after:content-[''] after:absolute after:bottom-[-8px] after:left-1/2 after:border-8 after:border-transparent after:border-t-slate-100 after:-ml-2">
+                Hello!
+            </div>
+            <div class="chibi-char w-24 mx-auto">
+                <svg viewBox="0 0 100 100" class="w-full h-full">
+                    <circle cx="50" cy="40" r="30" fill="#FFE4E6" stroke="#334155" stroke-width="2"/>
+                    <path d="M25 35 Q30 10 70 35" fill="#A5D6FF" stroke="#334155" stroke-width="2"/>
+                    <circle cx="40" cy="45" r="2.5" fill="#334155"/>
+                    <circle cx="60" cy="45" r="2.5" fill="#334155"/>
+                    <path d="M45 55 Q50 60 55 55" fill="none" stroke="#334155" stroke-width="2" stroke-linecap="round"/>
+                    <rect x="35" y="70" width="30" height="25" rx="15" fill="#A5D6FF" stroke="#334155" stroke-width="2"/>
+                </svg>
             </div>
         </div>
+    </aside>
 
-        <footer>
-            DYNAMICAL CALCULATOR & TIMER / VER. 2026
-        </footer>
-    </div>
+    <main class="flex-1 overflow-y-auto pr-4">
+        <header class="mb-10 pt-4 stagger-in" style="animation-delay: 0.2s;">
+            <div class="flex items-center space-x-3">
+                <h2 class="text-4xl font-extrabold text-slate-800">Welcome back, Creator!</h2>
+                <span class="text-3xl">🎨</span>
+                <div class="relative">
+                    <svg class="sparkle-icon w-6 h-6 text-yellow-400 absolute -top-4 -right-2" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg class="sparkle-icon w-4 h-4 text-pink-300 absolute -bottom-2 -left-8" fill="currentColor" viewBox="0 0 20 20" style="animation-delay: 0.5s;"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-2 gap-8 stagger-in">
+            
+            <div class="card-hover bg-[#E0F2FE] p-8 rounded-4xl transition-all duration-500 flex items-center shadow-sm border border-white" style="animation-delay: 0.3s;">
+                <div class="chibi-char w-32 mr-8">
+                    <svg viewBox="0 0 120 120" class="w-full">
+                        <circle cx="60" cy="40" r="30" fill="#FFE4E6" stroke="#334155" stroke-width="2.5"/>
+                        <path d="M35 30 Q40 5 85 30" fill="#9333EA" stroke="#334155" stroke-width="2.5"/>
+                        <circle cx="50" cy="45" r="3" fill="#334155"/>
+                        <circle cx="75" cy="45" r="3" fill="#334155"/>
+                        <rect x="75" y="65" width="35" height="45" rx="4" fill="white" stroke="#334155" stroke-width="2.5" transform="rotate(10 75 65)"/>
+                        <path d="M85 80 L100 80 M85 90 L100 90" stroke="#CBD5E1" stroke-width="2" transform="rotate(10 75 65)"/>
+                        <rect x="45" y="70" width="30" height="40" rx="15" fill="#9333EA" stroke="#334155" stroke-width="2.5"/>
+                        <path d="M80 85 L95 70" stroke="#334155" stroke-width="3" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-2xl font-bold mb-2">Quick Task</h3>
+                    <p class="text-slate-500 mb-6 text-sm leading-relaxed">Progress bar for quick<br>task and teamwork.</p>
+                    <div class="w-full h-6 bg-white rounded-full overflow-hidden p-1 shadow-inner">
+                        <div class="progress-bar-inner h-full w-[70%] rounded-full"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-hover bg-[#FCE7F3] p-8 rounded-4xl transition-all duration-500 flex items-center shadow-sm border border-white" style="animation-delay: 0.4s;">
+                <div class="chibi-char w-32 mr-8">
+                    <svg viewBox="0 0 120 120" class="w-full">
+                        <path d="M80 110 L95 60 L110 110 M95 60 L95 110" fill="none" stroke="#334155" stroke-width="2.5"/>
+                        <rect x="85" y="65" width="25" height="20" fill="white" stroke="#334155" stroke-width="2"/>
+                        <circle cx="45" cy="40" r="28" fill="#FFE4E6" stroke="#334155" stroke-width="2.5"/>
+                        <path d="M25 35 Q30 10 70 35" fill="#FF9EC1" stroke="#334155" stroke-width="2.5"/>
+                        <circle cx="38" cy="45" r="3" fill="#334155"/>
+                        <circle cx="58" cy="45" r="3" fill="#334155"/>
+                        <rect x="30" y="68" width="30" height="42" rx="15" fill="#FF9EC1" stroke="#334155" stroke-width="2.5"/>
+                        <path d="M55 85 L85 75" stroke="#334155" stroke-width="3" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-2xl font-bold mb-2">Creative Ideas</h3>
+                    <p class="text-slate-500 mb-6 text-sm leading-relaxed">Paint on creative canvas<br>and share ideas.</p>
+                    <button class="bg-white text-slate-800 px-6 py-2 rounded-2xl font-bold shadow-sm hover:shadow-md transition-all active:scale-95 flex items-center">
+                        Inspiration <span class="ml-2">✨</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="card-hover bg-[#F1F5F9] p-8 rounded-4xl transition-all duration-500 flex items-center shadow-sm border border-white" style="animation-delay: 0.5s;">
+                <div class="chibi-char w-32 mr-8">
+                    <svg viewBox="0 0 120 120" class="w-full">
+                        <rect x="80" y="70" width="8" height="30" fill="#CBD5E1"/>
+                        <rect x="92" y="60" width="8" height="40" fill="#94A3B8"/>
+                        <rect x="104" y="80" width="8" height="20" fill="#64748B"/>
+                        <circle cx="45" cy="40" r="28" fill="#FFE4E6" stroke="#334155" stroke-width="2.5"/>
+                        <path d="M25 35 Q30 10 70 35" fill="#64748B" stroke="#334155" stroke-width="2.5"/>
+                        <circle cx="38" cy="45" r="3" fill="#334155"/>
+                        <circle cx="58" cy="45" r="3" fill="#334155"/>
+                        <rect x="30" y="68" width="30" height="42" rx="15" fill="#64748B" stroke="#334155" stroke-width="2.5"/>
+                        <circle cx="75" cy="80" r="12" fill="white" stroke="#334155" stroke-width="2"/>
+                        <path d="M83 88 L90 95" stroke="#334155" stroke-width="3" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-2xl font-bold mb-2">Data Insights</h3>
+                    <p class="text-slate-500 mb-6 text-sm leading-relaxed">Learn data insights with<br>analysis feature.</p>
+                    <button class="bg-white text-slate-800 px-6 py-2 rounded-2xl font-bold shadow-sm hover:shadow-md transition-all active:scale-95">
+                        Analysis Start
+                    </button>
+                </div>
+            </div>
+
+            <div class="card-hover bg-[#ECFDF5] p-8 rounded-4xl transition-all duration-500 flex items-center shadow-sm border border-white" style="animation-delay: 0.6s;">
+                <div class="chibi-char w-32 mr-8">
+                    <svg viewBox="0 0 120 120" class="w-full">
+                        <circle cx="40" cy="85" r="18" fill="#A7F3D0" stroke="#334155" stroke-width="2"/>
+                        <circle cx="80" cy="85" r="18" fill="#FF9EC1" stroke="#334155" stroke-width="2"/>
+                        <circle cx="60" cy="65" r="22" fill="#FEF3C7" stroke="#334155" stroke-width="2"/>
+                        <circle cx="53" cy="62" r="2" fill="#334155"/>
+                        <circle cx="67" cy="62" r="2" fill="#334155"/>
+                        <path d="M57 70 Q60 73 63 70" fill="none" stroke="#334155" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-2xl font-bold mb-2">Connect</h3>
+                    <p class="text-slate-500 mb-6 text-sm leading-relaxed">Connect with friend and<br>collaborate with them.</p>
+                    <button class="bg-white text-slate-800 px-6 py-2 rounded-2xl font-bold shadow-sm hover:shadow-md transition-all active:scale-95">
+                        Add Friend
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </main>
 
     <script>
-        // Calculation Logic
-        const input = document.getElementById('servings');
-        const calcs = document.querySelectorAll('.calc');
-
-        function update() {
-            const val = parseFloat(input.value) || 0;
-            calcs.forEach(el => {
-                const base = parseFloat(el.getAttribute('data-unit'));
-                el.textContent = Math.round(base * val * 10) / 10;
+        // ボタンクリック時の簡単なインタラクション
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('click', function() {
+                this.innerHTML = 'Thinking... 💡';
+                setTimeout(() => {
+                    if (this.innerText.includes('Inspiration')) this.innerHTML = 'Inspiration ✨';
+                    else if (this.innerText.includes('Analysis')) this.innerHTML = 'Analysis Start';
+                    else if (this.innerText.includes('Friend')) this.innerHTML = 'Add Friend';
+                    else this.innerHTML = 'Done! ✅';
+                }, 1500);
             });
-        }
-        input.addEventListener('input', update);
-
-        // Timer Logic
-        let seconds = 60;
-        let running = null;
-        const display = document.getElementById('time-left');
-        const btn = document.getElementById('toggle-btn');
-
-        function draw() {
-            const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-            const s = (seconds % 60).toString().padStart(2, '0');
-            display.textContent = `${m}:${s}`;
-        }
-
-        function initTimer(sec) {
-            stop();
-            seconds = sec;
-            draw();
-        }
-
-        function stop() {
-            clearInterval(running);
-            running = null;
-            btn.textContent = 'START';
-        }
-
-        function toggle() {
-            if (running) {
-                stop();
-            } else {
-                btn.textContent = 'STOP';
-                running = setInterval(() => {
-                    seconds--;
-                    draw();
-                    if (seconds <= 0) {
-                        stop();
-                        alert('Time is up!');
-                    }
-                }, 1000);
-            }
-        }
+        });
     </script>
 </body>
 </html>
