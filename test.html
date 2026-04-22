@@ -3,154 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kira AI Mobile</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <title>iPhone Canvas Girl</title>
     <style>
-        body {
-            font-family: 'Nunito', sans-serif;
-            background-color: #F8FAFC;
-            color: #334155;
-            overflow-x: hidden;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        /* アニメーション */
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-6px); }
-        }
-        @keyframes pulse-soft {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.05); opacity: 0.8; }
-        }
-
-        .stagger-in > * {
-            opacity: 0;
-            animation: fadeInUp 0.6s ease-out forwards;
-        }
-
-        .progress-gradient {
-            background: linear-gradient(90deg, #FF9EC1, #A5D6FF);
-            background-size: 200% 200%;
-            animation: progress-slide 3s linear infinite;
-        }
-        @keyframes progress-slide {
-            0% { background-position: 0% 50%; }
-            100% { background-position: 100% 50%; }
-        }
-
-        /* モバイル用コンテナ（iPhone 12風の比率） */
-        .iphone-container {
-            max-width: 390px;
-            margin: 0 auto;
-            min-height: 100vh;
-            background: white;
-            position: relative;
-            padding-bottom: 90px; /* ナビ分 */
-        }
+        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #333; }
+        canvas { border: 2px solid #fff; background-color: #eee; }
     </style>
 </head>
 <body>
+    <canvas id="gameCanvas" width="320" height="480"></canvas>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-<div class="iphone-container shadow-2xl">
-    <header class="pt-12 px-6 pb-6 stagger-in">
-        <div class="flex justify-between items-center mb-6">
-            <div class="flex items-center space-x-2">
-                <div class="w-10 h-10 bg-blue-50 rounded-2xl flex items-center justify-center border border-blue-100">
-                    <svg viewBox="0 0 40 40" class="w-8 h-8">
-                        <circle cx="20" cy="20" r="16" fill="white" />
-                        <path d="M12 20 Q20 8 28 20" fill="#A5D6FF" />
-                        <circle cx="16" cy="22" r="1.5" fill="#334155"/>
-                        <circle cx="24" cy="22" r="1.5" fill="#334155"/>
-                    </svg>
-                </div>
-                <span class="font-extrabold text-xl">Kira AI</span>
-            </div>
-            <button class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center">
-                <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
-            </button>
-        </div>
-        
-        <h2 class="text-3xl font-extrabold tracking-tight">
-            Welcome back,<br><span class="text-[#A5D6FF]">Creator!</span> 🎨✨
-        </h2>
-    </header>
+        // --- 1. 画像素材（同じGitHubにあるファイル） ---
+        const girlImg = new Image();
+        // ここで同じフォルダのgirl.pngを指す
+        girlImg.src = 'girl.png'; 
 
-    <main class="px-6 space-y-6 stagger-in">
-        <div class="bg-[#E0F2FE] p-6 rounded-[2.5rem] flex items-center shadow-sm border border-white" style="animation-delay: 0.1s;">
-            <div class="w-24 h-24 mr-4 flex-shrink-0" style="animation: float 3s ease-in-out infinite;">
-                <svg viewBox="0 0 100 100" class="w-full h-full">
-                    <circle cx="50" cy="45" r="30" fill="#FFE4E6" stroke="#334155" stroke-width="1.5"/>
-                    <path d="M25 40 Q35 15 75 40" fill="#9333EA" stroke="#334155" stroke-width="1.5"/>
-                    <circle cx="42" cy="48" r="2.5" fill="#334155"/>
-                    <circle cx="58" cy="48" r="2.5" fill="#334155"/>
-                    <rect x="65" y="60" width="25" height="30" rx="3" fill="white" stroke="#334155" stroke-width="1.5" transform="rotate(10)"/>
-                </svg>
-            </div>
-            <div class="flex-1">
-                <h3 class="font-bold text-lg">Quick Task</h3>
-                <div class="w-full h-4 bg-white/50 rounded-full mt-3 p-1">
-                    <div class="progress-gradient h-full w-[65%] rounded-full shadow-sm"></div>
-                </div>
-            </div>
-        </div>
+        // --- 2. キャラの状態 ---
+        const hero = { x: canvas.width/2 - 25, y: canvas.height/2 - 25, width: 50, height: 50, speed: 10 };
 
-        <div class="bg-[#FCE7F3] p-6 rounded-[2.5rem] flex items-center shadow-sm border border-white" style="animation-delay: 0.2s;">
-            <div class="w-24 h-24 mr-4 flex-shrink-0" style="animation: float 3.5s ease-in-out infinite;">
-                <svg viewBox="0 0 100 100" class="w-full h-full">
-                    <circle cx="50" cy="45" r="30" fill="#FFE4E6" stroke="#334155" stroke-width="1.5"/>
-                    <path d="M25 40 Q35 15 75 40" fill="#FF9EC1" stroke="#334155" stroke-width="1.5"/>
-                    <rect x="70" y="65" width="20" height="25" fill="#FFF" stroke="#334155" stroke-width="1.5"/>
-                    <path d="M55 70 L75 75" stroke="#334155" stroke-width="2" stroke-linecap="round"/>
-                </svg>
-            </div>
-            <div class="flex-1">
-                <h3 class="font-bold text-lg mb-2">Creative Ideas</h3>
-                <button class="bg-white/80 backdrop-blur-sm px-4 py-1.5 rounded-xl text-xs font-bold shadow-sm">
-                    Inspiration ✨
-                </button>
-            </div>
-        </div>
+        // --- 3. 描画処理 ---
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // 画面クリア
+            if (girlImg.complete) {
+                // 画像を描画（カットされた画像に合わせてサイズを微調整）
+                ctx.drawImage(girlImg, hero.x, hero.y, hero.width, hero.height);
+            }
+        }
 
-        <div class="flex items-center space-x-4 py-4 px-2" style="animation: pulse-soft 4s infinite;">
-            <div class="w-12 h-12 flex-shrink-0">
-                <svg viewBox="0 0 60 60">
-                    <circle cx="30" cy="30" r="25" fill="#FFE4E6" stroke="#334155" stroke-width="1.5"/>
-                    <path d="M15 25 Q20 10 45 25" fill="#A5D6FF" stroke="#334155" stroke-width="1.5"/>
-                    <circle cx="24" cy="32" r="2" fill="#334155"/>
-                    <circle cx="36" cy="32" r="2" fill="#334155"/>
-                </svg>
-            </div>
-            <div class="bg-gray-100 px-4 py-2 rounded-2xl text-sm font-bold relative after:content-[''] after:absolute after:left-[-8px] after:top-1/2 after:-translate-y-1/2 after:border-8 after:border-transparent after:border-r-gray-100">
-                Hello, I'm Kira!
-            </div>
-        </div>
-    </main>
+        // --- 4. 移動処理 ---
+        function move(direction) {
+            if (direction === 'up') hero.y -= hero.speed;
+            if (direction === 'down') hero.y += hero.speed;
+            if (direction === 'left') hero.x -= hero.speed;
+            if (direction === 'right') hero.x += hero.speed;
+            // 画面外判定
+            if (hero.x < 0) hero.x = 0;
+            if (hero.x > canvas.width - hero.width) hero.x = canvas.width - hero.width;
+            if (hero.y < 0) hero.y = 0;
+            if (hero.y > canvas.height - hero.height) hero.y = canvas.height - hero.height;
+            draw(); // 移動後に再描画
+        }
 
-    <nav class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[350px] bg-white/80 backdrop-blur-xl h-20 rounded-[2.5rem] shadow-xl border border-white/50 flex items-center justify-around px-4 z-50">
-        <a href="#" class="flex flex-col items-center text-[#A5D6FF]">
-            <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 20 20"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/></svg>
-            <span class="text-[10px] font-bold mt-1">Home</span>
-        </a>
-        <a href="#" class="flex flex-col items-center text-gray-300">
-            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-            <span class="text-[10px] font-bold mt-1">Project</span>
-        </a>
-        <a href="#" class="flex flex-col items-center text-gray-300">
-            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-            <span class="text-[10px] font-bold mt-1">Canvas</span>
-        </a>
-        <a href="#" class="flex flex-col items-center text-gray-300">
-            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
-            <span class="text-[10px] font-bold mt-1">Setting</span>
-        </a>
-    </nav>
-</div>
+        // --- 5. iPhone用の画面タッチ操作 ---
+        canvas.addEventListener('touchstart', (e) => {
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const touchX = touch.clientX - rect.left;
+            const touchY = touch.clientY - rect.top;
+            
+            // タッチした位置に応じて上下左右に移動
+            if (touchY < hero.y) move('up');
+            if (touchY > hero.y + hero.height) move('down');
+            if (touchX < hero.x) move('left');
+            if (touchX > hero.x + hero.width) move('right');
+            e.preventDefault(); // スクロール防止
+        });
 
+        // 初期描画
+        girlImg.onload = draw;
+    </script>
 </body>
 </html>
