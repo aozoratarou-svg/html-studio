@@ -3,66 +3,224 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>iPhone Canvas Girl</title>
+    <title>GITHUB UPLOADER</title>
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
     <style>
-        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #333; }
-        canvas { border: 2px solid #fff; background-color: #eee; }
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'DotGothic16', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #b90000; /* ファミコンのえんじ色 */
+            border: 6px solid #e1d3a3; /* コントローラーのゴールド */
+            padding: 20px;
+            border-radius: 4px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 10px 10px 0px #333;
+        }
+        h1 {
+            text-align: center;
+            color: #e1d3a3;
+            text-shadow: 2px 2px 0px #000;
+            font-size: 24px;
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 8px;
+            background-color: #000;
+            color: #fff;
+            border: 2px solid #fff;
+            font-family: 'DotGothic16', monospace;
+            box-sizing: border-box;
+        }
+        input[type="file"] {
+            background-color: #000;
+            color: #fff;
+            padding: 10px;
+            border: 2px solid #fff;
+            width: 100%;
+            box-sizing: border-box;
+            font-family: 'DotGothic16', monospace;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background-color: #e1d3a3;
+            color: #b90000;
+            border: 4px solid #fff;
+            font-family: 'DotGothic16', monospace;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.1s;
+        }
+        button:active {
+            transform: scale(0.95);
+            background-color: #fff;
+        }
+        #message {
+            margin-top: 15px;
+            text-align: center;
+            font-size: 14px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .blink {
+            animation: blinker 1s linear infinite;
+        }
+        @keyframes blinker {
+            50% { opacity: 0; }
+        }
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas" width="320" height="480"></canvas>
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
 
-        // --- 1. 画像素材（同じGitHubにあるファイル） ---
-        const girlImg = new Image();
-        // ここで同じフォルダのgirl.pngを指す
-        girlImg.src = 'girl.png'; 
+<div class="container">
+    <h1>GITHUB UPLOADER</h1>
+    
+    <div class="form-group">
+        <label>◆ファイルヲ エランデクダサイ</label>
+        <input type="file" id="fileInput" accept="image/*">
+    </div>
 
-        // --- 2. キャラの状態 ---
-        const hero = { x: canvas.width/2 - 25, y: canvas.height/2 - 25, width: 50, height: 50, speed: 10 };
+    <div class="form-group">
+        <label>◆ホゾン スル ナマエ (例: image.png)</label>
+        <input type="text" id="fileName" placeholder="ファイル名を入力...">
+    </div>
 
-        // --- 3. 描画処理 ---
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height); // 画面クリア
-            if (girlImg.complete) {
-                // 画像を描画（カットされた画像に合わせてサイズを微調整）
-                ctx.drawImage(girlImg, hero.x, hero.y, hero.width, hero.height);
-            }
+    <div class="form-group">
+        <label>◆リポジトリ オーナー</label>
+        <input type="text" id="repoOwner" value="aozoratarou-svg">
+    </div>
+
+    <div class="form-group">
+        <label>◆リポジトリ メイ</label>
+        <input type="text" id="repoName" value="html-studio">
+    </div>
+
+    <div class="form-group">
+        <label>◆ホゾン サキ フォルダ (空白=ルート)</label>
+        <input type="text" id="repoPath" placeholder="例: kaigo/ (末尾に/が必要)">
+    </div>
+
+    <div class="form-group">
+        <label>◆GITHUB API トークン (PAT)</label>
+        <input type="password" id="githubToken" placeholder="ghp_xxxxxxxxxxxxxxxxx">
+    </div>
+
+    <button onclick="uploadToGitHub()">▶ アップロード スル</button>
+
+    <div id="message"></div>
+</div>
+
+<script>
+    // ファイル選択時に元のファイル名を自動入力する
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            document.getElementById('fileName').value = file.name;
         }
+    });
 
-        // --- 4. 移動処理 ---
-        function move(direction) {
-            if (direction === 'up') hero.y -= hero.speed;
-            if (direction === 'down') hero.y += hero.speed;
-            if (direction === 'left') hero.x -= hero.speed;
-            if (direction === 'right') hero.x += hero.speed;
-            // 画面外判定
-            if (hero.x < 0) hero.x = 0;
-            if (hero.x > canvas.width - hero.width) hero.x = canvas.width - hero.width;
-            if (hero.y < 0) hero.y = 0;
-            if (hero.y > canvas.height - hero.height) hero.y = canvas.height - hero.height;
-            draw(); // 移動後に再描画
-        }
+    async function uploadToGitHub() {
+        const fileInput = document.getElementById('fileInput');
+        const fileName = document.getElementById('fileName').value.trim();
+        const repoOwner = document.getElementById('repoOwner').value.trim();
+        const repoName = document.getElementById('repoName').value.trim();
+        let repoPath = document.getElementById('repoPath').value.trim();
+        const token = document.getElementById('githubToken').value.trim();
+        const msgDiv = document.getElementById('message');
 
-        // --- 5. iPhone用の画面タッチ操作 ---
-        canvas.addEventListener('touchstart', (e) => {
-            const touch = e.touches[0];
-            const rect = canvas.getBoundingClientRect();
-            const touchX = touch.clientX - rect.left;
-            const touchY = touch.clientY - rect.top;
+        // 入力チェック
+        if (!fileInput.files[0]) return msgDiv.innerText = "エラー：ファイルガ アリマセン！";
+        if (!fileName) return msgDiv.innerText = "エラー：ナマエヲ ニュウリョクシテ！";
+        if (!token) return msgDiv.innerText = "エラー：トークンガ アリマセン！";
+
+        msgDiv.innerText = "ツウシンチュウ...\nシバラク オマチクダサイ";
+        msgDiv.className = "blink";
+
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+
+        reader.onload = async function(e) {
+            // Data URLからBase64部分のみを抽出（GitHub APIはBase64を要求するため）
+            const base64Content = e.target.result.split(',')[1];
             
-            // タッチした位置に応じて上下左右に移動
-            if (touchY < hero.y) move('up');
-            if (touchY > hero.y + hero.height) move('down');
-            if (touchX < hero.x) move('left');
-            if (touchX > hero.x + hero.width) move('right');
-            e.preventDefault(); // スクロール防止
-        });
+            // パス指定があればファイル名と結合
+            const fullPath = repoPath ? `${repoPath}${fileName}` : fileName;
+            const apiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${fullPath}`;
 
-        // 初期描画
-        girlImg.onload = draw;
-    </script>
+            try {
+                // 上書き保存に対応するため、先にファイルが存在するかチェックしてSHAを取得
+                let fileSha = null;
+                const getResponse = await fetch(apiUrl, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                
+                if (getResponse.ok) {
+                    const data = await getResponse.json();
+                    fileSha = data.sha;
+                }
+
+                // アップロード（PUT）リクエストのボディ作成
+                const bodyData = {
+                    message: `Upload ${fileName} via Custom Web App`,
+                    content: base64Content
+                };
+                if (fileSha) bodyData.sha = fileSha; // 既存ファイルがある場合はSHAを含める
+
+                // GitHub APIへアップロードリクエスト
+                const putResponse = await fetch(apiUrl, {
+                    method: 'PUT',
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(bodyData)
+                });
+
+                msgDiv.className = ""; // 点滅解除
+
+                if (putResponse.ok) {
+                    msgDiv.innerText = "★アップロード セイコウ★\nGITHUB ヲ カクニンシテネ！";
+                    msgDiv.style.color = "#a3e1a3";
+                } else {
+                    const errorData = await putResponse.json();
+                    msgDiv.innerText = `エラー ハッセイ：\n${errorData.message}`;
+                    msgDiv.style.color = "#ffb3b3";
+                }
+
+            } catch (error) {
+                msgDiv.className = "";
+                msgDiv.innerText = `ツウシン エラー：\n${error.message}`;
+                msgDiv.style.color = "#ffb3b3";
+            }
+        };
+
+        // ファイルをBase64形式として読み込み開始
+        reader.readAsDataURL(file);
+    }
+</script>
+
 </body>
 </html>
