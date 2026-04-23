@@ -1,383 +1,322 @@
-```react
-import React, { useState, useEffect } from 'react';
-import { Coffee, Zap, Droplets, Leaf, AlertTriangle, Trash2, Activity, GlassWater, PlusCircle, ChevronLeft, ChevronRight, Calendar, BarChart2, Home } from 'lucide-react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
-import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
+```html
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caffeine Guardian</title>
+    <!-- デザイン用：Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- アイコン用：FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- React本体 -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- 翻訳機：Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-slate-100">
+    <!-- アプリが表示される場所 -->
+    <div id="root"></div>
 
-// --- Firebase Initialization ---
-const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-const app = Object.keys(firebaseConfig).length > 0 ? initializeApp(firebaseConfig) : null;
-const auth = app ? getAuth(app) : null;
-const db = app ? getFirestore(app) : null;
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'caffeine-tracker-app';
+    <!-- ここからアプリのプログラム -->
+    <script type="text/babel">
+        const { useState, useEffect } = React;
 
-export default function App() {
-  const CAFFEINE_LIMIT = 400; 
-  
-  const [user, setUser] = useState(null);
-  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' or 'analytics'
-  const [currentDate, setCurrentDate] = useState(new Date());
-  
-  // 全データと、現在選択中の日付のデータ
-  const [allRecords, setAllRecords] = useState([]); 
-  const [dailyData, setDailyData] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  
-  const [customAmount, setCustomAmount] = useState('');
-  const [customName, setCustomName] = useState('');
+        function App() {
+            const CAFFEINE_LIMIT = 400; 
+            
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [currentDate, setCurrentDate] = useState(new Date());
+            
+            // ローカルストレージから初期データを読み込む
+            const [allRecords, setAllRecords] = useState(() => {
+                const saved = localStorage.getItem('caffeine_records_local');
+                return saved ? JSON.parse(saved) : [];
+            }); 
+            
+            const [dailyData, setDailyData] = useState([]);
+            const [total, setTotal] = useState(0);
+            
+            const [customAmount, setCustomAmount] = useState('');
+            const [customName, setCustomName] = useState('');
 
-  const drinkCatalog = [
-    { name: "スタバ ドリップ(Tall)", amount: 260, icon: <Coffee className="w-5 h-5" />, color: "bg-amber-700" },
-    { name: "強カフェインコーラ", amount: 150, icon: <GlassWater className="w-5 h-5" />, color: "bg-red-800" },
-    { name: "エナジードリンク", amount: 140, icon: <Zap className="w-5 h-5" />, color: "bg-yellow-500" },
-    { name: "缶コーヒー", amount: 90, icon: <Coffee className="w-5 h-5" />, color: "bg-stone-600" },
-    { name: "緑茶・紅茶 (1杯)", amount: 50, icon: <Leaf className="w-5 h-5" />, color: "bg-green-600" },
-    { name: "ディカフェ", amount: 15, icon: <Coffee className="w-5 h-5" />, color: "bg-emerald-700" },
-  ];
+            const drinkCatalog = [
+                { name: "スタバ ドリップ(Tall)", amount: 260, icon: "fa-solid fa-mug-hot", color: "bg-amber-700" },
+                { name: "強カフェインコーラ", amount: 150, icon: "fa-solid fa-glass-water", color: "bg-red-800" },
+                { name: "エナジードリンク", amount: 140, icon: "fa-solid fa-bolt", color: "bg-yellow-500" },
+                { name: "缶コーヒー", amount: 90, icon: "fa-solid fa-mug-hot", color: "bg-stone-600" },
+                { name: "緑茶・紅茶 (1杯)", amount: 50, icon: "fa-solid fa-leaf", color: "bg-green-600" },
+                { name: "ディカフェ", amount: 15, icon: "fa-solid fa-mug-hot", color: "bg-emerald-700" },
+            ];
 
-  const formatDateString = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
+            const formatDateString = (date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
 
-  const formatDisplayDate = (date) => {
-    return `${date.getMonth() + 1}月${date.getDate()}日`;
-  };
+            const formatDisplayDate = (date) => {
+                return `${date.getMonth() + 1}月${date.getDate()}日`;
+            };
 
-  const dateStr = formatDateString(currentDate);
-  const isToday = formatDateString(new Date()) === dateStr;
+            const dateStr = formatDateString(currentDate);
+            const isToday = formatDateString(new Date()) === dateStr;
 
-  // 1. Firebase Auth Setup
-  useEffect(() => {
-    if (!auth) {
-      setLoading(false);
-      return;
-    }
+            // データが変更されたらローカルストレージに保存
+            useEffect(() => {
+                localStorage.setItem('caffeine_records_local', JSON.stringify(allRecords));
+            }, [allRecords]);
 
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
-      } catch (error) {
-        console.error("Auth error:", error);
-        setLoading(false);
-      }
-    };
+            // 選択中の日付に合わせて表示データを更新
+            useEffect(() => {
+                const filteredRecords = allRecords.filter(record => record.dateStr === dateStr);
+                // 時間で降順ソート
+                filteredRecords.sort((a, b) => b.timestamp - a.timestamp);
+                setDailyData(filteredRecords);
+                const currentTotal = filteredRecords.reduce((sum, record) => sum + record.amount, 0);
+                setTotal(currentTotal);
+            }, [allRecords, dateStr]);
 
-    initAuth();
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      if (!currentUser) setLoading(false);
-    });
+            // データ追加
+            const handleAdd = (name, amount) => {
+                if (!amount || isNaN(amount)) return;
+                
+                const parsedAmount = parseInt(amount, 10);
+                const now = new Date();
+                const recordTime = isToday ? now : new Date(currentDate.setHours(12, 0, 0, 0));
+                
+                const newRecord = {
+                    id: `record_${Date.now()}`,
+                    name: name,
+                    amount: parsedAmount,
+                    dateStr: dateStr,
+                    timeString: recordTime.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
+                    timestamp: recordTime.getTime()
+                };
 
-    return () => unsubscribe();
-  }, []);
+                setAllRecords(prev => [...prev, newRecord]);
+                setCustomAmount('');
+                setCustomName('');
+            };
 
-  // 2. データの取得 (1つのコレクションから全件取得してJSで処理)
-  useEffect(() => {
-    if (!user || !db) return;
+            // データ削除
+            const handleRemove = (id) => {
+                if(confirm("この記録を削除しますか？")) {
+                    setAllRecords(prev => prev.filter(record => record.id !== id));
+                }
+            };
 
-    setLoading(true);
-    const collectionRef = collection(db, 'artifacts', appId, 'users', user.uid, 'caffeine_records');
+            const changeDate = (offset) => {
+                const newDate = new Date(currentDate);
+                newDate.setDate(currentDate.getDate() + offset);
+                setCurrentDate(newDate);
+            };
 
-    const unsubscribe = onSnapshot(collectionRef, (snapshot) => {
-      const records = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      
-      // 全データを時間で降順ソート
-      records.sort((a, b) => b.timestamp - a.timestamp);
-      setAllRecords(records);
-      setLoading(false);
-    }, (error) => {
-      console.error("Firestore error:", error);
-      setLoading(false);
-    });
+            // グラフ用データの計算
+            const generateChartData = () => {
+                const last7Days = Array.from({length: 7}, (_, i) => {
+                    const d = new Date();
+                    d.setDate(d.getDate() - (6 - i));
+                    return d;
+                });
 
-    return () => unsubscribe();
-  }, [user]);
+                return last7Days.map(date => {
+                    const dStr = formatDateString(date);
+                    const dayRecords = allRecords.filter(r => r.dateStr === dStr);
+                    const dayTotal = dayRecords.reduce((sum, r) => sum + r.amount, 0);
+                    return {
+                        displayDate: `${date.getMonth() + 1}/${date.getDate()}`,
+                        total: dayTotal,
+                        isOverLimit: dayTotal > CAFFEINE_LIMIT,
+                        isToday: formatDateString(new Date()) === dStr
+                    };
+                });
+            };
 
-  // 3. 選択中の日付に合わせて表示データをフィルタリング
-  useEffect(() => {
-    const filteredRecords = allRecords.filter(record => record.dateStr === dateStr);
-    setDailyData(filteredRecords);
-    const currentTotal = filteredRecords.reduce((sum, record) => sum + record.amount, 0);
-    setTotal(currentTotal);
-  }, [allRecords, dateStr]);
+            const percentage = Math.min((total / CAFFEINE_LIMIT) * 100, 100);
+            let statusColor = "bg-emerald-500";
+            let textColor = "text-emerald-600";
+            let alertLevel = 0;
 
-  // データ追加
-  const handleAdd = async (name, amount) => {
-    if (!user || !db || !amount || isNaN(amount)) return;
-    
-    const parsedAmount = parseInt(amount, 10);
-    const now = new Date();
-    const recordTime = isToday ? now : new Date(currentDate.setHours(12, 0, 0, 0));
-    
-    const newRecord = {
-      name: name,
-      amount: parsedAmount,
-      dateStr: dateStr, // 日付ラベルを追加！
-      timeString: recordTime.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
-      timestamp: recordTime.getTime()
-    };
+            if (total > CAFFEINE_LIMIT) {
+                statusColor = "bg-red-500 animate-pulse";
+                textColor = "text-red-600";
+                alertLevel = 3;
+            } else if (total >= CAFFEINE_LIMIT * 0.8) {
+                statusColor = "bg-orange-500";
+                textColor = "text-orange-600";
+                alertLevel = 2;
+            } else if (total >= CAFFEINE_LIMIT * 0.5) {
+                statusColor = "bg-amber-400";
+                textColor = "text-amber-600";
+                alertLevel = 1;
+            }
 
-    try {
-      const docId = `record_${Date.now()}`;
-      const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'caffeine_records', docId);
-      await setDoc(docRef, newRecord);
-      setCustomAmount('');
-      setCustomName('');
-    } catch (error) {
-      console.error("Error adding:", error);
-    }
-  };
+            const chartData = generateChartData();
+            const maxChartValue = Math.max(CAFFEINE_LIMIT * 1.2, ...chartData.map(d => d.total));
 
-  // データ削除
-  const handleRemove = async (docId) => {
-    if (!user || !db) return;
-    try {
-      const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'caffeine_records', docId);
-      await deleteDoc(docRef);
-    } catch (error) {
-      console.error("Error removing:", error);
-    }
-  };
+            return (
+                <div className="min-h-screen pb-20 font-sans text-slate-800">
+                    <div className="max-w-md mx-auto bg-white sm:shadow-xl sm:rounded-2xl overflow-hidden relative min-h-screen sm:min-h-[800px]">
+                        
+                        {/* ヘッダー */}
+                        <div className="bg-slate-800 text-white p-4">
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                    <i className="fa-solid fa-heart-pulse text-emerald-400 text-xl"></i>
+                                    <h1 className="font-bold text-lg">Caffeine Tracker</h1>
+                                </div>
+                                <span className="text-xs bg-slate-700 px-2 py-1 rounded-full text-slate-300">Local Save</span>
+                            </div>
+                        </div>
 
-  const changeDate = (offset) => {
-    const newDate = new Date(currentDate);
-    newDate.setDate(currentDate.getDate() + offset);
-    setCurrentDate(newDate);
-  };
+                        {/* タブコンテンツ */}
+                        {activeTab === 'dashboard' ? (
+                            <div>
+                                {/* 日付ナビゲーション */}
+                                <div className="flex items-center justify-between bg-slate-700 px-4 py-2 border-t border-slate-600">
+                                    <button onClick={() => changeDate(-1)} className="p-2 hover:bg-slate-600 rounded-md text-slate-300">
+                                        <i className="fa-solid fa-chevron-left"></i>
+                                    </button>
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-sm font-bold text-white flex items-center gap-2">
+                                            <i className="fa-regular fa-calendar-days text-slate-400"></i>
+                                            {formatDisplayDate(currentDate)}
+                                        </span>
+                                        {!isToday && <button onClick={() => setCurrentDate(new Date())} className="text-[10px] text-emerald-400 underline mt-1">今日に戻る</button>}
+                                    </div>
+                                    <button onClick={() => changeDate(1)} disabled={isToday} className={`p-2 rounded-md text-slate-300 ${isToday ? 'opacity-30' : 'hover:bg-slate-600'}`}>
+                                        <i className="fa-solid fa-chevron-right"></i>
+                                    </button>
+                                </div>
 
-  // グラフ用データの計算 (直近7日間)
-  const generateChartData = () => {
-    const last7Days = Array.from({length: 7}, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (6 - i));
-      return d;
-    });
+                                {/* ダッシュボード */}
+                                <div className="p-6 text-center">
+                                    <p className="text-sm text-slate-500 mb-2 font-medium">合計摂取量</p>
+                                    <div className="flex items-baseline justify-center gap-1 mb-4">
+                                        <span className={`text-5xl font-black ${textColor}`}>{total}</span>
+                                        <span className="text-xl text-slate-400 font-bold">/ {CAFFEINE_LIMIT}</span>
+                                        <span className="text-sm text-slate-400 ml-1">mg</span>
+                                    </div>
 
-    return last7Days.map(date => {
-      const dStr = formatDateString(date);
-      const dayRecords = allRecords.filter(r => r.dateStr === dStr);
-      const dayTotal = dayRecords.reduce((sum, r) => sum + r.amount, 0);
-      return {
-        displayDate: `${date.getMonth() + 1}/${date.getDate()}`,
-        total: dayTotal,
-        isOverLimit: dayTotal > CAFFEINE_LIMIT,
-        isToday: formatDateString(new Date()) === dStr
-      };
-    });
-  };
+                                    {/* プログレスバー */}
+                                    <div className="w-full h-4 bg-slate-100 rounded-full overflow-hidden mb-4 relative">
+                                        <div className={`h-full rounded-full transition-all duration-500 ${statusColor}`} style={{ width: `${percentage}%` }}></div>
+                                        <div className="absolute top-0 bottom-0 left-[400px] border-r-2 border-red-500/50" style={{ left: `${(CAFFEINE_LIMIT / Math.max(total, CAFFEINE_LIMIT)) * 100}%` }}></div>
+                                    </div>
+                                </div>
 
-  if (!app) {
-    return <div className="p-8 text-center text-red-500">Firebase設定が見つかりません。</div>;
-  }
+                                {/* 記録パネル */}
+                                <div className="bg-slate-50 p-4 border-t border-slate-100">
+                                    <h2 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                                        <i className="fa-solid fa-circle-plus"></i> 記録する
+                                    </h2>
+                                    <div className="grid grid-cols-3 gap-2 mb-4">
+                                        {drinkCatalog.map((drink, idx) => (
+                                            <button key={idx} onClick={() => handleAdd(drink.name, drink.amount)} className="flex flex-col items-center justify-center p-2 bg-white rounded-xl shadow-sm border border-slate-200 hover:border-emerald-300 active:scale-95 transition-transform">
+                                                <div className={`w-8 h-8 flex items-center justify-center rounded-full text-white mb-2 ${drink.color}`}>
+                                                    <i className={drink.icon}></i>
+                                                </div>
+                                                <span className="text-[10px] font-bold text-slate-700 text-center leading-tight">{drink.name}</span>
+                                                <span className="text-[10px] text-slate-400 mt-1">{drink.amount}mg</span>
+                                            </button>
+                                        ))}
+                                    </div>
 
-  const percentage = Math.min((total / CAFFEINE_LIMIT) * 100, 100);
-  let statusColor = "bg-emerald-500";
-  let textColor = "text-emerald-600";
-  let alertLevel = 0;
+                                    <div className="flex gap-2">
+                                        <input type="text" placeholder="飲み物名" className="flex-1 text-sm p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" value={customName} onChange={(e) => setCustomName(e.target.value)} />
+                                        <input type="number" placeholder="mg" className="w-20 text-sm p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" value={customAmount} onChange={(e) => setCustomAmount(e.target.value)} />
+                                        <button onClick={() => handleAdd(customName || 'その他', customAmount)} className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-700 active:scale-95">追加</button>
+                                    </div>
+                                </div>
 
-  if (total > CAFFEINE_LIMIT) {
-    statusColor = "bg-red-500 animate-pulse";
-    textColor = "text-red-600";
-    alertLevel = 3;
-  } else if (total >= CAFFEINE_LIMIT * 0.8) {
-    statusColor = "bg-orange-500";
-    textColor = "text-orange-600";
-    alertLevel = 2;
-  } else if (total >= CAFFEINE_LIMIT * 0.5) {
-    statusColor = "bg-amber-400";
-    textColor = "text-amber-600";
-    alertLevel = 1;
-  }
+                                {/* 履歴リスト */}
+                                <div className="p-4 border-t border-slate-100 bg-white">
+                                    <h2 className="text-sm font-bold text-slate-700 mb-3 flex justify-between">
+                                        <span>{isToday ? '今日の記録' : `${formatDisplayDate(currentDate)}の記録`}</span>
+                                        <span className="text-xs text-slate-400">{dailyData.length} 件</span>
+                                    </h2>
+                                    {dailyData.length === 0 ? (
+                                        <p className="text-center text-slate-400 text-sm py-4">記録はありません</p>
+                                    ) : (
+                                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                                            {dailyData.map((item) => (
+                                                <div key={item.id} className="flex justify-between items-center p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] text-slate-400">{item.timeString}</span>
+                                                        <span className="text-sm font-bold text-slate-700">{item.name}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-sm font-bold text-slate-600">+{item.amount}mg</span>
+                                                        <button onClick={() => handleRemove(item.id)} className="text-slate-400 hover:text-red-500 p-2"><i className="fa-solid fa-trash"></i></button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            /* アナリティクスタブ */
+                            <div className="p-6 bg-slate-50 min-h-[500px]">
+                                <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+                                    <i className="fa-solid fa-chart-simple text-indigo-500"></i>
+                                    直近7日間の推移
+                                </h2>
+                                
+                                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 relative h-64 flex items-end justify-between pt-10">
+                                    <div 
+                                        className="absolute left-0 right-0 border-t-2 border-red-400 border-dashed z-0 flex items-center"
+                                        style={{ bottom: `${(CAFFEINE_LIMIT / maxChartValue) * 100}%` }}
+                                    >
+                                        <span className="absolute -top-5 left-2 text-[10px] font-bold text-red-500 bg-white/90 px-1 rounded">上限 400mg</span>
+                                    </div>
 
-  const chartData = generateChartData();
-  const maxChartValue = Math.max(CAFFEINE_LIMIT * 1.2, ...chartData.map(d => d.total));
+                                    {chartData.map((data, idx) => {
+                                        const heightPercentage = Math.max((data.total / maxChartValue) * 100, 2);
+                                        return (
+                                            <div key={idx} className="flex flex-col items-center z-10 w-[14%] px-1 group relative">
+                                                <div className="absolute -top-6 text-[10px] font-bold text-slate-600 bg-slate-200 px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    {data.total}
+                                                </div>
+                                                <div className="w-full h-40 bg-slate-100 rounded-t-md relative flex items-end">
+                                                    <div 
+                                                        className={`w-full rounded-t-md transition-all duration-700 ${data.isOverLimit ? 'bg-red-400' : 'bg-indigo-400'} ${data.isToday ? 'border-2 border-indigo-200' : ''}`}
+                                                        style={{ height: `${heightPercentage}%` }}
+                                                    ></div>
+                                                </div>
+                                                <span className={`text-[10px] mt-2 font-medium ${data.isToday ? 'text-indigo-600 font-bold' : 'text-slate-400'}`}>
+                                                    {data.displayDate}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
 
-  return (
-    <div className="min-h-screen bg-slate-100 py-4 sm:py-8 px-2 sm:px-4 font-sans text-slate-800 pb-20">
-      <div className="max-w-md mx-auto bg-white rounded-2xl shadow-xl overflow-hidden relative">
-        
-        {/* ヘッダー */}
-        <div className="bg-slate-800 text-white p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <Activity className="w-6 h-6 text-emerald-400" />
-              <h1 className="font-bold text-lg">Caffeine Tracker</h1>
-            </div>
-            {user && <span className="text-xs bg-slate-700 px-2 py-1 rounded-full text-emerald-300 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>Sync</span>}
-          </div>
-        </div>
-
-        {loading && (
-          <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
-          </div>
-        )}
-
-        {/* タブコンテンツ */}
-        {activeTab === 'dashboard' ? (
-          <div>
-            {/* 日付ナビゲーション */}
-            <div className="flex items-center justify-between bg-slate-700 px-4 py-2 border-t border-slate-600">
-              <button onClick={() => changeDate(-1)} className="p-1 hover:bg-slate-600 rounded-md text-slate-300">
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <div className="flex flex-col items-center">
-                <span className="text-sm font-bold text-white flex items-center gap-1">
-                  <Calendar className="w-4 h-4 text-slate-400" />
-                  {formatDisplayDate(currentDate)}
-                </span>
-                {!isToday && <button onClick={() => setCurrentDate(new Date())} className="text-[10px] text-emerald-400 hover:text-emerald-300 underline">今日に戻る</button>}
-              </div>
-              <button onClick={() => changeDate(1)} disabled={isToday} className={`p-1 rounded-md text-slate-300 ${isToday ? 'opacity-30 cursor-not-allowed' : 'hover:bg-slate-600'}`}>
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* メインダッシュボード */}
-            <div className="p-6 text-center">
-              <p className="text-sm text-slate-500 mb-2 font-medium">合計摂取量</p>
-              <div className="flex items-baseline justify-center gap-1 mb-4">
-                <span className={`text-5xl font-black ${textColor}`}>{total}</span>
-                <span className="text-xl text-slate-400 font-bold">/ {CAFFEINE_LIMIT}</span>
-                <span className="text-sm text-slate-400 ml-1">mg</span>
-              </div>
-
-              {/* プログレスバー */}
-              <div className="w-full h-4 bg-slate-100 rounded-full overflow-hidden mb-4 relative">
-                <div className={`h-full rounded-full transition-all duration-500 ${statusColor}`} style={{ width: `${percentage}%` }}></div>
-                <div className="absolute top-0 bottom-0 left-[400px] border-r-2 border-red-500/50" style={{ left: `${(CAFFEINE_LIMIT / Math.max(total, CAFFEINE_LIMIT)) * 100}%` }}></div>
-              </div>
-            </div>
-
-            {/* 記録パネル */}
-            <div className="bg-slate-50 p-6 border-t border-slate-100">
-              <h2 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
-                <PlusCircle className="w-4 h-4" /> 記録する
-              </h2>
-              <div className="grid grid-cols-3 gap-2 mb-4">
-                {drinkCatalog.map((drink, idx) => (
-                  <button key={idx} disabled={loading} onClick={() => handleAdd(drink.name, drink.amount)} className="flex flex-col items-center justify-center p-2 bg-white rounded-xl shadow-sm border border-slate-200 hover:border-emerald-300 active:scale-95 disabled:opacity-50">
-                    <div className={`p-1.5 rounded-full text-white mb-1 ${drink.color}`}>{drink.icon}</div>
-                    <span className="text-[10px] font-bold text-slate-700 text-center leading-tight">{drink.name}</span>
-                    <span className="text-[10px] text-slate-400">{drink.amount}mg</span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex gap-2">
-                <input type="text" placeholder="飲み物名" className="flex-1 text-sm p-2 border rounded-lg" value={customName} onChange={(e) => setCustomName(e.target.value)} />
-                <input type="number" placeholder="mg" className="w-16 text-sm p-2 border rounded-lg" value={customAmount} onChange={(e) => setCustomAmount(e.target.value)} />
-                <button disabled={loading || (!customName && !customAmount)} onClick={() => handleAdd(customName || 'その他', customAmount)} className="bg-slate-800 text-white px-3 py-2 rounded-lg text-sm font-bold hover:bg-slate-700 active:scale-95 disabled:opacity-50">追加</button>
-              </div>
-            </div>
-
-            {/* 履歴リスト */}
-            <div className="p-6 border-t border-slate-100 bg-white">
-              <h2 className="text-sm font-bold text-slate-700 mb-3 flex justify-between">
-                <span>{isToday ? '今日の記録' : `${formatDisplayDate(currentDate)}の記録`}</span>
-                <span className="text-xs text-slate-400">{dailyData.length} 件</span>
-              </h2>
-              {dailyData.length === 0 ? (
-                <p className="text-center text-slate-400 text-sm py-2">記録はありません</p>
-              ) : (
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {dailyData.map((item) => (
-                    <div key={item.id} className="flex justify-between p-2.5 bg-slate-50 rounded-lg border border-slate-100">
-                      <div className="flex flex-col">
-                        <span className="text-[10px] text-slate-400">{item.timeString}</span>
-                        <span className="text-sm font-bold text-slate-700">{item.name}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-bold text-slate-600">+{item.amount}mg</span>
-                        <button onClick={() => handleRemove(item.id)} className="text-slate-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
-                      </div>
+                        {/* 下部タブ */}
+                        <div className="absolute bottom-0 left-0 right-0 flex border-t border-slate-200 bg-white">
+                            <button onClick={() => setActiveTab('dashboard')} className={`flex-1 flex flex-col items-center justify-center py-3 text-xs font-bold ${activeTab === 'dashboard' ? 'text-emerald-600 bg-emerald-50' : 'text-slate-400 hover:bg-slate-50'}`}>
+                                <i className="fa-solid fa-house mb-1 text-lg"></i>
+                                記録する
+                            </button>
+                            <button onClick={() => setActiveTab('analytics')} className={`flex-1 flex flex-col items-center justify-center py-3 text-xs font-bold ${activeTab === 'analytics' ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400 hover:bg-slate-50'}`}>
+                                <i className="fa-solid fa-chart-simple mb-1 text-lg"></i>
+                                グラフ分析
+                            </button>
+                        </div>
                     </div>
-                  ))}
                 </div>
-              )}
-            </div>
-          </div>
-        ) : (
-          /* アナリティクス（グラフ）タブ */
-          <div className="p-6 bg-slate-50 min-h-[500px]">
-            <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-              <BarChart2 className="w-5 h-5 text-indigo-500" />
-              直近7日間の推移
-            </h2>
-            
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 relative h-64 flex items-end justify-between pt-10">
-              
-              {/* 400mg 限界ライン */}
-              <div 
-                className="absolute left-0 right-0 border-t-2 border-red-400 border-dashed z-0 flex items-center"
-                style={{ bottom: `${(CAFFEINE_LIMIT / maxChartValue) * 100}%` }}
-              >
-                <span className="absolute -top-5 left-2 text-[10px] font-bold text-red-500 bg-white/80 px-1 rounded">上限目安 400mg</span>
-              </div>
+            );
+        }
 
-              {/* 棒グラフ描画 */}
-              {chartData.map((data, idx) => {
-                const heightPercentage = Math.max((data.total / maxChartValue) * 100, 2); // 最低2%の高さを持たせる
-                return (
-                  <div key={idx} className="flex flex-col items-center z-10 w-1/7 px-1 group">
-                    <div className="text-[10px] font-bold text-slate-500 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {data.total}
-                    </div>
-                    <div className="w-full h-40 bg-slate-100 rounded-t-md relative flex items-end">
-                      <div 
-                        className={`w-full rounded-t-md transition-all duration-700 ${data.isOverLimit ? 'bg-red-400' : 'bg-indigo-400'} ${data.isToday ? 'ring-2 ring-indigo-200 ring-offset-1' : ''}`}
-                        style={{ height: `${heightPercentage}%` }}
-                      ></div>
-                    </div>
-                    <span className={`text-[10px] mt-2 font-medium ${data.isToday ? 'text-indigo-600 font-bold' : 'text-slate-400'}`}>
-                      {data.displayDate}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-            
-            <div className="mt-6 bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-              <h3 className="text-sm font-bold text-indigo-800 mb-2">分析インサイト</h3>
-              <p className="text-xs text-indigo-600 leading-relaxed">
-                400mgの点線を越えている日は要注意です。週末にかけて摂取量が増える傾向がある場合は、疲れが溜まっているサインかもしれません。意識的に休む日を作りましょう！
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* 画面下部 タブナビゲーション */}
-        <div className="absolute bottom-0 left-0 right-0 flex border-t border-slate-200 bg-white">
-          <button 
-            onClick={() => setActiveTab('dashboard')}
-            className={`flex-1 flex flex-col items-center justify-center py-3 text-xs font-bold transition-colors ${activeTab === 'dashboard' ? 'text-emerald-600 bg-emerald-50/50' : 'text-slate-400 hover:bg-slate-50'}`}
-          >
-            <Home className="w-5 h-5 mb-1" />
-            記録する
-          </button>
-          <button 
-            onClick={() => setActiveTab('analytics')}
-            className={`flex-1 flex flex-col items-center justify-center py-3 text-xs font-bold transition-colors ${activeTab === 'analytics' ? 'text-indigo-600 bg-indigo-50/50' : 'text-slate-400 hover:bg-slate-50'}`}
-          >
-            <BarChart2 className="w-5 h-5 mb-1" />
-            グラフ分析
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
 
 ```
