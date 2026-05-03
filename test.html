@@ -1,357 +1,568 @@
+```html
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>般若心経 梵漢・解説アプリ</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日本地図クイズ</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- D3.js -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Helvetica Neue"', 'Arial', '"Hiragino Kaku Gothic ProN"', '"Hiragino Sans"', 'Meiryo', 'sans-serif'],
+                    },
+                    animation: {
+                        'float': 'float 3s ease-in-out infinite',
+                        'pop': 'pop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        },
+                        pop: {
+                            '0%': { transform: 'scale(0.5)', opacity: '0' },
+                            '100%': { transform: 'scale(1)', opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
 
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="般若心経">
-<link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Sanskrit_Om.svg/120px-Sanskrit_Om.svg.png">
-
-<style>
-    :root {
-        --bg-color: #f7f5f0;
-        --accent-color: #900;
-        --header-color: #e5d9c5;
-    }
-
-    body {
-        font-family: "Yu Mincho", "MS Mincho", "Hiragino Mincho ProN", serif;
-        background-color: var(--bg-color);
-        color: #2c2c2c;
-        text-align: center;
-        padding: 0;
-        margin: 0;
-        display: flex;
-        flex-direction: column;
-        height: 100dvh; 
-        width: 100vw;
-        overflow: hidden;
-        position: fixed; 
-    }
-
-    header {
-        background-color: var(--header-color);
-        padding: calc(env(safe-area-inset-top) + 10px) 15px 10px 15px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-weight: bold;
-        box-shadow: 0 1px 5px rgba(0,0,0,0.1);
-    }
-
-    .toggle-container {
-        background: #fff;
-        border-radius: 20px;
-        padding: 2px;
-        display: flex;
-        border: 1px solid #ccc;
-    }
-    .toggle-btn {
-        padding: 6px 15px;
-        border-radius: 18px;
-        cursor: pointer;
-        font-size: 0.85rem;
-        transition: 0.3s;
-        font-family: sans-serif;
-    }
-    .toggle-btn.active {
-        background-color: var(--accent-color);
-        color: #fff;
-    }
-
-    #main-content {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        padding: 20px;
-        box-sizing: border-box;
-        overflow-y: auto;
-    }
-
-    .sutra-display {
-        width: 100%;
-        margin-bottom: 30px;
-    }
-
-    .devanagari {
-        font-size: clamp(1.5rem, 6vw, 2.2rem);
-        margin-bottom: 15px;
-        color: #1a1a1a;
-        line-height: 1.5;
-        word-wrap: break-word;
-    }
-
-    .reading-kana {
-        font-family: sans-serif;
-        font-size: 0.95rem;
-        color: #666;
-        margin-bottom: 10px;
-        letter-spacing: 0.05em;
-        line-height: 1.5;
-    }
-
-    .kanji-text {
-        font-size: clamp(1.6rem, 7vw, 2.4rem); 
-        line-height: 1.6;
-        overflow-wrap: break-word;
-        font-weight: bold;
-    }
-
-    .meaning-box {
-        font-family: sans-serif;
-        font-size: 1.05rem;
-        color: #444;
-        width: 100%;
-        max-width: 500px;
-        line-height: 1.7;
-        padding: 25px 20px;
-        background: #fff;
-        border-radius: 12px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.06);
-        box-sizing: border-box;
-    }
-
-    .term {
-        color: var(--accent-color);
-        cursor: pointer;
-        border-bottom: 1px dashed var(--accent-color);
-    }
-
-    .controls {
-        background-color: #fff;
-        border-top: 1px solid #ddd;
-        display: flex;
-        justify-content: center;
-        gap: 20px;
-        padding: 15px 15px calc(env(safe-area-inset-bottom) + 15px) 15px;
-        box-shadow: 0 -1px 5px rgba(0,0,0,0.05);
-    }
-
-    button.nav-btn {
-        font-size: 1.3rem;
-        width: 55px;
-        height: 55px;
-        background-color: #f0f0f0;
-        border: 1px solid #ccc;
-        border-radius: 50%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        -webkit-tap-highlight-color: transparent;
-    }
-
-    button.nav-btn:active {
-        background-color: #ddd;
-    }
-
-    button.active-auto {
-        background-color: var(--accent-color);
-        color: #fff;
-        border-color: var(--accent-color);
-    }
-
-    #modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 999; }
-    #modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; padding: 30px; border-radius: 15px; z-index: 1000; width: 85%; max-width: 400px; box-sizing: border-box; }
-    #close-btn { margin-top: 25px; background: #333; color: #fff; border: none; width: 100%; height: 50px; border-radius: 10px; font-size: 1rem; }
-</style>
+    <style>
+        body {
+            /* スタイリッシュなグラデーション背景 */
+            background: linear-gradient(135deg, #f0f4ff 0%, #e5e7eb 100%);
+            -webkit-tap-highlight-color: transparent;
+            min-height: 100vh;
+        }
+        /* 地図のトランジションを素早く（0.2秒） */
+        path {
+            transition: fill 0.2s ease, stroke-width 0.2s ease, filter 0.2s ease;
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* グラスモーフィズム */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+    </style>
 </head>
 <body>
+    <div id="root"></div>
 
-<header>
-    <span>般若心経 完全版</span>
-    <div class="toggle-container">
-        <div id="btn-jp" class="toggle-btn active" onclick="setMode('jp')">漢字</div>
-        <div id="btn-sk" class="toggle-btn" onclick="setMode('sk')">梵語</div>
-    </div>
-</header>
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
 
-<div id="main-content">
-    <div class="sutra-display">
-        <div id="sk-area" style="display:none;">
-            <div id="deva-display" class="devanagari"></div>
-            <div id="reading-display" class="reading-kana"></div>
-        </div>
-        <div id="kanji-display" class="kanji-text"></div>
-    </div>
-    <div id="meaning-display" class="meaning-box"></div>
-</div>
+        const REGIONS = [
+            { id: 'all', name: '全国をテスト', icon: '🗾' },
+            { id: 'hokkaido_tohoku', name: '北海道・東北', icon: '❄️' },
+            { id: 'kanto', name: '関東', icon: '🗼' },
+            { id: 'chubu', name: '中部・北陸', icon: '🗻' },
+            { id: 'kinki', name: '近畿', icon: '🏯' },
+            { id: 'chugoku_shikoku', name: '中国・四国', icon: '🍋' },
+            { id: 'kyushu_okinawa', name: '九州・沖縄', icon: '🌴' },
+        ];
 
-<div class="controls">
-    <button class="nav-btn" onclick="firstSutra()">|◁</button>
-    <button class="nav-btn" onclick="prevSutra()">◁</button>
-    <button id="auto-btn" class="nav-btn" onclick="toggleAuto()">▶</button>
-    <button class="nav-btn" onclick="nextSutra()">▷</button>
-</div>
+        const PREFECTURES = [
+            { name: '北海道', region: 'hokkaido_tohoku' }, { name: '青森県', region: 'hokkaido_tohoku' }, { name: '岩手県', region: 'hokkaido_tohoku' },
+            { name: '宮城県', region: 'hokkaido_tohoku' }, { name: '秋田県', region: 'hokkaido_tohoku' }, { name: '山形県', region: 'hokkaido_tohoku' },
+            { name: '福島県', region: 'hokkaido_tohoku' }, { name: '茨城県', region: 'kanto' }, { name: '栃木県', region: 'kanto' },
+            { name: '群馬県', region: 'kanto' }, { name: '埼玉県', region: 'kanto' }, { name: '千葉県', region: 'kanto' },
+            { name: '東京都', region: 'kanto' }, { name: '神奈川県', region: 'kanto' }, { name: '新潟県', region: 'chubu' },
+            { name: '富山県', region: 'chubu' }, { name: '石川県', region: 'chubu' }, { name: '福井県', region: 'chubu' },
+            { name: '山梨県', region: 'chubu' }, { name: '長野県', region: 'chubu' }, { name: '岐阜県', region: 'chubu' },
+            { name: '静岡県', region: 'chubu' }, { name: '愛知県', region: 'chubu' }, { name: '三重県', region: 'kinki' },
+            { name: '滋賀県', region: 'kinki' }, { name: '京都府', region: 'kinki' }, { name: '大阪府', region: 'kinki' },
+            { name: '兵庫県', region: 'kinki' }, { name: '奈良県', region: 'kinki' }, { name: '和歌山県', region: 'kinki' },
+            { name: '鳥取県', region: 'chugoku_shikoku' }, { name: '島根県', region: 'chugoku_shikoku' }, { name: '岡山県', region: 'chugoku_shikoku' },
+            { name: '広島県', region: 'chugoku_shikoku' }, { name: '山口県', region: 'chugoku_shikoku' }, { name: '徳島県', region: 'chugoku_shikoku' },
+            { name: '香川県', region: 'chugoku_shikoku' }, { name: '愛媛県', region: 'chugoku_shikoku' }, { name: '高知県', region: 'chugoku_shikoku' },
+            { name: '福岡県', region: 'kyushu_okinawa' }, { name: '佐賀県', region: 'kyushu_okinawa' }, { name: '長崎県', region: 'kyushu_okinawa' },
+            { name: '熊本県', region: 'kyushu_okinawa' }, { name: '大分県', region: 'kyushu_okinawa' }, { name: '宮崎県', region: 'kyushu_okinawa' },
+            { name: '鹿児島県', region: 'kyushu_okinawa' }, { name: '沖縄県', region: 'kyushu_okinawa' },
+        ];
 
-<div id="modal-overlay" onclick="closeModal()"></div>
-<div id="modal">
-    <h2 id="modal-title" style="color:var(--accent-color); margin-top:0;"></h2>
-    <p id="modal-desc" style="text-align:left; line-height:1.6;"></p>
-    <button id="close-btn" onclick="closeModal()">閉じる</button>
-</div>
+        const GEOJSON_URLS = [
+            'https://raw.githubusercontent.com/niiyz/JapanCityGeoJson/master/geojson/prefectures.geojson',
+            'https://raw.githubusercontent.com/dataofjapan/land/master/japan.geojson'
+        ];
 
-<script>
-    let mode = 'jp';
-    let currentIndex = 0;
-    let autoInterval = null;
+        // --- 地図描画コンポーネント ---
+        const MapViewer = ({ geoData, targetRegion, currentPref }) => {
+            const svgRef = useRef(null);
 
-    // 般若心経 完全版データ (12分割)
-    const sutraData = [
-        { 
-            kanji: "仏説摩訶般若波羅蜜多心経", 
-            deva: "प्रज्ञापारमिताहृदयसूत्र", 
-            reading: "プラジュニャーパーラミター フリダヤ スートラム",
-            meaning: "偉大なる真実の智慧の、核心を説いた教え。"
-        },
-        { 
-            kanji: "<span class='term' data-term='観自在菩薩'>観自在菩薩</span>。行深般若波羅蜜多時。照見<span class='term' data-term='五蘊'>五蘊</span>皆<span class='term' data-term='空'>空</span>。度一切苦厄。", 
-            deva: "आर्यावलोकितेश्वरो बोधिसत्त्वो गंभीरायां प्रज्ञापारमितायां चर्यां चरमाणो व्यवलोकयति स्म। पंच स्कंधास्तांश्च स्वभावशून्यान् पश्यति स्म।", 
-            reading: "アーリヤー ヴァローキテーシュヴァロー ボーディサットヴォー ガンビーラーヤーム プラジュニャーパーラミターヤーム チャリヤーム チャラマーノー ヴィヤヴァローカヤティ スマ。パンチャ スカンダースターンシュ チャ スヴァバーヴァシューニャーン パシャティ スマ。",
-            meaning: "聖なる観音菩薩が、深遠なる真実の智慧の修行をされていた時、人間を構成する五つの要素（五蘊）はすべて実体がないと見抜き、一切の苦しみから解放されました。"
-        },
-        { 
-            kanji: "<span class='term' data-term='舎利子'>舎利子</span>。色不異空、空不異色、色即是空、空即是色。受想行識亦復如是。", 
-            deva: "इह शारिपुत्र रूपं शून्यता शून्यतैव रूपम्। रूपान्न पृथक् शून्यता शून्यताया न पृथग् रूपम्। यद् रूपं सा शून्यता या शून्यता तद् रूपम्। एवमेव वेदनासंज्ञासंस्कारविज्ञानानि।", 
-            reading: "イハ シャーリプトラ ルーパム シューニャター シューニャタイヴァ ルーパム。ルーパーン ナ プリタク シューニャター シューニャターヤー ナ プリタグ ルーパム。ヤド ルーパム サー シューニャター ヤー シューニャター タド ルーパム。エーヴァメーヴァ ヴェーダナー サンジュニャー サンスカーラ ヴィジュニャーナーニ。",
-            meaning: "シャーリプトラよ、物質的現象（色）は空であり、空こそが物質的現象なのです。感覚・概念・意志・認識といった心の働きもまた、まったく同じように実体がないのです。"
-        },
-        {
-            kanji: "舎利子。是諸法空相。不生不滅。不垢不浄。不増不減。",
-            deva: "इह शारिपुत्र सर्वधर्माः शून्यतालक्षणा अनुत्पन्ना अनिरुद्धा अमला अविमला अनूना असम्पूर्णाः।",
-            reading: "イハ シャーリプトラ サルヴァダルマーハ シューニャターラクシャナー アヌトパンナー アニルッダー アマラー アヴィマラー アヌーナー アサンプールナーハ。",
-            meaning: "シャーリプトラよ、このようにすべての存在は「空」という特徴を持っています。生じることも滅することもなく、汚れることも清らかになることもなく、減ることも増えることもありません。"
-        },
-        {
-            kanji: "是故空中。無色無受想行識。無眼耳鼻舌身意。無色声香味触法。",
-            deva: "तस्माच्छारिपुत्र शून्यतायां न रूपं न वेदना न संज्ञा न संस्कारा न विज्ञानम्। न चक्षुःश्रोत्रघ्राणजिह्वाकायमनांसि। न रूपशब्दगन्धरसस्प्रष्टव्यधर्माः।",
-            reading: "タスマッチャーリプトラ シューニャターヤーム ナ ルーパム ナ ヴェーダナー ナ サンジュニャー ナ サンスカーラー ナ ヴィジュニャーナム。ナ チャクシュ・シュロートラ・グラーナ・ジフヴァー・カーヤ・マナーンシ。ナ ルーパ・シャブダ・ガンダ・ラサ・スプラシュタヴヤ・ダルマーハ。",
-            meaning: "したがって空の中には、物質的現象も、感覚・概念・意志・認識もありません。眼・耳・鼻・舌・身体・心という認識の器官もなく、その認識の対象もありません。"
-        },
-        {
-            kanji: "無眼界。乃至無意識界。無無明。亦無無明尽。乃至無老死。亦無老死尽。",
-            deva: "न चक्षुर्धातुर्यावन्न मनोविज्ञानधातुः। नाविद्या नाविद्याक्षयो यावन्न जरामरणं न जरामरणक्षयः।",
-            reading: "ナ チャクシュルダーツル ヤーヴァン ナ マノーヴィジュニャーナダーツフ。ナーヴィディヤー ナーヴィディヤークシャヨー ヤーヴァン ナ ジャラーマラナム ナ ジャラーマラナクシャヤフ。",
-            meaning: "視覚の領域から意識の領域に至るまでも存在しません。迷いもなければ迷いが尽きることもなく、老いと死もなければ老いと死が尽きることもありません。"
-        },
-        {
-            kanji: "無<span class='term' data-term='苦集滅道'>苦集滅道</span>。無智亦無得。以無所得故。",
-            deva: "न दुःखसमुदयनिरोधमार्गा न ज्ञानं न प्राप्तिर्नाप्राप्तिः। तस्मादप्राप्तित्वात्",
-            reading: "ナ ドゥフカ・サムダヤ・ニローダ・マールガー ナ ジュニャーナム ナ プラープティル ナープラープティヒ。タスマード アプラープティトヴァート。",
-            meaning: "苦しみも、その原因も、それを滅することも、そのための道もありません。悟るための知恵もなく、得られる悟りもないのです。何かを得るということがないからです。"
-        },
-        {
-            kanji: "菩提薩埵。依般若波羅蜜多故。心無罣礙。無罣礙故。無有恐怖。遠離一切顛倒夢想。究竟<span class='term' data-term='涅槃'>涅槃</span>。",
-            deva: "बोधिसत्त्वानां प्रज्ञापारमितामाश्रित्य विहरत्यचित्तावरणः। चित्तावरणनास्तित्वादत्रस्तो विपर्यासातिक्रान्तो निष्ठनिर्वाणः।",
-            reading: "ボーディサットヴァーナーム プラジュニャーパーラミターム アーシュリティヤ ヴィハラティ アチッターヴァラナハ。チッターヴァラナ・ナースティトヴァード アトラストー ヴィパリヤーサーティクラーントー ニシュターニルヴァーナハ。",
-            meaning: "菩薩は真実の智慧に依り頼んでいるため、心に妨げがありません。妨げがないため恐れがなく、誤った考えから遠く離れており、永遠の安らぎに入っているのです。"
-        },
-        {
-            kanji: "三世諸仏。依般若波羅蜜多故。得<span class='term' data-term='阿耨多羅三藐三菩提'>阿耨多羅三藐三菩提</span>。",
-            deva: "त्र्यध्वव्यवस्थिताः सर्वबुद्धाः प्रज्ञापारमितामाश्रित्यानुत्तरां सम्यक्सम्बोधिमभिसम्बुद्धाः।",
-            reading: "トリヤドヴァヴィヤヴァスティターハ サルヴァブッダーハ プラジュニャーパーラミターム アーシュリティヤ アヌッタラーム サミヤクサンボーディム アビサンブッダーハ。",
-            meaning: "過去・現在・未来のあらゆる仏たちも、この真実の智慧に依り頼むことによって、この上ない完全な悟りを得たのです。"
-        },
-        {
-            kanji: "故知般若波羅蜜多。是大神呪。是大明呪。是無上呪。是無等等呪。能除一切苦。真実不虚。",
-            deva: "तस्माज्ज्ञातव्यं प्रज्ञापारमिता महामन्त्रो महाविद्यामन्त्रो ऽनुत्तरमन्त्रो ऽसमसममन्त्रः सर्वदुःखप्रशमनः सत्यममिध्यात्वात्।",
-            reading: "タスマージュ ジュニャータヴヤム プラジュニャーパーラミター マハーマントロー マハーヴィディヤーマントロー アヌッタラマントロー アサマサママントラフ サルヴァドゥフカプラシャマナフ サティヤム アミティヤートヴァート。",
-            meaning: "だから知るべきです。真実の智慧は、偉大なる真言、大いなる悟りの真言、この上ない真言、比類なき真言であり、あらゆる苦しみを取り除き、決して偽りではない真実なのです。"
-        },
-        {
-            kanji: "故説般若波羅蜜多呪。即説呪曰。",
-            deva: "प्रज्ञापारमितायामुक्तो मन्त्रः। तद्यथा।",
-            reading: "プラジュニャーパーラミターヤーム ウクトー マントラフ。タドヤター。",
-            meaning: "ゆえに真実の智慧の真言を説き明かします。すなわち、次のように。"
-        },
-        {
-            kanji: "<span class='term' data-term='羯諦'>羯諦</span>羯諦波羅羯諦波羅僧羯諦菩提<span class='term' data-term='薩婆訶'>薩婆訶</span>。般若心経。",
-            deva: "गते गते पारगते पारसंगते बोधि स्वाहा॥ इति प्रज्ञापारमिताहृदयसूत्रं समाप्तम्॥",
-            reading: "ガテー ガテー パーラガテー パーラサンガテー ボーディ スヴァーハー。イティ プラジュニャーパーラミター フリダヤ スートラム サマープタム。",
-            meaning: "往ける者よ、往ける者よ、彼岸へ往ける者よ、完全に往ける者よ、悟りよ、幸いあれ。かくして真実の智慧の核心を説いた教えを終わります。"
-        }
-    ];
+            useEffect(() => {
+                if (!geoData || !svgRef.current) return;
 
-    const termDict = {
-        "観自在菩薩": "アヴァローキテーシュヴァラ。観音様。自由自在に世を観察し、救いを与える者。",
-        "五蘊": "人間を構成する5つの要素（色・受・想・行・識）。これらすべてが「空」であると説く。",
-        "空": "すべての存在には固定された不変の実体がないという仏教の根本思想。",
-        "舎利子": "シャーリプトラ。お釈迦様の十大弟子の一人で、智慧第一と称された人物。",
-        "苦集滅道": "四諦（したい）。苦しみ、その原因、その消滅、消滅に至る道の4つの真理。",
-        "阿耨多羅三藐三菩提": "アヌッタラー・サムヤク・サンボーディ。仏の持つ、この上ない完全な悟りのこと。",
-        "涅槃": "ニルヴァーナ。煩悩の火が吹き消され、一切の苦しみから解放された究極の安らぎの境地。",
-        "羯諦": "「ガテー」の音写。迷いの岸から悟りの岸へ「行った」「往ける者」という意味。",
-        "薩婆訶": "「スヴァーハー（そわか）」。願いが成就するようにという祈りの結びの言葉。"
-    };
+                const svg = d3.select(svgRef.current);
+                svg.selectAll("*").remove();
 
-    function setMode(m) {
-        mode = m;
-        document.getElementById('btn-jp').classList.toggle('active', mode === 'jp');
-        document.getElementById('btn-sk').classList.toggle('active', mode === 'sk');
-        render();
-    }
+                let displayFeatures = geoData.features;
+                if (targetRegion !== 'all') {
+                    const regionPrefNames = PREFECTURES.filter(p => p.region === targetRegion).map(p => p.name);
+                    displayFeatures = geoData.features.filter(f => regionPrefNames.includes(f.properties.name));
+                }
 
-    function render() {
-        const item = sutraData[currentIndex];
-        const kanjiArea = document.getElementById('kanji-display');
-        const skArea = document.getElementById('sk-area');
-        
-        if (mode === 'jp') {
-            kanjiArea.style.display = 'block';
-            skArea.style.display = 'none';
-            kanjiArea.innerHTML = item.kanji;
-        } else {
-            kanjiArea.style.display = 'none';
-            skArea.style.display = 'block';
-            document.getElementById('deva-display').innerText = item.deva;
-            document.getElementById('reading-display').innerText = item.reading;
-        }
-        document.getElementById('meaning-display').innerText = item.meaning;
+                if (displayFeatures.length === 0) return;
 
-        document.querySelectorAll('.term').forEach(el => {
-            el.onclick = () => openModal(el.dataset.term);
-        });
-    }
+                const width = 800;
+                const height = 800;
+                const padding = 20;
 
-    function firstSutra() { currentIndex = 0; render(); if(autoInterval) toggleAuto(); }
-    function prevSutra() { currentIndex = (currentIndex - 1 + sutraData.length) % sutraData.length; render(); }
-    function nextSutra() { 
-        currentIndex++; 
-        if(currentIndex >= sutraData.length) {
-            currentIndex = 0; render(); if(autoInterval) toggleAuto();
-        } else { render(); }
-    }
+                const getBoundingGeoJson = (features) => {
+                    const boundingFeatures = features.map(f => {
+                        if ((f.properties.name === '東京都' || f.properties.name === '鹿児島県' || f.properties.name === '沖縄県') && f.geometry.type === 'MultiPolygon') {
+                            let maxVertices = -1;
+                            let maxPolygon = null;
+                            f.geometry.coordinates.forEach(polygonCoords => {
+                                const verticesCount = polygonCoords[0] ? polygonCoords[0].length : 0;
+                                if (verticesCount > maxVertices) {
+                                    maxVertices = verticesCount;
+                                    maxPolygon = polygonCoords;
+                                }
+                            });
+                            if (maxPolygon) {
+                                return { ...f, geometry: { type: 'Polygon', coordinates: maxPolygon } };
+                            }
+                        }
+                        return f;
+                    });
+                    return { type: "FeatureCollection", features: boundingFeatures };
+                };
 
-    function toggleAuto() {
-        const btn = document.getElementById('auto-btn');
-        if (autoInterval) {
-            clearInterval(autoInterval); autoInterval = null;
-            btn.innerHTML = "▶"; btn.classList.remove('active-auto');
-        } else {
-            autoInterval = setInterval(nextSutra, 7000); // 文章が長いので少し遅めの7秒に変更しました
-            btn.innerHTML = "⏸"; btn.classList.add('active-auto');
-        }
-    }
+                const getFill = (d) => {
+                    if (currentPref && d.properties.name === currentPref.name) {
+                        return "url(#activeGradient)";
+                    }
+                    return "#e2e8f0";
+                };
+                const getStrokeWidth = (d) => (currentPref && d.properties.name === currentPref.name) ? 2 : 1.5;
+                const getStrokeColor = (d) => (currentPref && d.properties.name === currentPref.name) ? "#ffffff" : "#ffffff";
+                
+                const defs = svg.append("defs");
+                const gradient = defs.append("linearGradient")
+                                     .attr("id", "activeGradient")
+                                     .attr("x1", "0%")
+                                     .attr("y1", "0%")
+                                     .attr("x2", "100%")
+                                     .attr("y2", "100%");
+                gradient.append("stop").attr("offset", "0%").attr("stop-color", "#f43f5e");
+                gradient.append("stop").attr("offset", "100%").attr("stop-color", "#e11d48");
 
-    function openModal(term) {
-        document.getElementById('modal-title').innerText = term;
-        document.getElementById('modal-desc').innerText = termDict[term];
-        document.getElementById('modal-overlay').style.display = 'block';
-        document.getElementById('modal').style.display = 'block';
-        if(autoInterval) toggleAuto();
-    }
+                const filter = defs.append("filter")
+                                   .attr("id", "drop-shadow")
+                                   .attr("height", "130%");
+                filter.append("feDropShadow")
+                      .attr("dx", "0")
+                      .attr("dy", "4")
+                      .attr("stdDeviation", "4")
+                      .attr("flood-color", "#94a3b8")
+                      .attr("flood-opacity", "0.3");
 
-    function closeModal() {
-        document.getElementById('modal-overlay').style.display = 'none';
-        document.getElementById('modal').style.display = 'none';
-    }
+                const pathClass = "cursor-default";
 
-    window.onload = render;
-</script>
+                if (targetRegion === 'all') {
+                    const mainFeatures = displayFeatures.filter(f => f.properties.name !== '沖縄県');
+                    const okinawaFeature = displayFeatures.filter(f => f.properties.name === '沖縄県');
+
+                    const boundingMainGeoJson = getBoundingGeoJson(mainFeatures);
+                    const mainProjection = d3.geoMercator().fitExtent([[padding, padding], [width - padding, height - padding]], boundingMainGeoJson);
+                    const mainPathGenerator = d3.geoPath().projection(mainProjection);
+
+                    svg.append("g")
+                       .style("filter", "url(#drop-shadow)")
+                       .selectAll("path")
+                       .data(mainFeatures)
+                       .enter()
+                       .append("path")
+                       .attr("d", mainPathGenerator)
+                       .attr("fill", getFill)
+                       .attr("stroke", getStrokeColor)
+                       .attr("stroke-width", getStrokeWidth)
+                       .attr("class", pathClass);
+
+                    const insetWidth = 240;
+                    const insetHeight = 180;
+                    const insetX = 20;
+                    const insetY = 20;
+
+                    const insetG = svg.append("g")
+                                    .attr("transform", `translate(${insetX}, ${insetY})`);
+
+                    insetG.append("rect")
+                          .attr("width", insetWidth)
+                          .attr("height", insetHeight)
+                          .attr("fill", "rgba(255, 255, 255, 0.5)")
+                          .attr("stroke", "#94a3b8")
+                          .attr("stroke-width", 3)
+                          .attr("stroke-dasharray", "8, 8")
+                          .attr("rx", 16)
+                          .attr("class", "backdrop-blur-md shadow-sm");
+
+                    const okinawaGeoJson = { type: "FeatureCollection", features: okinawaFeature };
+                    const okinawaProjection = d3.geoMercator().fitExtent([[10, 20], [insetWidth - 10, insetHeight - 20]], okinawaGeoJson);
+                    const okinawaPathGenerator = d3.geoPath().projection(okinawaProjection);
+
+                    insetG.append("g")
+                          .style("filter", "url(#drop-shadow)")
+                          .selectAll("path")
+                          .data(okinawaFeature)
+                          .enter()
+                          .append("path")
+                          .attr("d", okinawaPathGenerator)
+                          .attr("fill", getFill)
+                          .attr("stroke", getStrokeColor)
+                          .attr("stroke-width", getStrokeWidth)
+                          .attr("class", pathClass);
+
+                } else {
+                    const boundingDisplayGeoJson = getBoundingGeoJson(displayFeatures);
+                    const projection = d3.geoMercator().fitExtent([[padding, padding], [width - padding, height - padding]], boundingDisplayGeoJson);
+                    const pathGenerator = d3.geoPath().projection(projection);
+
+                    svg.append("g")
+                       .style("filter", "url(#drop-shadow)")
+                       .selectAll("path")
+                       .data(displayFeatures)
+                       .enter()
+                       .append("path")
+                       .attr("d", pathGenerator)
+                       .attr("fill", getFill)
+                       .attr("stroke", getStrokeColor)
+                       .attr("stroke-width", getStrokeWidth)
+                       .attr("class", pathClass);
+                }
+
+            }, [geoData, targetRegion, currentPref]);
+
+            return (
+                <div className="w-full flex justify-center items-center bg-slate-50/50 rounded-3xl p-2 border border-white/60 shadow-inner mb-6 relative overflow-hidden backdrop-blur-sm">
+                    <svg 
+                        ref={svgRef} 
+                        viewBox="0 0 800 800" 
+                        className="w-full h-auto max-h-[40vh] md:max-h-[45vh]"
+                    ></svg>
+                </div>
+            );
+        };
+
+        // --- メインアプリケーション ---
+        const App = () => {
+            const [geoData, setGeoData] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+
+            const [gameState, setGameState] = useState('start');
+            const [selectedRegion, setSelectedRegion] = useState('all');
+            
+            const [questions, setQuestions] = useState([]);
+            const [currentIndex, setCurrentIndex] = useState(0);
+            const [currentOptions, setCurrentOptions] = useState([]);
+            const [score, setScore] = useState(0);
+            
+            const [feedback, setFeedback] = useState(null);
+            const [selectedAnswer, setSelectedAnswer] = useState(null);
+
+            useEffect(() => {
+                const fetchMapData = async () => {
+                    setLoading(true);
+                    for (let url of GEOJSON_URLS) {
+                        try {
+                            const res = await fetch(url);
+                            if (!res.ok) continue;
+                            const data = await res.json();
+                            
+                            data.features.forEach(f => {
+                                if (f.properties) {
+                                    f.properties.name = f.properties.pref_name || f.properties.nam_ja || f.properties.name || f.properties.nam;
+                                    if(f.properties.name === "東京") f.properties.name = "東京都";
+                                    if(f.properties.name === "北海道") f.properties.name = "北海道";
+                                    if(f.properties.name === "京都") f.properties.name = "京都府";
+                                    if(f.properties.name === "大阪") f.properties.name = "大阪府";
+                                }
+                            });
+                            
+                            setGeoData(data);
+                            setLoading(false);
+                            return;
+                        } catch (err) {
+                            console.warn("Failed to fetch from", url, err);
+                        }
+                    }
+                    setError("地図データの読み込みに失敗しました。");
+                    setLoading(false);
+                };
+                fetchMapData();
+            }, []);
+
+            const generateOptions = useCallback((correctPref, regionId) => {
+                let pool = regionId === 'all' 
+                    ? PREFECTURES 
+                    : PREFECTURES.filter(p => p.region === regionId);
+                
+                if (pool.length < 3) pool = PREFECTURES;
+
+                let incorrectPool = pool.filter(p => p.name !== correctPref.name);
+                incorrectPool.sort(() => 0.5 - Math.random());
+
+                let options = [correctPref, incorrectPool[0], incorrectPool[1]];
+                options.sort(() => 0.5 - Math.random());
+
+                setCurrentOptions(options);
+            }, []);
+
+            const handleStart = (regionId) => {
+                setSelectedRegion(regionId);
+                let targetPrefs = regionId === 'all' 
+                    ? PREFECTURES 
+                    : PREFECTURES.filter(p => p.region === regionId);
+                
+                const shuffled = [...targetPrefs].sort(() => 0.5 - Math.random());
+                const questionList = shuffled.slice(0, Math.min(10, shuffled.length));
+                
+                setQuestions(questionList);
+                setCurrentIndex(0);
+                setScore(0);
+                setFeedback(null);
+                setSelectedAnswer(null);
+                setGameState('playing');
+                generateOptions(questionList[0], regionId);
+            };
+
+            const handleAnswer = (option) => {
+                if (feedback) return;
+
+                setSelectedAnswer(option);
+                const correctPref = questions[currentIndex];
+                const isCorrect = option.name === correctPref.name;
+
+                setFeedback(isCorrect ? 'correct' : 'incorrect');
+                if (isCorrect) setScore(s => s + 1);
+
+                // --- 正解・不正解で待機時間を分ける ---
+                const delayTime = isCorrect ? 400 : 800;
+
+                setTimeout(() => {
+                    const nextIndex = currentIndex + 1;
+                    if (nextIndex < questions.length) {
+                        setCurrentIndex(nextIndex);
+                        setFeedback(null);
+                        setSelectedAnswer(null);
+                        generateOptions(questions[nextIndex], selectedRegion);
+                    } else {
+                        setGameState('result');
+                        setFeedback(null);
+                        setSelectedAnswer(null);
+                    }
+                }, delayTime); 
+            };
+
+            const goHome = () => {
+                setGameState('start');
+                setFeedback(null);
+                setSelectedAnswer(null);
+            };
+
+            if (loading) {
+                return (
+                    <div className="min-h-screen flex flex-col items-center justify-center text-indigo-500">
+                        <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4 shadow-lg"></div>
+                        <p className="text-xl font-bold tracking-wider animate-pulse">MAP LOADING...</p>
+                    </div>
+                );
+            }
+            if (error) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-4">
+                        <div className="glass-card p-8 rounded-3xl shadow-xl text-center text-rose-500">
+                            <p className="text-xl font-bold mb-4">⚠️ エラー</p>
+                            <p>{error}</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen flex flex-col items-center p-4 sm:p-6 text-slate-800">
+                    <div className="w-full max-w-xl glass-card rounded-[2rem] shadow-2xl overflow-hidden relative fade-in">
+                        
+                        {/* 画面1: スタート画面 */}
+                        {gameState === 'start' && (
+                            <div className="p-8 md:p-12 text-center">
+                                <div className="mb-10 animate-float">
+                                    <div className="text-6xl mb-4 drop-shadow-md">🗾</div>
+                                    <h1 className="text-4xl md:text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-cyan-500 tracking-tight pb-2">
+                                        都道府県クイズ
+                                    </h1>
+                                    <p className="text-slate-500 font-medium mt-2">
+                                        赤く塗られた場所を当てよう！
+                                    </p>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md mx-auto">
+                                    {REGIONS.map(region => (
+                                        <button 
+                                            key={region.id}
+                                            onClick={() => handleStart(region.id)}
+                                            className={`py-4 px-4 rounded-2xl font-bold text-base md:text-lg transition-all duration-150 shadow-sm active:scale-95 flex items-center justify-center gap-2
+                                                ${region.id === 'all' 
+                                                    ? 'col-span-1 sm:col-span-2 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-indigo-200 shadow-lg hover:shadow-xl' 
+                                                    : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-100 hover:border-indigo-200'
+                                                }`}
+                                        >
+                                            <span>{region.icon}</span> {region.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 画面2: プレイ画面 */}
+                        {gameState === 'playing' && (
+                            <div className="flex flex-col h-full">
+                                {/* ヘッダー */}
+                                <div className="bg-white/50 backdrop-blur-md border-b border-white px-4 py-3 flex justify-between items-center shadow-sm relative z-10">
+                                    
+                                    <button 
+                                        onClick={goHome}
+                                        className="flex items-center justify-center w-10 h-10 rounded-full bg-white text-slate-400 hover:text-indigo-500 hover:border-indigo-200 shadow-sm border border-slate-100 active:scale-95 transition-all duration-150"
+                                        title="ホームに戻る"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                                        </svg>
+                                    </button>
+
+                                    <div className="text-sm font-black bg-indigo-100 text-indigo-700 px-4 py-1.5 rounded-full ring-1 ring-indigo-200">
+                                        Q. {currentIndex + 1} <span className="text-indigo-400 font-medium ml-1">/ {questions.length}</span>
+                                    </div>
+
+                                    <div className="text-sm font-bold text-slate-500 bg-white px-3 md:px-4 py-1.5 rounded-full shadow-sm">
+                                        SCORE <span className="text-lg text-indigo-600 ml-1">{score}</span>
+                                    </div>
+                                </div>
+
+                                <div className="p-4 md:p-6 flex-grow flex flex-col">
+                                    {/* 地図表示エリア */}
+                                    <MapViewer 
+                                        geoData={geoData} 
+                                        targetRegion={selectedRegion} 
+                                        currentPref={questions[currentIndex]} 
+                                    />
+
+                                    {/* 問題と選択肢 */}
+                                    <div className="mt-auto">
+                                        <h2 className="text-center text-xl font-bold text-slate-700 mb-5">
+                                            この赤い都道府県はどこ？
+                                        </h2>
+                                        
+                                        <div className="grid grid-cols-1 gap-3">
+                                            {currentOptions.map((option, idx) => {
+                                                const isCorrectAnswer = option.name === questions[currentIndex].name;
+                                                const isSelected = selectedAnswer && option.name === selectedAnswer.name;
+
+                                                let btnClass = "bg-white border-2 border-slate-100 text-slate-700 shadow-sm active:scale-95";
+                                                let hoverClass = "md:hover:border-indigo-300 md:hover:bg-indigo-50 md:hover:text-indigo-600";
+
+                                                if (feedback) {
+                                                    hoverClass = ""; 
+                                                    
+                                                    if (isCorrectAnswer) {
+                                                        btnClass = "bg-emerald-500 border-emerald-500 text-white shadow-emerald-200 shadow-lg transform scale-[1.02] z-10 ring-4 ring-emerald-500/20";
+                                                    } else if (isSelected) {
+                                                        btnClass = "bg-rose-50 border-rose-300 text-rose-500 shadow-inner";
+                                                    } else {
+                                                        btnClass = "bg-slate-50 border-slate-100 text-slate-300 opacity-60 scale-[0.98]";
+                                                    }
+                                                }
+
+                                                return (
+                                                    <button 
+                                                        key={`${currentIndex}-${idx}`}
+                                                        onClick={() => handleAnswer(option)}
+                                                        disabled={feedback !== null}
+                                                        className={`py-4 px-6 rounded-2xl font-bold text-lg transition-all duration-150 ease-out ${btnClass} ${hoverClass}`}
+                                                    >
+                                                        {option.name}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* 正誤判定のポップアップアイコン */}
+                                        {feedback && (
+                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                                                <div className={`text-9xl font-black drop-shadow-2xl animate-pop ${feedback === 'correct' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                    {feedback === 'correct' ? '⭕️' : '❌'}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 画面3: 結果画面 */}
+                        {gameState === 'result' && (
+                            <div className="p-8 md:p-12 text-center fade-in">
+                                <div className="text-6xl mb-4 animate-bounce">
+                                    {score === questions.length ? '🏆' : score >= questions.length * 0.7 ? '👏' : '💪'}
+                                </div>
+                                <h2 className="text-3xl font-black text-slate-800 mb-8">RESULT</h2>
+                                
+                                <div className="bg-white rounded-[2rem] p-8 mb-8 border border-slate-100 shadow-xl relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-400 to-cyan-400"></div>
+                                    <p className="text-slate-400 mb-2 font-bold tracking-widest text-sm">SCORE</p>
+                                    <div className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-br from-indigo-600 to-cyan-500 mb-4 tracking-tighter">
+                                        {score} <span className="text-3xl text-slate-300 font-bold">/ {questions.length}</span>
+                                    </div>
+                                    <p className="text-lg font-bold text-slate-600 bg-slate-50 py-2 px-4 rounded-xl inline-block">
+                                        {score === questions.length ? 'パーフェクト！天才的！' :
+                                         score >= questions.length * 0.7 ? '素晴らしい成績です！' :
+                                         '次回はもっといけるはず！'}
+                                    </p>
+                                </div>
+
+                                <button 
+                                    onClick={goHome}
+                                    className="bg-slate-800 text-white w-full py-4 rounded-2xl font-bold text-lg hover:bg-slate-700 hover:shadow-xl transition-all duration-150 transform active:scale-95 shadow-lg"
+                                >
+                                    トップへ戻る
+                                </button>
+                            </div>
+                        )}
+
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
 </body>
 </html>
+
+
+```
