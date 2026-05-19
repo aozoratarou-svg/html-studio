@@ -2,377 +2,295 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="HTML STUDIO">
-    
-    <title>8-BIT HTML STUDIO</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WEBアーキテクチャ・クエスト</title>
     <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #000000;
-            --text-color: #ffffff;
-            --accent-color: #e52521;
-            --link-color: #0055aa;
-            --code-color: #33ff33;
-            --border-style: 4px solid #ffffff;
+            --bg-color: #0f380f;
+            --text-color: #8bac0f;
+            --accent-color: #306230;
+            --border-color: #9bbc0f;
         }
 
         body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: 'DotGothic16', sans-serif;
+            background-color: #000;
+            color: #fff;
+            font-family: 'DotGothic16', 'Courier New', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
             margin: 0;
-            /* ✨新機能：iPhoneのノッチや下のバーに被らないよう、自動で余白を確保する（env機能） */
-            padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom)) 10px;
-            box-sizing: border-box;
-            overscroll-behavior-y: none;
+            overflow: hidden;
+        }
+
+        #game-boy {
+            background-color: #ddd;
+            padding: 20px 20px 40px;
+            border-radius: 10px 10px 40px 10px;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+            width: 100%;
+            max-width: 600px;
+        }
+
+        #screen {
+            background-color: var(--bg-color);
+            border: 8px solid #333;
+            border-radius: 5px;
+            padding: 15px;
+            height: 450px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
         }
 
         h1 {
+            color: var(--border-color);
             text-align: center;
-            font-size: 1.5rem;
-            color: var(--accent-color);
-            text-shadow: 2px 2px 0 #fff;
-            margin-bottom: 20px;
+            font-size: 24px;
+            margin-top: 0;
+            text-shadow: 2px 2px 0 var(--accent-color);
         }
 
-        .tabs {
-            display: flex;
-            gap: 5px;
-            margin-bottom: 10px;
-        }
-
-        .tab-btn {
-            flex: 1;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            border: var(--border-style);
-            font-family: 'DotGothic16', sans-serif;
-            padding: 10px 5px;
-            font-size: 1rem;
-            cursor: pointer;
-            box-shadow: 2px 2px 0px #888;
-        }
-
-        .tab-btn.active {
-            background-color: var(--text-color);
-            color: var(--bg-color);
-        }
-
-        .panel {
-            display: none;
-            border: var(--border-style);
-            padding: 10px;
+        /* マップ（アーキテクチャ図）部分 */
+        #map-area {
+            flex-grow: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 10px;
             margin-bottom: 15px;
-            height: 40vh;
-            box-sizing: border-box;
+            position: relative;
         }
 
-        .panel.active {
+        .node {
+            border: 2px solid var(--accent-color);
+            color: var(--accent-color);
             display: flex;
             flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            font-size: 14px;
+            padding: 5px;
+            background-color: var(--bg-color);
+            transition: all 0.3s;
         }
 
-        .editor-toolbar {
+        .node.active {
+            border-color: var(--border-color);
+            color: var(--bg-color);
+            background-color: var(--border-color);
+            box-shadow: 0 0 10px var(--border-color);
+            font-weight: bold;
+        }
+
+        .node span {
+            font-size: 10px;
+            margin-top: 5px;
+        }
+
+        #node-front { grid-column: 1; grid-row: 1 / 3; }
+        #node-api { grid-column: 2; grid-row: 1; }
+        #node-db { grid-column: 3; grid-row: 1; }
+        #node-ai { grid-column: 3; grid-row: 2; }
+
+        /* メッセージウィンドウ */
+        #dialog-box {
+            border: 4px solid var(--border-color);
+            background-color: var(--bg-color);
+            color: var(--border-color);
+            padding: 15px;
+            height: 120px;
+            border-radius: 4px;
+            position: relative;
+        }
+
+        #dialog-text {
+            margin: 0;
+            line-height: 1.5;
+            font-size: 16px;
+            white-space: pre-wrap;
+        }
+
+        /* ボタン */
+        #controls {
             display: flex;
             justify-content: flex-end;
-            margin-bottom: 10px;
-        }
-
-        .tool-btn {
-            background-color: #444;
-            color: var(--text-color);
-            border: 2px solid #fff;
-            font-family: 'DotGothic16', sans-serif;
-            padding: 5px 10px;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-
-        .tool-btn:active {
-            background-color: #666;
-        }
-
-        textarea {
-            width: 100%;
-            flex-grow: 1;
-            background-color: var(--bg-color);
-            color: var(--code-color);
-            border: none;
-            font-family: 'DotGothic16', monospace;
-            font-size: 1rem;
-            resize: none;
-            outline: none;
-            box-sizing: border-box;
-        }
-
-        iframe {
-            width: 100%;
-            height: 100%;
-            background-color: #fff;
-            border: none;
-        }
-
-        .config-item {
-            margin-bottom: 15px;
-        }
-        
-        .config-item label {
-            display: block;
-            margin-bottom: 5px;
-        }
-
-        .config-item input, .custom-file-input {
-            width: 100%;
-            padding: 8px;
-            background-color: #222;
-            color: #fff;
-            border: 2px solid #fff;
-            font-family: 'DotGothic16', sans-serif;
-            box-sizing: border-box;
-        }
-
-        .actions {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-        
-        .action-row {
-            display: flex;
-            gap: 5px;
-            align-items: stretch;
-        }
-
-        .action-btn {
-            background-color: var(--accent-color);
-            color: var(--text-color);
-            border: var(--border-style);
-            font-family: 'DotGothic16', sans-serif;
-            padding: 10px 5px;
-            font-size: 1.1rem;
-            cursor: pointer;
-            box-shadow: 4px 4px 0px #888;
-            flex: 2;
-        }
-
-        .action-btn.link-btn {
-            background-color: var(--link-color);
-            flex: 1;
-        }
-
-        .action-btn:active {
-            box-shadow: inset 4px 4px 0px #888;
-            transform: translate(2px, 2px);
-        }
-
-        .system-msg {
-            color: yellow;
-            font-size: 0.8rem;
             margin-top: 10px;
         }
 
-        .section-label {
-            font-size: 0.9rem;
-            color: #aaa;
-            margin-bottom: 5px;
+        button {
+            background-color: var(--bg-color);
+            color: var(--border-color);
+            border: 2px solid var(--border-color);
+            font-family: inherit;
+            font-size: 16px;
+            padding: 8px 16px;
+            cursor: pointer;
+            text-transform: uppercase;
         }
 
+        button:hover {
+            background-color: var(--border-color);
+            color: var(--bg-color);
+        }
+
+        /* ピクセル風の点滅カーソル */
+        .cursor {
+            display: inline-block;
+            width: 10px;
+            height: 16px;
+            background-color: var(--border-color);
+            animation: blink 1s step-end infinite;
+            vertical-align: middle;
+            margin-left: 5px;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
     </style>
 </head>
 <body>
 
-    <h1>HTML STUDIO</h1>
-
-    <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('edit')">🔨つくる</button>
-        <button class="tab-btn" onclick="switchTab('preview')">👁みる</button>
-        <button class="tab-btn" onclick="switchTab('config')">⚙️せってい</button>
-    </div>
-
-    <div id="panel-edit" class="panel active">
-        <div class="editor-toolbar">
-            <button class="tool-btn" onclick="clearEditor()">🗑️ クリア</button>
-        </div>
-        <textarea id="code-editor" placeholder="ここに HTML を にゅうりょく してね！"></textarea>
-    </div>
-
-    <div id="panel-preview" class="panel" style="display: none;">
-        <iframe id="preview-frame"></iframe>
-    </div>
-
-    <div id="panel-config" class="panel" style="display: none; overflow-y: auto;">
-        <div class="config-item">
-            <label>GITHUB トークン (PAT)</label>
-            <input type="password" id="gh-token" placeholder="ghp_xxxxxxxx...">
-        </div>
-        <div class="config-item">
-            <label>ユーザー名 (Owner)</label>
-            <input type="text" id="gh-owner" placeholder="例: octocat">
-        </div>
-        <div class="config-item">
-            <label>リポジトリ名 (Repo)</label>
-            <input type="text" id="gh-repo" placeholder="例: my-website">
-        </div>
-        <p class="system-msg">※にゅうりょくした じょうほうは ブラウザに ほぞん されます。</p>
-    </div>
-
-    <div class="actions">
-        <div class="action-row">
-            <button class="action-btn" onclick="saveToGitHub('test.html')">💾 TESTセーブ</button>
-            <button class="action-btn link-btn" onclick="openPage('test.html')">🌍 ひらく</button>
-        </div>
-
-        <div>
-            <div class="section-label">▼ ほんばん用 (なまえをきめる)</div>
-            <input type="text" id="custom-filename" class="custom-file-input" placeholder="例: app1.html または tool/index.html" style="margin-bottom: 5px;">
-            <div class="action-row">
-                <button class="action-btn" onclick="saveCustom()">💾 セーブ</button>
-                <button class="action-btn link-btn" onclick="openCustom()">🌍 ひらく</button>
+<div id="game-boy">
+    <div id="screen">
+        <h1>WEBｱｰｷﾃｸﾁｬ･ｸｴｽﾄ</h1>
+        
+        <div id="map-area">
+            <div id="node-front" class="node">
+                <div>[客席/ﾌﾛﾝﾄ]</div>
+                <span>React / JSX<br>(Vite)</span>
+            </div>
+            <div id="node-api" class="node">
+                <div>[厨房/ﾊﾞｯｸ]</div>
+                <span>Python<br>Node.js</span>
+            </div>
+            <div id="node-db" class="node">
+                <div>[超高級冷凍庫]</div>
+                <span>Oracle DB<br>PostgreSQL</span>
+            </div>
+            <div id="node-ai" class="node">
+                <div>[AI専門家]</div>
+                <span>Google AI<br>Studio</span>
             </div>
         </div>
+
+        <div id="dialog-box">
+            <p id="dialog-text"></p>
+            <span class="cursor" id="cursor" style="display: none;"></span>
+        </div>
     </div>
+    <div id="controls">
+        <button id="next-btn">▼ つぎへ (A)</button>
+    </div>
+</div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('gh-token').value = localStorage.getItem('ghToken') || '';
-            document.getElementById('gh-owner').value = localStorage.getItem('ghOwner') || '';
-            document.getElementById('gh-repo').value = localStorage.getItem('ghRepo') || '';
-            document.getElementById('code-editor').value = localStorage.getItem('savedCode') || '';
-            document.getElementById('custom-filename').value = localStorage.getItem('lastCustomFile') || '';
+<script>
+    // クエストのシナリオ（データの流れ）
+    const scenario = [
+        {
+            nodeId: null,
+            text: "AIスマートレストランへ ようこそ！\n「要約して」と入力して送信ボタンを 押した。\nデータの旅が はじまる！"
+        },
+        {
+            nodeId: "node-front",
+            text: "【Step 1: フロントエンド】\nReact/JSXが クリックを検知した！\n入力データをJSON（注文書）に変換した。"
+        },
+        {
+            nodeId: "node-front",
+            text: "【Step 2: ネットワーク通信】\n注文書が REST APIという名の\n配膳ロボットに乗って 厨房へ向かう！\n(ﾋﾟｺｰﾝ!)"
+        },
+        {
+            nodeId: "node-api",
+            text: "【Step 3: バックエンド】\n厨房の料理長（Python）が 注文を受付！\n「この注文は正しいな！」"
+        },
+        {
+            nodeId: "node-db",
+            text: "【Step 4: データベース】\n料理長は 超高級冷凍庫(Oracle)に\n過去のデータを 取りに行った。\nデータが 壊れずに取り出せた！"
+        },
+        {
+            nodeId: "node-ai",
+            text: "【Step 5: 外部API (AIモデル)】\n「要約はワシには無理じゃ！」\n料理長は 外部の専門家(Google AI Studio)に\n電話で 処理を外注した！"
+        },
+        {
+            nodeId: "node-api",
+            text: "【Step 6: レスポンス】\n専門家から 要約結果が返ってきた！\n料理長は データを綺麗に盛り付け直し\nステータス200(OK)と共に 客席へ返却した！"
+        },
+        {
+            nodeId: "node-front",
+            text: "【Step 7: 画面更新】\nViteで最適化されたフロントエンドが\n瞬時に 画面を書き換えた！\n\n「お待たせしました！」\nクエスト・クリア！"
+        }
+    ];
+
+    let currentStep = 0;
+    let isTyping = false;
+    const dialogText = document.getElementById("dialog-text");
+    const cursor = document.getElementById("cursor");
+    const nextBtn = document.getElementById("next-btn");
+
+    // 全ノードのアクティブ状態を解除する関数
+    function clearNodes() {
+        document.querySelectorAll('.node').forEach(node => {
+            node.classList.remove('active');
         });
+    }
 
-        document.getElementById('gh-token').addEventListener('input', (e) => localStorage.setItem('ghToken', e.target.value));
-        document.getElementById('gh-owner').addEventListener('input', (e) => localStorage.setItem('ghOwner', e.target.value));
-        document.getElementById('gh-repo').addEventListener('input', (e) => localStorage.setItem('ghRepo', e.target.value));
-        document.getElementById('code-editor').addEventListener('input', (e) => localStorage.setItem('savedCode', e.target.value));
-        document.getElementById('custom-filename').addEventListener('input', (e) => localStorage.setItem('lastCustomFile', e.target.value));
+    // 文字送りアニメーション（タイプライター効果）
+    function typeWriter(text, i, callback) {
+        if (i < text.length) {
+            dialogText.innerHTML = text.substring(0, i + 1).replace(/\n/g, '<br>');
+            setTimeout(() => typeWriter(text, i + 1, callback), 30); // 表示スピード
+        } else {
+            callback();
+        }
+    }
 
-        function clearEditor() {
-            if(confirm('かきかけの コードを ぜんぶ けしますか？')) {
-                document.getElementById('code-editor').value = '';
-                localStorage.setItem('savedCode', '');
-            }
+    // シナリオを1つ進める関数
+    function advanceScenario() {
+        if (isTyping) return; // 文字送り中は無視
+
+        if (currentStep >= scenario.length) {
+            currentStep = 0; // 最後まで行ったらループ
         }
 
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
+        const stepData = scenario[currentStep];
+        
+        // 画面のノードをハイライト
+        clearNodes();
+        if (stepData.nodeId) {
+            document.getElementById(stepData.nodeId).classList.add('active');
+        }
+
+        // テキスト表示
+        dialogText.innerHTML = "";
+        cursor.style.display = "none";
+        isTyping = true;
+        nextBtn.style.opacity = "0.5";
+
+        typeWriter(stepData.text, 0, () => {
+            isTyping = false;
+            cursor.style.display = "inline-block";
+            nextBtn.style.opacity = "1";
+            currentStep++;
             
-            document.querySelectorAll('.panel').forEach(panel => panel.style.display = 'none');
-
-            if (tabName === 'edit') {
-                document.querySelectorAll('.tab-btn')[0].classList.add('active');
-                const panel = document.getElementById('panel-edit');
-                panel.classList.add('active');
-                panel.style.display = 'flex';
-            } else if (tabName === 'preview') {
-                document.querySelectorAll('.tab-btn')[1].classList.add('active');
-                const panel = document.getElementById('panel-preview');
-                panel.classList.add('active');
-                panel.style.display = 'block';
-                const code = document.getElementById('code-editor').value;
-                document.getElementById('preview-frame').srcdoc = code;
-            } else if (tabName === 'config') {
-                document.querySelectorAll('.tab-btn')[2].classList.add('active');
-                const panel = document.getElementById('panel-config');
-                panel.classList.add('active');
-                panel.style.display = 'block';
+            if(currentStep >= scenario.length) {
+                nextBtn.innerText = "■ はじめから";
+            } else {
+                nextBtn.innerText = "▼ つぎへ (A)";
             }
-        }
+        });
+    }
 
-        function openCustom() {
-            let filename = document.getElementById('custom-filename').value.trim();
-            if(!filename) {
-                alert('【エラー】\nファイルめいを にゅうりょく してね！');
-                return;
-            }
-            openPage(filename);
-        }
+    // 初期化とイベントリスナー設定
+    nextBtn.addEventListener('click', advanceScenario);
+    
+    // 最初のステップを表示
+    advanceScenario();
 
-        function saveCustom() {
-            let filename = document.getElementById('custom-filename').value.trim();
-            if(!filename) {
-                alert('【エラー】\nファイルめいを にゅうりょく してね！');
-                return;
-            }
-            saveToGitHub(filename);
-        }
-
-        function openPage(filename) {
-            const owner = document.getElementById('gh-owner').value;
-            const repo = document.getElementById('gh-repo').value;
-            
-            if(!owner || !repo) {
-                alert('【エラー】\n「⚙️せってい」で ユーザー名と リポジトリ名を いれてね！');
-                return;
-            }
-
-            const url = `https://${owner}.github.io/${repo}/${filename}`;
-            window.open(url, '_blank');
-        }
-
-        async function saveToGitHub(filename) {
-            const token = document.getElementById('gh-token').value;
-            const owner = document.getElementById('gh-owner').value;
-            const repo = document.getElementById('gh-repo').value;
-            const content = document.getElementById('code-editor').value;
-
-            if(!token || !owner || !repo) {
-                alert('【エラー】\n「⚙️せってい」から GitHubの じょうほうを にゅうりょく してね！');
-                return;
-            }
-
-            const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filename}`;
-            
-            const encodedContent = btoa(unescape(encodeURIComponent(content)));
-
-            try {
-                let sha = null;
-                const getRes = await fetch(apiUrl, {
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
-                });
-
-                if (getRes.ok) {
-                    const data = await getRes.json();
-                    sha = data.sha;
-                }
-
-                const body = {
-                    message: `📝 ${filename} を更新 (via 8-BIT STUDIO)`,
-                    content: encodedContent
-                };
-                if (sha) {
-                    body.sha = sha;
-                }
-
-                const putRes = await fetch(apiUrl, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github.v3+json',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(body)
-                });
-
-                if (putRes.ok) {
-                    alert(`【せいこう！】\n${filename} に セーブ しました。\nすこし まってから「🌍 ひらく」ボタンを おしてね！`);
-                } else {
-                    const errData = await putRes.json();
-                    alert(`【エラー！】\nセーブに しっぱい しました。\nりゆう: ${errData.message}`);
-                }
-            } catch (error) {
-                alert(`【つうしんエラー！】\nネットワークを かくにん してね。\n${error}`);
-            }
-        }
-    </script>
+</script>
 </body>
 </html>
