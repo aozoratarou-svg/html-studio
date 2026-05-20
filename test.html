@@ -3,294 +3,299 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WEBアーキテクチャ・クエスト</title>
-    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+    <title>Webアプリケーション 処理フロー解説</title>
     <style>
         :root {
-            --bg-color: #0f380f;
-            --text-color: #8bac0f;
-            --accent-color: #306230;
-            --border-color: #9bbc0f;
+            --bg-dark: #1e1e1e;
+            --panel-bg: #2d2d2d;
+            --text-main: #d4d4d4;
+            --accent: #007acc;
+            --highlight: #4caf50;
+            --code-bg: #1e1e1e;
+            --code-keyword: #569cd6;
+            --code-string: #ce9178;
+            --code-comment: #6a9955;
+            --code-func: #dcdcaa;
         }
 
         body {
-            background-color: #000;
-            color: #fff;
-            font-family: 'DotGothic16', 'Courier New', monospace;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
             margin: 0;
-            overflow: hidden;
-        }
-
-        #game-boy {
-            background-color: #ddd;
-            padding: 20px 20px 40px;
-            border-radius: 10px 10px 40px 10px;
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
-            width: 100%;
-            max-width: 600px;
-        }
-
-        #screen {
-            background-color: var(--bg-color);
-            border: 8px solid #333;
-            border-radius: 5px;
-            padding: 15px;
-            height: 450px;
+            padding: 20px;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             flex-direction: column;
-            position: relative;
+            height: 100vh;
+            box-sizing: border-box;
         }
 
         h1 {
-            color: var(--border-color);
-            text-align: center;
-            font-size: 24px;
+            font-size: 20px;
             margin-top: 0;
-            text-shadow: 2px 2px 0 var(--accent-color);
+            color: #fff;
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
         }
 
-        /* マップ（アーキテクチャ図）部分 */
-        #map-area {
+        .container {
+            display: flex;
+            gap: 20px;
             flex-grow: 1;
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            grid-template-rows: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 15px;
-            position: relative;
+            overflow: hidden;
         }
 
-        .node {
-            border: 2px solid var(--accent-color);
-            color: var(--accent-color);
+        /* 左側：フロー解説パネル */
+        .description-panel {
+            flex: 1;
+            background-color: var(--panel-bg);
+            border-radius: 8px;
+            padding: 20px;
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .flow-diagram {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #222;
+            border-radius: 6px;
+        }
+
+        .flow-node {
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 2px solid #555;
             font-size: 14px;
-            padding: 5px;
-            background-color: var(--bg-color);
+            color: #888;
+            text-align: center;
             transition: all 0.3s;
         }
 
-        .node.active {
-            border-color: var(--border-color);
-            color: var(--bg-color);
-            background-color: var(--border-color);
-            box-shadow: 0 0 10px var(--border-color);
+        .flow-node.active {
+            border-color: var(--highlight);
+            color: #fff;
+            background-color: rgba(76, 175, 80, 0.2);
             font-weight: bold;
         }
 
-        .node span {
-            font-size: 10px;
-            margin-top: 5px;
+        .step-title {
+            font-size: 18px;
+            color: var(--accent);
+            margin-bottom: 10px;
         }
 
-        #node-front { grid-column: 1; grid-row: 1 / 3; }
-        #node-api { grid-column: 2; grid-row: 1; }
-        #node-db { grid-column: 3; grid-row: 1; }
-        #node-ai { grid-column: 3; grid-row: 2; }
-
-        /* メッセージウィンドウ */
-        #dialog-box {
-            border: 4px solid var(--border-color);
-            background-color: var(--bg-color);
-            color: var(--border-color);
-            padding: 15px;
-            height: 120px;
-            border-radius: 4px;
-            position: relative;
-        }
-
-        #dialog-text {
-            margin: 0;
-            line-height: 1.5;
-            font-size: 16px;
+        .step-text {
+            font-size: 15px;
+            line-height: 1.6;
             white-space: pre-wrap;
+            flex-grow: 1;
         }
 
-        /* ボタン */
-        #controls {
-            display: flex;
-            justify-content: flex-end;
-            margin-top: 10px;
+        /* 右側：コード表示パネル */
+        .code-panel {
+            flex: 1.2;
+            background-color: var(--code-bg);
+            border-radius: 8px;
+            border: 1px solid #444;
+            padding: 20px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
         }
 
-        button {
-            background-color: var(--bg-color);
-            color: var(--border-color);
-            border: 2px solid var(--border-color);
-            font-family: inherit;
-            font-size: 16px;
-            padding: 8px 16px;
-            cursor: pointer;
+        .code-header {
+            color: #888;
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+            font-size: 12px;
             text-transform: uppercase;
         }
 
+        pre {
+            margin: 0;
+            white-space: pre-wrap;
+        }
+
+        .kw { color: var(--code-keyword); }
+        .str { color: var(--code-string); }
+        .com { color: var(--code-comment); }
+        .fn { color: var(--code-func); }
+
+        /* コントロール部分 */
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        button {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+
         button:hover {
-            background-color: var(--border-color);
-            color: var(--bg-color);
+            background-color: #005f9e;
         }
 
-        /* ピクセル風の点滅カーソル */
-        .cursor {
-            display: inline-block;
-            width: 10px;
-            height: 16px;
-            background-color: var(--border-color);
-            animation: blink 1s step-end infinite;
-            vertical-align: middle;
-            margin-left: 5px;
-        }
-
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+            color: #888;
         }
     </style>
 </head>
 <body>
 
-<div id="game-boy">
-    <div id="screen">
-        <h1>WEBｱｰｷﾃｸﾁｬ･ｸｴｽﾄ</h1>
-        
-        <div id="map-area">
-            <div id="node-front" class="node">
-                <div>[客席/ﾌﾛﾝﾄ]</div>
-                <span>React / JSX<br>(Vite)</span>
+    <h1>処理フロー：フロントエンド(React) ⇔ バックエンド(Python) ⇔ API</h1>
+
+    <div class="container">
+        <div class="description-panel">
+            <div class="flow-diagram">
+                <div id="node-react" class="flow-node">React (ブラウザ)</div>
+                <div id="node-network" class="flow-node">HTTP通信</div>
+                <div id="node-python" class="flow-node">Python API</div>
+                <div id="node-db" class="flow-node">Database</div>
+                <div id="node-ai" class="flow-node">AI Studio</div>
             </div>
-            <div id="node-api" class="node">
-                <div>[厨房/ﾊﾞｯｸ]</div>
-                <span>Python<br>Node.js</span>
-            </div>
-            <div id="node-db" class="node">
-                <div>[超高級冷凍庫]</div>
-                <span>Oracle DB<br>PostgreSQL</span>
-            </div>
-            <div id="node-ai" class="node">
-                <div>[AI専門家]</div>
-                <span>Google AI<br>Studio</span>
-            </div>
+            
+            <div id="step-title" class="step-title"></div>
+            <div id="step-text" class="step-text"></div>
         </div>
 
-        <div id="dialog-box">
-            <p id="dialog-text"></p>
-            <span class="cursor" id="cursor" style="display: none;"></span>
+        <div class="code-panel">
+            <div id="code-header" class="code-header"></div>
+            <pre id="code-content"></pre>
         </div>
     </div>
-    <div id="controls">
-        <button id="next-btn">▼ つぎへ (A)</button>
+
+    <div class="controls">
+        <button id="prev-btn" disabled>◀ 前の処理</button>
+        <button id="next-btn">次の処理 ▶</button>
     </div>
-</div>
 
 <script>
-    // クエストのシナリオ（データの流れ）
-    const scenario = [
+    const steps = [
         {
-            nodeId: null,
-            text: "AIスマートレストランへ ようこそ！\n「要約して」と入力して送信ボタンを 押した。\nデータの旅が はじまる！"
+            node: 'node-react',
+            title: '1. フロントエンド：イベントの発火 (React/JSX)',
+            text: 'ユーザーがブラウザ上でボタンをクリックした瞬間の処理です。\n\nReactコンポーネント内の onClick イベントが発火し、非同期関数 (async/await) が呼び出されます。\nまずは多重送信を防ぐために、UIのローディング状態を true に変更します。',
+            file: 'Frontend: App.jsx',
+            code: `<span class="kw">const</span> <span class="fn">handleGenerate</span> = <span class="kw">async</span> () => {\n  <span class="com">// ローディングUIを表示</span>\n  <span class="fn">setIsLoading</span>(<span class="kw">true</span>);\n  <span class="fn">setError</span>(<span class="kw">null</span>);\n\n  <span class="com">// 入力値の準備</span>\n  <span class="kw">const</span> payload = { prompt: inputText };\n\n  <span class="com">// 次の処理（fetch）へ進む...</span>\n};`
         },
         {
-            nodeId: "node-front",
-            text: "【Step 1: フロントエンド】\nReact/JSXが クリックを検知した！\n入力データをJSON（注文書）に変換した。"
+            node: 'node-network',
+            title: '2. ネットワーク：HTTPリクエストの送信 (Fetch API)',
+            text: 'フロントエンドから、バックエンド（Pythonサーバーなど）のエンドポイントに向けてデータを送信します。\n\nfetch APIなどを使い、JSON形式に文字列化 (JSON.stringify) したデータを POST メソッドで送ります。\nここで処理は一旦バックエンドに引き継がれ、React側はレスポンスが返ってくるのを待機 (await) します。',
+            file: 'Frontend: App.jsx (fetch部分)',
+            code: `<span class="kw">try</span> {\n  <span class="kw">const</span> response = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'/api/generate-idea'</span>, {\n    method: <span class="str">'POST'</span>,\n    headers: {\n      <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span>\n    },\n    body: JSON.<span class="fn">stringify</span>(payload)\n  });\n\n  <span class="com">// バックエンドからの返答を待機中...</span>\n}`
         },
         {
-            nodeId: "node-front",
-            text: "【Step 2: ネットワーク通信】\n注文書が REST APIという名の\n配膳ロボットに乗って 厨房へ向かう！\n(ﾋﾟｺｰﾝ!)"
+            node: 'node-python',
+            title: '3. バックエンド：リクエストの受信とルーティング (Python)',
+            text: 'バックエンド（ここではFastAPIやFlaskなどを想定）がリクエストを受け取ります。\n\nURLのパス (\'/api/generate-idea\') に対応する関数が実行されます。\n送られてきたJSONデータを受け取り、不正な値が入っていないか（バリデーション）を確認します。',
+            file: 'Backend: main.py (FastAPIの例)',
+            code: `<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI, HTTPException\n<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel\n\napp = <span class="fn">FastAPI</span>()\n\n<span class="kw">class</span> <span class="fn">IdeaRequest</span>(BaseModel):\n    prompt: <span class="kw">str</span>\n\n<span class="com"># エンドポイントの定義</span>\n@app.post(<span class="str">"/api/generate-idea"</span>)\n<span class="kw">async def</span> <span class="fn">generate_idea_route</span>(request: IdeaRequest):\n    user_prompt = request.prompt\n    <span class="kw">if not</span> user_prompt:\n        <span class="kw">raise</span> <span class="fn">HTTPException</span>(status_code=<span class="str">400</span>, detail=<span class="str">"Prompt is empty"</span>)\n        \n    <span class="com"># 次の処理へ...</span>`
         },
         {
-            nodeId: "node-api",
-            text: "【Step 3: バックエンド】\n厨房の料理長（Python）が 注文を受付！\n「この注文は正しいな！」"
+            node: 'node-db',
+            title: '4. データベース：履歴の保存や設定の読み込み (SQL)',
+            text: '必要に応じて、データベースと通信を行います。\n\n例えば、「ユーザーが過去にどんなプロンプトを実行したか」をログとして記録 (INSERT) したり、「APIキー」や「ユーザー設定」を読み込んだり (SELECT) します。',
+            file: 'Backend: main.py (Database処理)',
+            code: `<span class="kw">import</span> sqlite3 <span class="com"># または Oracle, PostgreSQLなど</span>\n\n<span class="kw">def</span> <span class="fn">save_log_to_db</span>(prompt_text):\n    conn = sqlite3.<span class="fn">connect</span>(<span class="str">'app.db'</span>)\n    cursor = conn.<span class="fn">cursor</span>()\n    \n    <span class="com"># 実行履歴をDBに書き込む処理</span>\n    cursor.<span class="fn">execute</span>(\n        <span class="str">"INSERT INTO logs (prompt, created_at) VALUES (?, datetime('now'))"</span>,\n        (prompt_text,)\n    )\n    conn.<span class="fn">commit</span>()\n    conn.<span class="fn">close</span>()`
         },
         {
-            nodeId: "node-db",
-            text: "【Step 4: データベース】\n料理長は 超高級冷凍庫(Oracle)に\n過去のデータを 取りに行った。\nデータが 壊れずに取り出せた！"
+            node: 'node-ai',
+            title: '5. 外部API：AIモデルの呼び出し (Google AI Studio)',
+            text: 'バックエンドから、さらに外部のサービス（Google AI Studio など）のAPIを叩きます。\n\nSDK（ライブラリ）を使用して、AIモデルにプロンプトを渡し、処理結果が生成されるのを待ちます。重い処理は外部のサーバーに任せるのが現代のWebアプリの基本です。',
+            file: 'Backend: ai_service.py',
+            code: `<span class="kw">import</span> google.generativeai <span class="kw">as</span> genai\n<span class="kw">import</span> os\n\n<span class="fn">genai.configure</span>(api_key=os.environ[<span class="str">"GEMINI_API_KEY"</span>])\n\n<span class="kw">def</span> <span class="fn">call_gemini_api</span>(prompt_text):\n    <span class="com"># モデルの初期化</span>\n    model = genai.<span class="fn">GenerativeModel</span>(<span class="str">'gemini-1.5-pro'</span>)\n    \n    <span class="com"># AIにリクエストを送信し、結果を待つ</span>\n    response = model.<span class="fn">generate_content</span>(prompt_text)\n    \n    <span class="kw">return</span> response.text`
         },
         {
-            nodeId: "node-ai",
-            text: "【Step 5: 外部API (AIモデル)】\n「要約はワシには無理じゃ！」\n料理長は 外部の専門家(Google AI Studio)に\n電話で 処理を外注した！"
+            node: 'node-python',
+            title: '6. バックエンド：レスポンスの返却 (Python)',
+            text: 'AIから結果を受け取ったバックエンドは、そのデータをフロントエンドが扱いやすい形（JSONなど）に整形し直します。\n\n成功を示すステータスコード（通常は200 OK）と共に、HTTPレスポンスとしてブラウザに送り返します。',
+            file: 'Backend: main.py (レスポンス部分)',
+            code: `    <span class="com"># Step 5の関数を呼び出し、結果を取得</span>\n    ai_result = <span class="fn">call_gemini_api</span>(user_prompt)\n    \n    <span class="com"># フロントエンドへJSON形式で結果を返す</span>\n    <span class="kw">return</span> {\n        <span class="str">"status"</span>: <span class="str">"success"</span>,\n        <span class="str">"data"</span>: {\n            <span class="str">"generated_text"</span>: ai_result\n        }\n    }`
         },
         {
-            nodeId: "node-api",
-            text: "【Step 6: レスポンス】\n専門家から 要約結果が返ってきた！\n料理長は データを綺麗に盛り付け直し\nステータス200(OK)と共に 客席へ返却した！"
-        },
-        {
-            nodeId: "node-front",
-            text: "【Step 7: 画面更新】\nViteで最適化されたフロントエンドが\n瞬時に 画面を書き換えた！\n\n「お待たせしました！」\nクエスト・クリア！"
+            node: 'node-react',
+            title: '7. フロントエンド：画面の更新 (React/JSX)',
+            text: '待機していたフロントエンドの fetch 処理が完了し、データを受け取ります。\n\n受け取ったデータを元にReactの状態 (State) を更新します。\nStateが更新されると、Reactが自動的に再レンダリングを行い、画面上にAIの回答が表示されます。これで一連の処理が完了です。',
+            file: 'Frontend: App.jsx (状態更新部分)',
+            code: `  <span class="com">// Step 2の続き: レスポンスをJSONとして解釈</span>\n  <span class="kw">const</span> resultData = <span class="kw">await</span> response.<span class="fn">json</span>();\n\n  <span class="kw">if</span> (resultData.status === <span class="str">'success'</span>) {\n    <span class="com">// Stateを更新し、画面にテキストを表示</span>\n    <span class="fn">setResultText</span>(resultData.data.generated_text);\n  } <span class="kw">else</span> {\n    <span class="fn">setError</span>(<span class="str">'エラーが発生しました'</span>);\n  }\n} <span class="kw">catch</span> (err) {\n  <span class="fn">setError</span>(err.message);\n} <span class="kw">finally</span> {\n  <span class="com">// ローディングUIを消す</span>\n  <span class="fn">setIsLoading</span>(<span class="kw">false</span>);\n}`
         }
     ];
 
     let currentStep = 0;
-    let isTyping = false;
-    const dialogText = document.getElementById("dialog-text");
-    const cursor = document.getElementById("cursor");
-    const nextBtn = document.getElementById("next-btn");
-
-    // 全ノードのアクティブ状態を解除する関数
-    function clearNodes() {
-        document.querySelectorAll('.node').forEach(node => {
-            node.classList.remove('active');
-        });
-    }
-
-    // 文字送りアニメーション（タイプライター効果）
-    function typeWriter(text, i, callback) {
-        if (i < text.length) {
-            dialogText.innerHTML = text.substring(0, i + 1).replace(/\n/g, '<br>');
-            setTimeout(() => typeWriter(text, i + 1, callback), 30); // 表示スピード
-        } else {
-            callback();
-        }
-    }
-
-    // シナリオを1つ進める関数
-    function advanceScenario() {
-        if (isTyping) return; // 文字送り中は無視
-
-        if (currentStep >= scenario.length) {
-            currentStep = 0; // 最後まで行ったらループ
-        }
-
-        const stepData = scenario[currentStep];
-        
-        // 画面のノードをハイライト
-        clearNodes();
-        if (stepData.nodeId) {
-            document.getElementById(stepData.nodeId).classList.add('active');
-        }
-
-        // テキスト表示
-        dialogText.innerHTML = "";
-        cursor.style.display = "none";
-        isTyping = true;
-        nextBtn.style.opacity = "0.5";
-
-        typeWriter(stepData.text, 0, () => {
-            isTyping = false;
-            cursor.style.display = "inline-block";
-            nextBtn.style.opacity = "1";
-            currentStep++;
-            
-            if(currentStep >= scenario.length) {
-                nextBtn.innerText = "■ はじめから";
-            } else {
-                nextBtn.innerText = "▼ つぎへ (A)";
-            }
-        });
-    }
-
-    // 初期化とイベントリスナー設定
-    nextBtn.addEventListener('click', advanceScenario);
     
-    // 最初のステップを表示
-    advanceScenario();
+    const elements = {
+        react: document.getElementById('node-react'),
+        network: document.getElementById('node-network'),
+        python: document.getElementById('node-python'),
+        db: document.getElementById('node-db'),
+        ai: document.getElementById('node-ai'),
+        title: document.getElementById('step-title'),
+        text: document.getElementById('step-text'),
+        codeHeader: document.getElementById('code-header'),
+        codeContent: document.getElementById('code-content'),
+        prevBtn: document.getElementById('prev-btn'),
+        nextBtn: document.getElementById('next-btn')
+    };
 
+    function clearNodes() {
+        ['react', 'network', 'python', 'db', 'ai'].forEach(id => {
+            elements[id].classList.remove('active');
+        });
+    }
+
+    function renderStep() {
+        const step = steps[currentStep];
+        
+        clearNodes();
+        if(elements[step.node.replace('node-', '')]) {
+            elements[step.node.replace('node-', '')].classList.add('active');
+        }
+
+        elements.title.textContent = step.title;
+        elements.text.textContent = step.text;
+        elements.codeHeader.textContent = step.file;
+        elements.codeContent.innerHTML = step.code;
+
+        elements.prevBtn.disabled = currentStep === 0;
+        elements.nextBtn.disabled = currentStep === steps.length - 1;
+    }
+
+    elements.prevBtn.addEventListener('click', () => {
+        if (currentStep > 0) {
+            currentStep--;
+            renderStep();
+        }
+    });
+
+    elements.nextBtn.addEventListener('click', () => {
+        if (currentStep < steps.length - 1) {
+            currentStep++;
+            renderStep();
+        }
+    });
+
+    // 初期描画
+    renderStep();
 </script>
 </body>
 </html>
