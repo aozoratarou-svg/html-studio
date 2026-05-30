@@ -1,301 +1,277 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Webアプリケーション 処理フロー解説</title>
-    <style>
-        :root {
-            --bg-dark: #1e1e1e;
-            --panel-bg: #2d2d2d;
-            --text-main: #d4d4d4;
-            --accent: #007acc;
-            --highlight: #4caf50;
-            --code-bg: #1e1e1e;
-            --code-keyword: #569cd6;
-            --code-string: #ce9178;
-            --code-comment: #6a9955;
-            --code-func: #dcdcaa;
-        }
-
-        body {
-            margin: 0;
-            padding: 20px;
-            background-color: var(--bg-dark);
-            color: var(--text-main);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            box-sizing: border-box;
-        }
-
-        h1 {
-            font-size: 20px;
-            margin-top: 0;
-            color: #fff;
-            border-bottom: 1px solid #444;
-            padding-bottom: 10px;
-        }
-
-        .container {
-            display: flex;
-            gap: 20px;
-            flex-grow: 1;
-            overflow: hidden;
-        }
-
-        /* 左側：フロー解説パネル */
-        .description-panel {
-            flex: 1;
-            background-color: var(--panel-bg);
-            border-radius: 8px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        }
-
-        .flow-diagram {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
-            padding: 15px;
-            background-color: #222;
-            border-radius: 6px;
-        }
-
-        .flow-node {
-            padding: 8px 12px;
-            border-radius: 4px;
-            border: 2px solid #555;
-            font-size: 14px;
-            color: #888;
-            text-align: center;
-            transition: all 0.3s;
-        }
-
-        .flow-node.active {
-            border-color: var(--highlight);
-            color: #fff;
-            background-color: rgba(76, 175, 80, 0.2);
-            font-weight: bold;
-        }
-
-        .step-title {
-            font-size: 18px;
-            color: var(--accent);
-            margin-bottom: 10px;
-        }
-
-        .step-text {
-            font-size: 15px;
-            line-height: 1.6;
-            white-space: pre-wrap;
-            flex-grow: 1;
-        }
-
-        /* 右側：コード表示パネル */
-        .code-panel {
-            flex: 1.2;
-            background-color: var(--code-bg);
-            border-radius: 8px;
-            border: 1px solid #444;
-            padding: 20px;
-            overflow-y: auto;
-            font-family: 'Consolas', 'Courier New', monospace;
-            font-size: 14px;
-            line-height: 1.5;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
-        }
-
-        .code-header {
-            color: #888;
-            border-bottom: 1px solid #444;
-            padding-bottom: 5px;
-            margin-bottom: 15px;
-            font-size: 12px;
-            text-transform: uppercase;
-        }
-
-        pre {
-            margin: 0;
-            white-space: pre-wrap;
-        }
-
-        .kw { color: var(--code-keyword); }
-        .str { color: var(--code-string); }
-        .com { color: var(--code-comment); }
-        .fn { color: var(--code-func); }
-
-        /* コントロール部分 */
-        .controls {
-            margin-top: 20px;
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }
-
-        button {
-            background-color: var(--accent);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: bold;
-            transition: background-color 0.2s;
-        }
-
-        button:hover {
-            background-color: #005f9e;
-        }
-
-        button:disabled {
-            background-color: #555;
-            cursor: not-allowed;
-            color: #888;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCP Foundation - 構造理解ターミナル</title>
+<style>
+    :root {
+        --bg-color: #0d0d0d;
+        --text-color: #dcdcdc;
+        --accent-red: #8b0000;
+        --border-color: #333;
+        --terminal-green: #00ff41;
+    }
+    body {
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        font-family: 'Courier New', Courier, monospace;
+        line-height: 1.6;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+    }
+    .terminal-container {
+        width: 100%;
+        max-width: 900px;
+        border: 1px solid var(--border-color);
+        background: #111;
+        box-shadow: 0 0 15px rgba(0,0,0,0.8);
+        padding: 20px;
+        position: relative;
+    }
+    .header {
+        text-align: center;
+        border-bottom: 2px solid var(--accent-red);
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+    }
+    .logo {
+        font-size: 2.5em;
+        font-weight: bold;
+        color: #fff;
+        letter-spacing: 2px;
+        margin: 0;
+    }
+    .motto {
+        font-size: 0.9em;
+        color: #888;
+    }
+    .warning-box {
+        border: 1px dashed var(--accent-red);
+        background: rgba(139, 0, 0, 0.1);
+        color: #ff4c4c;
+        padding: 15px;
+        text-align: center;
+        font-weight: bold;
+        margin-bottom: 20px;
+    }
+    /* Tab System */
+    .tabs {
+        display: flex;
+        flex-wrap: wrap;
+        border-bottom: 1px solid var(--border-color);
+        margin-bottom: 20px;
+    }
+    .tab-btn {
+        background: #1a1a1a;
+        color: #888;
+        border: 1px solid var(--border-color);
+        border-bottom: none;
+        padding: 10px 15px;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 0.9em;
+        transition: 0.3s;
+    }
+    .tab-btn:hover {
+        background: #2a2a2a;
+        color: #fff;
+    }
+    .tab-btn.active {
+        background: var(--accent-red);
+        color: #fff;
+        border-color: var(--accent-red);
+        font-weight: bold;
+    }
+    .tab-content {
+        display: none;
+        animation: fadeIn 0.3s ease-in-out;
+    }
+    .tab-content.active {
+        display: block;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    h2 {
+        color: #fff;
+        border-left: 5px solid var(--accent-red);
+        padding-left: 10px;
+        font-size: 1.2em;
+    }
+    h3 {
+        color: #aaa;
+        font-size: 1em;
+        margin-top: 20px;
+    }
+    .box {
+        background: #1a1a1a;
+        border: 1px solid var(--border-color);
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+    .redacted {
+        background-color: var(--text-color);
+        color: var(--text-color);
+        user-select: none;
+        padding: 0 2px;
+    }
+    .green-text {
+        color: var(--terminal-green);
+        font-weight: bold;
+    }
+    ul {
+        padding-left: 20px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
+    th, td {
+        border: 1px solid var(--border-color);
+        padding: 8px;
+        text-align: left;
+        font-size: 0.9em;
+    }
+    th {
+        background-color: #222;
+        color: #fff;
+    }
+</style>
 </head>
 <body>
 
-    <h1>処理フロー：フロントエンド(React) ⇔ バックエンド(Python) ⇔ API</h1>
+<div class="terminal-container">
+    <div class="header">
+        <h1 class="logo">SCP FOUNDATION</h1>
+        <div class="motto">SECURE. CONTAIN. PROTECT.</div>
+    </div>
 
-    <div class="container">
-        <div class="description-panel">
-            <div class="flow-diagram">
-                <div id="node-react" class="flow-node">React (ブラウザ)</div>
-                <div id="node-network" class="flow-node">HTTP通信</div>
-                <div id="node-python" class="flow-node">Python API</div>
-                <div id="node-db" class="flow-node">Database</div>
-                <div id="node-ai" class="flow-node">AI Studio</div>
-            </div>
-            
-            <div id="step-title" class="step-title"></div>
-            <div id="step-text" class="step-text"></div>
-        </div>
+    <div class="warning-box">
+        [警告] 認可されていないアクセスが検知されました。<br>
+        プロトコルに従い、メタ視点を含む「構造理解用データ」を展開します。
+    </div>
 
-        <div class="code-panel">
-            <div id="code-header" class="code-header"></div>
-            <pre id="code-content"></pre>
+    <div class="tabs">
+        <button class="tab-btn active" onclick="openTab(event, 'meta')">1. 現実の構造 (メタ視点)</button>
+        <button class="tab-btn" onclick="openTab(event, 'world')">2. 財団の構造 (世界観)</button>
+        <button class="tab-btn" onclick="openTab(event, 'manual')">3. 報告書の取扱説明</button>
+        <button class="tab-btn" onclick="openTab(event, 'archives')">4. 代表的アーカイブ</button>
+    </div>
+
+    <!-- 1. 現実の構造 (メタ視点) -->
+    <div id="meta" class="tab-content active">
+        <h2>🌐 サイトとしての「SCP財団」の全体像</h2>
+        <p>現実世界におけるSCP財団は、Wikidotというサービス上に構築された<b>「共同創作（シェアード・ワールド）サイト」</b>です。</p>
+        <div class="box">
+            <h3>運営の仕組み</h3>
+            <ul>
+                <li><b>オープンソースの怪談：</b> クリエイティブ・コモンズ（CC BY-SA 3.0）のライセンス下で運営されており、ルールを守れば誰でも商用・非商用問わず二次創作（ゲーム、動画、イラスト）が可能です。</li>
+                <li><b>厳しい品質管理：</b> 誰でも記事を投稿できますが、サイトメンバーによる「Vote（投票）システム」があり、一定以上の低評価（マイナス）を受けた記事は自動的に削除されます。これにより高いクオリティが維持されています。</li>
+                <li><b>国際的な広がり：</b> 英語の本家サイトに加え、日本（JP）、中国（CN）、韓国（KO）、ロシア（RU）など独自の支部が存在し、相互に翻訳が行われています。</li>
+            </ul>
         </div>
     </div>
 
-    <div class="controls">
-        <button id="prev-btn" disabled>◀ 前の処理</button>
-        <button id="next-btn">次の処理 ▶</button>
+    <!-- 2. 財団の構造 (世界観) -->
+    <div id="world" class="tab-content">
+        <h2>🏢 フィクションとしての「SCP財団」</h2>
+        <p>物語の中では、超常的な存在を秘密裏に管理し、人類の正常な生活を守る超法規的・世界的組織として描かれます。</p>
+        <div class="box">
+            <h3>オブジェクトクラス（収容難易度）</h3>
+            <table>
+                <tr><th>クラス</th><th>意味（箱のテスト）</th></tr>
+                <tr><td><b>Safe</b> (セーフ)</td><td>箱に入れて鍵をかければ安全に放置できるもの。</td></tr>
+                <tr><td><b>Euclid</b> (ユークリッド)</td><td>箱に入れても何が起こるか予測できないもの。意思を持つ存在など。</td></tr>
+                <tr><td><b>Keter</b> (ケテル)</td><td>箱を壊して出てくる、あるいは箱に収まらないもの。収容が極めて困難。</td></tr>
+                <tr><td><b>Thaumiel</b> (タウミエル)</td><td>他のSCPを収容するために財団が利用している「箱そのもの」。</td></tr>
+            </table>
+        </div>
+        <div class="box">
+            <h3>主要な構成員</h3>
+            <ul>
+                <li><b>O5評議会：</b> 財団の最高意思決定機関。13人の謎に包まれた人物たち。</li>
+                <li><b>研究員 / 博士：</b> オブジェクトを研究する人々。（例：悪ふざけが多いブライト博士など、名物キャラが存在）</li>
+                <li><b>機動部隊 (MTF)：</b> 収容違反や新しいSCPの確保に向かう重武装のエリート戦闘部隊。</li>
+                <li><b>Dクラス職員：</b> 危険な実験に投入される使い捨ての要員。主に死刑囚。</li>
+            </ul>
+        </div>
     </div>
+
+    <!-- 3. 報告書の取扱説明 -->
+    <div id="manual" class="tab-content">
+        <h2>📄 SCP報告書の読み方（フォーマット）</h2>
+        <p>すべてのSCP記事は、以下の統一された「科学的な機密文書」のフォーマットで書かれます。この無機質さが恐怖を引き立てます。</p>
+        <div class="box">
+            <h3>構成要素</h3>
+            <ul>
+                <li><b>アイテム番号：</b> SCP-○○○（通し番号）</li>
+                <li><b>オブジェクトクラス：</b> Safe / Euclid / Keter 等</li>
+                <li><b>特別収容プロトコル：</b> 「対象をどのように保管し、逃がさないようにするか」の手順。ここで「なぜこんな厳重な手順が必要なのか？」と読者の興味を惹きます。</li>
+                <li><b>説明：</b> そのSCPが「何者で、どんな異常性を持っているか」の客観的な事実。</li>
+                <li><b>補遺 / 実験記録：</b> 音声ログ、インタビュー記録、Dクラスを使った残酷な実験の結果など。物語の「オチ」や「核心」がここに書かれます。</li>
+            </ul>
+        </div>
+        <div class="box">
+            <h3>演出ギミック</h3>
+            <p>記事内には、あえて情報を隠すことで想像力を刺激する手法が使われます。</p>
+            <p><span class="green-text">[データ削除済]</span> や <span class="redacted">黒塗り(███)</span> は、情報災害（知るだけで死ぬ情報）を防ぐため、またはあまりにも凄惨な事態を読者に想像させるための意図的な空白です。</p>
+        </div>
+    </div>
+
+    <!-- 4. 代表的アーカイブ -->
+    <div id="archives" class="tab-content">
+        <h2>💀 構造を理解するための代表的SCP</h2>
+        <p>初心者がSCPの雰囲気や物語のバリエーションを掴むのに最適な3つの報告書です。</p>
+        
+        <div class="box">
+            <h3 style="color: #fff; margin-top: 0;">SCP-173「彫刻 - オリジナル」 (Class: Euclid)</h3>
+            <p><b>【概要】</b> コンクリートと鉄筋でできた不気味な彫刻。普段は動かないが、<b>「誰かが視線を外した（瞬きをした）瞬間」</b>に超高速で移動し、首をへし折ってくる。<br>
+            <b>【メタ視点】</b> 2007年に海外掲示板に投稿された記念すべき「最初のSCP」。ここからすべてが始まりました。「常に3人1組で清掃し、瞬きする時は宣言する」という収容プロトコルが秀逸。</p>
+        </div>
+
+        <div class="box">
+            <h3 style="color: #fff; margin-top: 0;">SCP-096「シャイガイ」 (Class: Euclid)</h3>
+            <p><b>【概要】</b> 痩せこけた青白い人型の怪物。普段はおとなしく泣いているが、その<b>「顔」を直接、または写真や映像で見てしまう</b>と発狂し、地球上のどこに逃げても顔を見た者を殺すまで追跡してくる。<br>
+            <b>【メタ視点】</b> 「どうやってこの事実（顔を見たら死ぬ）が判明したのか？」という実験記録の生々しさや、パニックホラー的な展開を作るのに非常に適しているため、ゲームや動画で大人気の存在。</p>
+        </div>
+
+        <div class="box">
+            <h3 style="color: #fff; margin-top: 0;">SCP-3008「完全に普通の、ありきたりな古いイケア」 (Class: Euclid)</h3>
+            <p><b>【概要】</b> 外見は普通のIKEAの店舗だが、中に入ると空間が無限に広がっており、出口が消失する。中には顔の無い巨大な店員（スタッフ）が徘徊しており、夜になると客を襲う。中に閉じ込められた人々が部族を作ってサバイバルしている。<br>
+            <b>【メタ視点】</b> 「化け物」ではなく「空間」が異常であるというパターン。報告書の中に「閉じ込められた一般人の手記」が添付されており、一つのSFサバイバル小説として完成されています。</p>
+        </div>
+    </div>
+
+</div>
 
 <script>
-    const steps = [
-        {
-            node: 'node-react',
-            title: '1. フロントエンド：イベントの発火 (React/JSX)',
-            text: 'ユーザーがブラウザ上でボタンをクリックした瞬間の処理です。\n\nReactコンポーネント内の onClick イベントが発火し、非同期関数 (async/await) が呼び出されます。\nまずは多重送信を防ぐために、UIのローディング状態を true に変更します。',
-            file: 'Frontend: App.jsx',
-            code: `<span class="kw">const</span> <span class="fn">handleGenerate</span> = <span class="kw">async</span> () => {\n  <span class="com">// ローディングUIを表示</span>\n  <span class="fn">setIsLoading</span>(<span class="kw">true</span>);\n  <span class="fn">setError</span>(<span class="kw">null</span>);\n\n  <span class="com">// 入力値の準備</span>\n  <span class="kw">const</span> payload = { prompt: inputText };\n\n  <span class="com">// 次の処理（fetch）へ進む...</span>\n};`
-        },
-        {
-            node: 'node-network',
-            title: '2. ネットワーク：HTTPリクエストの送信 (Fetch API)',
-            text: 'フロントエンドから、バックエンド（Pythonサーバーなど）のエンドポイントに向けてデータを送信します。\n\nfetch APIなどを使い、JSON形式に文字列化 (JSON.stringify) したデータを POST メソッドで送ります。\nここで処理は一旦バックエンドに引き継がれ、React側はレスポンスが返ってくるのを待機 (await) します。',
-            file: 'Frontend: App.jsx (fetch部分)',
-            code: `<span class="kw">try</span> {\n  <span class="kw">const</span> response = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'/api/generate-idea'</span>, {\n    method: <span class="str">'POST'</span>,\n    headers: {\n      <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span>\n    },\n    body: JSON.<span class="fn">stringify</span>(payload)\n  });\n\n  <span class="com">// バックエンドからの返答を待機中...</span>\n}`
-        },
-        {
-            node: 'node-python',
-            title: '3. バックエンド：リクエストの受信とルーティング (Python)',
-            text: 'バックエンド（ここではFastAPIやFlaskなどを想定）がリクエストを受け取ります。\n\nURLのパス (\'/api/generate-idea\') に対応する関数が実行されます。\n送られてきたJSONデータを受け取り、不正な値が入っていないか（バリデーション）を確認します。',
-            file: 'Backend: main.py (FastAPIの例)',
-            code: `<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI, HTTPException\n<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel\n\napp = <span class="fn">FastAPI</span>()\n\n<span class="kw">class</span> <span class="fn">IdeaRequest</span>(BaseModel):\n    prompt: <span class="kw">str</span>\n\n<span class="com"># エンドポイントの定義</span>\n@app.post(<span class="str">"/api/generate-idea"</span>)\n<span class="kw">async def</span> <span class="fn">generate_idea_route</span>(request: IdeaRequest):\n    user_prompt = request.prompt\n    <span class="kw">if not</span> user_prompt:\n        <span class="kw">raise</span> <span class="fn">HTTPException</span>(status_code=<span class="str">400</span>, detail=<span class="str">"Prompt is empty"</span>)\n        \n    <span class="com"># 次の処理へ...</span>`
-        },
-        {
-            node: 'node-db',
-            title: '4. データベース：履歴の保存や設定の読み込み (SQL)',
-            text: '必要に応じて、データベースと通信を行います。\n\n例えば、「ユーザーが過去にどんなプロンプトを実行したか」をログとして記録 (INSERT) したり、「APIキー」や「ユーザー設定」を読み込んだり (SELECT) します。',
-            file: 'Backend: main.py (Database処理)',
-            code: `<span class="kw">import</span> sqlite3 <span class="com"># または Oracle, PostgreSQLなど</span>\n\n<span class="kw">def</span> <span class="fn">save_log_to_db</span>(prompt_text):\n    conn = sqlite3.<span class="fn">connect</span>(<span class="str">'app.db'</span>)\n    cursor = conn.<span class="fn">cursor</span>()\n    \n    <span class="com"># 実行履歴をDBに書き込む処理</span>\n    cursor.<span class="fn">execute</span>(\n        <span class="str">"INSERT INTO logs (prompt, created_at) VALUES (?, datetime('now'))"</span>,\n        (prompt_text,)\n    )\n    conn.<span class="fn">commit</span>()\n    conn.<span class="fn">close</span>()`
-        },
-        {
-            node: 'node-ai',
-            title: '5. 外部API：AIモデルの呼び出し (Google AI Studio)',
-            text: 'バックエンドから、さらに外部のサービス（Google AI Studio など）のAPIを叩きます。\n\nSDK（ライブラリ）を使用して、AIモデルにプロンプトを渡し、処理結果が生成されるのを待ちます。重い処理は外部のサーバーに任せるのが現代のWebアプリの基本です。',
-            file: 'Backend: ai_service.py',
-            code: `<span class="kw">import</span> google.generativeai <span class="kw">as</span> genai\n<span class="kw">import</span> os\n\n<span class="fn">genai.configure</span>(api_key=os.environ[<span class="str">"GEMINI_API_KEY"</span>])\n\n<span class="kw">def</span> <span class="fn">call_gemini_api</span>(prompt_text):\n    <span class="com"># モデルの初期化</span>\n    model = genai.<span class="fn">GenerativeModel</span>(<span class="str">'gemini-1.5-pro'</span>)\n    \n    <span class="com"># AIにリクエストを送信し、結果を待つ</span>\n    response = model.<span class="fn">generate_content</span>(prompt_text)\n    \n    <span class="kw">return</span> response.text`
-        },
-        {
-            node: 'node-python',
-            title: '6. バックエンド：レスポンスの返却 (Python)',
-            text: 'AIから結果を受け取ったバックエンドは、そのデータをフロントエンドが扱いやすい形（JSONなど）に整形し直します。\n\n成功を示すステータスコード（通常は200 OK）と共に、HTTPレスポンスとしてブラウザに送り返します。',
-            file: 'Backend: main.py (レスポンス部分)',
-            code: `    <span class="com"># Step 5の関数を呼び出し、結果を取得</span>\n    ai_result = <span class="fn">call_gemini_api</span>(user_prompt)\n    \n    <span class="com"># フロントエンドへJSON形式で結果を返す</span>\n    <span class="kw">return</span> {\n        <span class="str">"status"</span>: <span class="str">"success"</span>,\n        <span class="str">"data"</span>: {\n            <span class="str">"generated_text"</span>: ai_result\n        }\n    }`
-        },
-        {
-            node: 'node-react',
-            title: '7. フロントエンド：画面の更新 (React/JSX)',
-            text: '待機していたフロントエンドの fetch 処理が完了し、データを受け取ります。\n\n受け取ったデータを元にReactの状態 (State) を更新します。\nStateが更新されると、Reactが自動的に再レンダリングを行い、画面上にAIの回答が表示されます。これで一連の処理が完了です。',
-            file: 'Frontend: App.jsx (状態更新部分)',
-            code: `  <span class="com">// Step 2の続き: レスポンスをJSONとして解釈</span>\n  <span class="kw">const</span> resultData = <span class="kw">await</span> response.<span class="fn">json</span>();\n\n  <span class="kw">if</span> (resultData.status === <span class="str">'success'</span>) {\n    <span class="com">// Stateを更新し、画面にテキストを表示</span>\n    <span class="fn">setResultText</span>(resultData.data.generated_text);\n  } <span class="kw">else</span> {\n    <span class="fn">setError</span>(<span class="str">'エラーが発生しました'</span>);\n  }\n} <span class="kw">catch</span> (err) {\n  <span class="fn">setError</span>(err.message);\n} <span class="kw">finally</span> {\n  <span class="com">// ローディングUIを消す</span>\n  <span class="fn">setIsLoading</span>(<span class="kw">false</span>);\n}`
-        }
-    ];
-
-    let currentStep = 0;
-    
-    const elements = {
-        react: document.getElementById('node-react'),
-        network: document.getElementById('node-network'),
-        python: document.getElementById('node-python'),
-        db: document.getElementById('node-db'),
-        ai: document.getElementById('node-ai'),
-        title: document.getElementById('step-title'),
-        text: document.getElementById('step-text'),
-        codeHeader: document.getElementById('code-header'),
-        codeContent: document.getElementById('code-content'),
-        prevBtn: document.getElementById('prev-btn'),
-        nextBtn: document.getElementById('next-btn')
-    };
-
-    function clearNodes() {
-        ['react', 'network', 'python', 'db', 'ai'].forEach(id => {
-            elements[id].classList.remove('active');
-        });
-    }
-
-    function renderStep() {
-        const step = steps[currentStep];
+    function openTab(evt, tabName) {
+        var i, tabcontent, tablinks;
         
-        clearNodes();
-        if(elements[step.node.replace('node-', '')]) {
-            elements[step.node.replace('node-', '')].classList.add('active');
+        // 全てのコンテンツを非表示
+        tabcontent = document.getElementsByClassName("tab-content");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+            tabcontent[i].classList.remove("active");
         }
-
-        elements.title.textContent = step.title;
-        elements.text.textContent = step.text;
-        elements.codeHeader.textContent = step.file;
-        elements.codeContent.innerHTML = step.code;
-
-        elements.prevBtn.disabled = currentStep === 0;
-        elements.nextBtn.disabled = currentStep === steps.length - 1;
+        
+        // 全てのタブの非アクティブ化
+        tablinks = document.getElementsByClassName("tab-btn");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].classList.remove("active");
+        }
+        
+        // 選択されたタブを表示し、ボタンをアクティブに
+        document.getElementById(tabName).style.display = "block";
+        document.getElementById(tabName).classList.add("active");
+        evt.currentTarget.classList.add("active");
     }
-
-    elements.prevBtn.addEventListener('click', () => {
-        if (currentStep > 0) {
-            currentStep--;
-            renderStep();
-        }
-    });
-
-    elements.nextBtn.addEventListener('click', () => {
-        if (currentStep < steps.length - 1) {
-            currentStep++;
-            renderStep();
-        }
-    });
-
-    // 初期描画
-    renderStep();
 </script>
+
 </body>
 </html>
