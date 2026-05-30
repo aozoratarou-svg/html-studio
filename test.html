@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SCP Foundation - 構造理解ターミナル</title>
+<title>SCP Foundation - 構造理解ターミナル v2.1 (Mobile Ready)</title>
 <style>
     :root {
         --bg-color: #0d0d0d;
@@ -11,6 +11,9 @@
         --accent-red: #8b0000;
         --border-color: #333;
         --terminal-green: #00ff41;
+        --keter-red: #dc3545;
+        --euclid-yellow: #ffc107;
+        --safe-green: #28a745;
     }
     * {
         box-sizing: border-box;
@@ -21,19 +24,24 @@
         font-family: 'Courier New', Courier, monospace;
         line-height: 1.6;
         margin: 0;
-        padding: 20px;
+        padding: 10px; /* モバイル向けに余白を少し縮小 */
         display: flex;
         justify-content: center;
     }
     .terminal-container {
         width: 100%;
-        max-width: 1000px;
+        max-width: 1200px;
         border: 1px solid var(--border-color);
         background: #111;
         box-shadow: 0 0 15px rgba(0,0,0,0.8);
-        padding: 20px;
+        padding: 15px;
         position: relative;
     }
+    @media (min-width: 768px) {
+        body { padding: 20px; }
+        .terminal-container { padding: 20px; }
+    }
+    
     .header {
         text-align: center;
         border-bottom: 2px solid var(--accent-red);
@@ -41,11 +49,14 @@
         margin-bottom: 20px;
     }
     .logo {
-        font-size: 2.5em;
+        font-size: 2em;
         font-weight: bold;
         color: #fff;
         letter-spacing: 2px;
         margin: 0;
+    }
+    @media (min-width: 768px) {
+        .logo { font-size: 2.5em; }
     }
     .motto {
         font-size: 0.9em;
@@ -59,6 +70,7 @@
         text-align: center;
         font-weight: bold;
         margin-bottom: 20px;
+        font-size: 0.9em;
     }
     
     /* Tab System */
@@ -73,11 +85,20 @@
         color: #888;
         border: 1px solid var(--border-color);
         border-bottom: none;
-        padding: 10px 15px;
+        padding: 10px;
         cursor: pointer;
         font-family: inherit;
-        font-size: 0.9em;
+        font-size: 0.85em;
         transition: 0.3s;
+        flex-grow: 1; /* タブを均等に広げる */
+        text-align: center;
+    }
+    @media (min-width: 768px) {
+        .tab-btn {
+            flex-grow: 0;
+            padding: 10px 15px;
+            font-size: 0.9em;
+        }
     }
     .tab-btn:hover {
         background: #2a2a2a;
@@ -106,8 +127,10 @@
         color: #fff;
         border-left: 5px solid var(--accent-red);
         padding-left: 10px;
-        font-size: 1.2em;
+        font-size: 1.1em;
     }
+    @media (min-width: 768px) { h2 { font-size: 1.2em; } }
+    
     h3 {
         color: #aaa;
         font-size: 1em;
@@ -150,16 +173,35 @@
 
     /* --- Mind Map (Tree) Styles --- */
     .tree-container {
+        width: 100%;
         overflow-x: auto;
-        padding-bottom: 20px;
+        -webkit-overflow-scrolling: touch; /* iOSでの滑らかなスクロール */
+        padding-bottom: 30px;
         margin-top: 20px;
+        cursor: grab;
     }
+    .tree-container:active {
+        cursor: grabbing;
+    }
+    
+    /* 見切れ防止の要：max-contentで要素の幅を確保 */
+    .tree {
+        display: block;
+        width: max-content; 
+        padding: 0 10px;
+    }
+    /* 画面幅が十分に広いPCでのみ中央揃えにする */
+    @media (min-width: 1100px) {
+        .tree { margin: 0 auto; }
+    }
+
     .tree ul {
         display: flex;
-        justify-content: center;
+        /* モバイルで見切れないようjustify-content: centerは削除 */
         padding-top: 20px;
         position: relative;
         padding-left: 0;
+        margin: 0;
     }
     .tree li {
         display: flex;
@@ -167,10 +209,13 @@
         align-items: center;
         list-style-type: none;
         position: relative;
-        padding: 20px 10px 0 10px;
+        padding: 20px 4px 0 4px; /* モバイル向けに隙間を詰める */
+    }
+    @media (min-width: 768px) {
+        .tree li { padding: 20px 8px 0 8px; }
     }
     
-    /* Connectors */
+    /* Connectors (枝の線) */
     .tree li::before, .tree li::after {
         content: '';
         position: absolute;
@@ -217,13 +262,14 @@
         background: #151515;
         border: 1px solid #444;
         border-radius: 6px;
-        padding: 15px;
-        width: 220px;
+        padding: 12px; /* 少し縮小 */
+        width: 180px;  /* モバイル向けにスリム化 */
         box-shadow: 0 4px 8px rgba(0,0,0,0.5);
         text-align: left;
         transition: all 0.3s ease;
         position: relative;
         z-index: 2;
+        white-space: normal; /* 文字が折り返されるように */
     }
     .card-content:hover {
         border-color: var(--accent-red);
@@ -235,50 +281,83 @@
         color: #ddd;
         font-weight: bold;
         text-align: center;
-        width: 180px;
+        width: 160px;
         border-color: #666;
+        padding: 8px;
     }
     .card-root {
         background: rgba(139, 0, 0, 0.2);
         color: #fff;
         border: 1px solid var(--accent-red);
-        width: 280px;
+        width: 240px;
         text-align: center;
-        font-size: 1.1em;
+        font-size: 1.05em;
+    }
+    
+    /* PC表示の時は元のサイズに戻す */
+    @media (min-width: 768px) {
+        .card-content { width: 220px; padding: 15px; }
+        .card-category { width: 200px; padding: 15px; }
+        .card-root { width: 300px; font-size: 1.1em; }
     }
     
     /* Card Typography & Badges */
     .scp-title {
-        font-size: 1.2em;
+        font-size: 1.1em;
         font-weight: bold;
         color: #fff;
         border-bottom: 1px solid #333;
         padding-bottom: 5px;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
+        display: flex;
+        flex-direction: column; /* スマホでは縦並びに */
+        align-items: flex-start;
     }
+    @media (min-width: 768px) {
+        .scp-title {
+            font-size: 1.2em;
+            flex-direction: row; /* PCでは横並びに */
+            justify-content: space-between;
+            align-items: center;
+        }
+    }
+    
     .scp-subtitle {
-        font-size: 0.8em;
+        font-size: 0.75em;
         color: #888;
         display: block;
-        margin-top: -5px;
+        margin-top: 0;
         margin-bottom: 10px;
+        min-height: 2.6em;
     }
+    @media (min-width: 768px) {
+        .scp-subtitle { font-size: 0.8em; margin-top: -5px; }
+    }
+    
     .scp-desc {
-        font-size: 0.85em;
+        font-size: 0.8em;
         color: #ccc;
-        line-height: 1.5;
+        line-height: 1.4;
     }
+    @media (min-width: 768px) {
+        .scp-desc { font-size: 0.85em; line-height: 1.5; }
+    }
+    
     .badge {
         display: inline-block;
         padding: 2px 6px;
         border-radius: 3px;
-        font-size: 0.75em;
+        font-size: 0.7em;
         font-weight: bold;
-        margin-bottom: 10px;
+        margin-top: 4px; /* スマホ用にマージン追加 */
     }
-    .badge.safe { background: #28a745; color: #fff; }
-    .badge.euclid { background: #ffc107; color: #000; }
-    .badge.keter { background: #dc3545; color: #fff; }
+    @media (min-width: 768px) {
+        .badge { margin-top: 0; }
+    }
+    
+    .badge.safe { background: var(--safe-green); color: #fff; }
+    .badge.euclid { background: var(--euclid-yellow); color: #000; }
+    .badge.keter { background: var(--keter-red); color: #fff; }
 </style>
 </head>
 <body>
@@ -290,70 +369,45 @@
     </div>
 
     <div class="warning-box">
-        [警告] 認可されていないアクセスが検知されました。<br>
-        プロトコルに従い、メタ視点を含む「構造理解用データ」を展開します。
+        [警告] クリアランスレベル確認... 承認。<br>
+        プロトコルに従い、トップアーカイブおよびミーム災害データを含む構造を展開します。
     </div>
 
     <div class="tabs">
-        <button class="tab-btn active" onclick="openTab(event, 'meta')">1. 現実の構造 (メタ視点)</button>
-        <button class="tab-btn" onclick="openTab(event, 'world')">2. 財団の構造 (世界観)</button>
-        <button class="tab-btn" onclick="openTab(event, 'manual')">3. 報告書の取扱説明</button>
-        <button class="tab-btn" onclick="openTab(event, 'archives')">4. 代表的アーカイブ (Map)</button>
+        <button class="tab-btn" onclick="openTab(event, 'meta')">1. 現実の構造</button>
+        <button class="tab-btn" onclick="openTab(event, 'world')">2. 財団の構造</button>
+        <button class="tab-btn" onclick="openTab(event, 'manual')">3. 取扱説明</button>
+        <button class="tab-btn active" onclick="openTab(event, 'archives')">4. アーカイブ (Map)</button>
     </div>
 
-    <!-- 1. 現実の構造 (メタ視点) -->
-    <div id="meta" class="tab-content active">
+    <div id="meta" class="tab-content">
         <h2>🌐 サイトとしての「SCP財団」の全体像</h2>
         <p>現実世界におけるSCP財団は、Wikidotというサービス上に構築された<b>「共同創作（シェアード・ワールド）サイト」</b>です。</p>
         <div class="box">
             <h3>運営の仕組み</h3>
             <ul class="normal-list">
-                <li><b>オープンソースの怪談：</b> クリエイティブ・コモンズ（CC BY-SA 3.0）のライセンス下で運営されており、ルールを守れば誰でも商用・非商用問わず二次創作（ゲーム、動画、イラスト）が可能です。</li>
-                <li><b>厳しい品質管理：</b> 誰でも記事を投稿できますが、サイトメンバーによる「Vote（投票）システム」があり、一定以上の低評価（マイナス）を受けた記事は自動的に削除されます。これにより高いクオリティが維持されています。</li>
-                <li><b>国際的な広がり：</b> 英語の本家サイトに加え、日本（JP）、中国（CN）、韓国（KO）、ロシア（RU）など独自の支部が存在し、相互に翻訳が行われています。</li>
+                <li><b>オープンソースの怪談：</b> クリエイティブ・コモンズ（CC BY-SA 3.0）のライセンス下で運営されており、ルールを守れば誰でも商用・非商用問わず二次創作が可能です。</li>
+                <li><b>厳しい品質管理：</b> 誰でも記事を投稿できますが、サイトメンバーによる「Vote（投票）システム」があり、一定以上の低評価を受けた記事は自動的に削除されます。</li>
+                <li><b>国際的な広がり：</b> 英語の本家サイトに加え、日本（JP）、中国（CN）など独自の支部が存在し、相互に翻訳が行われています。</li>
             </ul>
         </div>
     </div>
 
-    <!-- 2. 財団の構造 (世界観) -->
     <div id="world" class="tab-content">
         <h2>🏢 フィクションとしての「SCP財団」</h2>
         <p>物語の中では、超常的な存在を秘密裏に管理し、人類の正常な生活を守る超法規的・世界的組織として描かれます。</p>
         <div class="box">
-            <h3>オブジェクトクラス（収容難易度）</h3>
-            <table>
-                <tr><th>クラス</th><th>意味（箱のテスト）</th></tr>
-                <tr><td><b>Safe</b> (セーフ)</td><td>箱に入れて鍵をかければ安全に放置できるもの。</td></tr>
-                <tr><td><b>Euclid</b> (ユークリッド)</td><td>箱に入れても何が起こるか予測できないもの。意思を持つ存在など。</td></tr>
-                <tr><td><b>Keter</b> (ケテル)</td><td>箱を壊して出てくる、あるいは箱に収まらないもの。収容が極めて困難。</td></tr>
-                <tr><td><b>Thaumiel</b> (タウミエル)</td><td>他のSCPを収容するために財団が利用している「箱そのもの」。</td></tr>
-            </table>
-        </div>
-        <div class="box">
             <h3>主要な構成員</h3>
             <ul class="normal-list">
                 <li><b>O5評議会：</b> 財団の最高意思決定機関。13人の謎に包まれた人物たち。</li>
-                <li><b>研究員 / 博士：</b> オブジェクトを研究する人々。（例：悪ふざけが多いブライト博士など、名物キャラが存在）</li>
                 <li><b>機動部隊 (MTF)：</b> 収容違反や新しいSCPの確保に向かう重武装のエリート戦闘部隊。</li>
                 <li><b>Dクラス職員：</b> 危険な実験に投入される使い捨ての要員。主に死刑囚。</li>
             </ul>
         </div>
     </div>
 
-    <!-- 3. 報告書の取扱説明 -->
     <div id="manual" class="tab-content">
         <h2>📄 SCP報告書の読み方（フォーマット）</h2>
-        <p>すべてのSCP記事は、以下の統一された「科学的な機密文書」のフォーマットで書かれます。この無機質さが恐怖を引き立てます。</p>
-        <div class="box">
-            <h3>構成要素</h3>
-            <ul class="normal-list">
-                <li><b>アイテム番号：</b> SCP-○○○（通し番号）</li>
-                <li><b>オブジェクトクラス：</b> Safe / Euclid / Keter 等</li>
-                <li><b>特別収容プロトコル：</b> 「対象をどのように保管し、逃がさないようにするか」の手順。ここで「なぜこんな厳重な手順が必要なのか？」と読者の興味を惹きます。</li>
-                <li><b>説明：</b> そのSCPが「何者で、どんな異常性を持っているか」の客観的な事実。</li>
-                <li><b>補遺 / 実験記録：</b> 音声ログ、インタビュー記録、Dクラスを使った残酷な実験の結果など。物語の「オチ」や「核心」がここに書かれます。</li>
-            </ul>
-        </div>
         <div class="box">
             <h3>演出ギミック</h3>
             <p>記事内には、あえて情報を隠すことで想像力を刺激する手法が使われます。</p>
@@ -361,75 +415,117 @@
         </div>
     </div>
 
-    <!-- 4. 代表的アーカイブ (Mind Map) -->
-    <div id="archives" class="tab-content">
-        <h2>💀 構造を理解するための代表的SCP (マインドマップ)</h2>
-        <p>※各カードにマウスカーソルを合わせると詳細がハイライトされます。</p>
+    <div id="archives" class="tab-content active">
+        <h2>💀 財団トップアーカイブ＆特異事案 (Map)</h2>
+        <p style="font-size:0.9em; color:#aaa;">※横にスクロールして全体を確認できます。ドラッグ操作にも対応しています。</p>
         
-        <div class="tree-container">
+        <div class="tree-container" id="tree-container">
             <div class="tree">
                 <ul>
                     <li>
                         <div class="card-content card-root">
                             <b>SCP Foundation Database</b><br>
-                            <small style="color: #aaa;">代表的オブジェクト相関図</small>
+                            <small style="color: #aaa;">Top Archives & Memetic Hazards</small>
                         </div>
                         <ul>
-                            <!-- 分岐1: 実体 -->
                             <li>
                                 <div class="card-content card-category">生物・実体 (Entities)</div>
                                 <ul>
                                     <li>
                                         <div class="card-content">
-                                            <div class="scp-title">SCP-173</div>
+                                            <div class="scp-title">SCP-173 <span class="badge euclid">Euclid</span></div>
                                             <span class="scp-subtitle">「彫刻 - オリジナル」</span>
-                                            <span class="badge euclid">Euclid</span>
-                                            <div class="scp-desc">
-                                                視線を外すと超高速で接近し首を折る。SCP財団最古の原点であり、収容違反パニックの代名詞。
-                                            </div>
+                                            <div class="scp-desc">視線を外すと超高速で接近し首を折る。SCP財団最古にして最大の原点。</div>
                                         </div>
                                     </li>
                                     <li>
                                         <div class="card-content">
-                                            <div class="scp-title">SCP-096</div>
+                                            <div class="scp-title">SCP-096 <span class="badge euclid">Euclid</span></div>
                                             <span class="scp-subtitle">「シャイガイ」</span>
-                                            <span class="badge euclid">Euclid</span>
-                                            <div class="scp-desc">
-                                                顔を見た者を世界の果てまで追跡し惨殺する人型の怪物。たった4ピクセルの画像でも発動する。
-                                            </div>
+                                            <div class="scp-desc">顔を見た者を世界の果てまで追跡し惨殺する。写真の4ピクセルでも発動。</div>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <div class="card-content">
+                                            <div class="scp-title">SCP-049 <span class="badge euclid">Euclid</span></div>
+                                            <span class="scp-subtitle">「ペスト医師」</span>
+                                            <div class="scp-desc">触れた者を即死させ、手術を施して「ゾンビ」として蘇らせる中世の医師。</div>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <div class="card-content">
+                                            <div class="scp-title">SCP-682 <span class="badge keter">Keter</span></div>
+                                            <span class="scp-subtitle">「不死身の爬虫類」</span>
+                                            <div class="scp-desc">全ての生命を憎む巨大なトカゲ。いかなる物理・異常的破壊を受けても再生する。</div>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <div class="card-content">
+                                            <div class="scp-title">SCP-106 <span class="badge keter">Keter</span></div>
+                                            <span class="scp-subtitle">「オールドマン」</span>
+                                            <div class="scp-desc">物質を腐食させ壁をすり抜ける老人。獲物を自身のポケット空間に引きずり込む。</div>
                                         </div>
                                     </li>
                                 </ul>
                             </li>
                             
-                            <!-- 分岐2: 空間 -->
                             <li>
                                 <div class="card-content card-category">空間・場所 (Locations)</div>
                                 <ul>
                                     <li>
                                         <div class="card-content">
-                                            <div class="scp-title">SCP-3008</div>
+                                            <div class="scp-title">SCP-3008 <span class="badge euclid">Euclid</span></div>
                                             <span class="scp-subtitle">「完全に普通のイケア」</span>
-                                            <span class="badge euclid">Euclid</span>
-                                            <div class="scp-desc">
-                                                出口の無い無限のIKEA店舗。夜間になると「顔のない店員」が襲撃してくるため、客は部族を作りサバイバルしている。
-                                            </div>
+                                            <div class="scp-desc">内部が無限に広がるIKEA。夜になると顔のない店員が襲撃してくるため客は部族を作りサバイバルする。</div>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <div class="card-content">
+                                            <div class="scp-title">SCP-087 <span class="badge euclid">Euclid</span></div>
+                                            <span class="scp-subtitle">「吹き抜け階段」</span>
+                                            <div class="scp-desc">暗闇が延々と続く下り階段。子供の泣き声が響き、顔のない謎の存在が潜む。</div>
                                         </div>
                                     </li>
                                 </ul>
                             </li>
 
-                            <!-- 分岐3: 物品 -->
                             <li>
                                 <div class="card-content card-category">物品・機械 (Objects)</div>
                                 <ul>
                                     <li>
                                         <div class="card-content">
-                                            <div class="scp-title">SCP-914</div>
+                                            <div class="scp-title">SCP-914 <span class="badge safe">Safe</span></div>
                                             <span class="scp-subtitle">「ぜんまい仕掛け」</span>
-                                            <span class="badge safe">Safe</span>
-                                            <div class="scp-desc">
-                                                入れたアイテムを「粗野」から「超精細」の設定で変換する巨大装置。便利な反面、予測不能な結果を招く実験記録の宝庫。
+                                            <div class="scp-desc">入れた物を5段階で変換・改造する巨大装置。予測不能な実験記録の宝庫。</div>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <div class="card-content">
+                                            <div class="scp-title">SCP-294 <span class="badge safe">Safe</span></div>
+                                            <span class="scp-subtitle">「コーヒー自動販売機」</span>
+                                            <div class="scp-desc">キーボードで打ち込んだあらゆる「液体」を紙コップに出力する。</div>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <div class="card-content">
+                                            <div class="scp-title">SCP-500 <span class="badge safe">Safe</span></div>
+                                            <span class="scp-subtitle">「万能薬」</span>
+                                            <div class="scp-desc">飲むだけで、あらゆる病気や怪我、異常な症状すら完全に治癒させる赤い錠剤。</div>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </li>
+
+                            <li>
+                                <div class="card-content card-category" style="background: #4a0000;">認識災害・日本支部</div>
+                                <ul>
+                                    <li>
+                                        <div class="card-content" style="border-color: #ff4c4c;">
+                                            <div class="scp-title">SCP-444-JP <span class="badge keter">Keter</span></div>
+                                            <span class="scp-subtitle">「〇〇〇〇[飛蝗]」</span>
+                                            <div class="scp-desc" style="color: #ff9999;">
+                                                <i>「緋色の鳥よ、今こそ起て」</i><br>
+                                                読んだり書いたりした者の認識を書き換え、幻覚を見せ、周囲へ感染を拡大させる最悪の認識災害文書。
                                             </div>
                                         </div>
                                     </li>
@@ -448,24 +544,46 @@
     function openTab(evt, tabName) {
         var i, tabcontent, tablinks;
         
-        // 全てのコンテンツを非表示
         tabcontent = document.getElementsByClassName("tab-content");
         for (i = 0; i < tabcontent.length; i++) {
             tabcontent[i].style.display = "none";
             tabcontent[i].classList.remove("active");
         }
         
-        // 全てのタブの非アクティブ化
         tablinks = document.getElementsByClassName("tab-btn");
         for (i = 0; i < tablinks.length; i++) {
             tablinks[i].classList.remove("active");
         }
         
-        // 選択されたタブを表示し、ボタンをアクティブに
         document.getElementById(tabName).style.display = "block";
         document.getElementById(tabName).classList.add("active");
         evt.currentTarget.classList.add("active");
     }
+
+    // マウスドラッグで横スクロールさせる簡易スクリプト
+    const slider = document.getElementById('tree-container');
+    let isDown = false;
+    let startX;
+    let scrollLeft;
+
+    slider.addEventListener('mousedown', (e) => {
+        isDown = true;
+        startX = e.pageX - slider.offsetLeft;
+        scrollLeft = slider.scrollLeft;
+    });
+    slider.addEventListener('mouseleave', () => {
+        isDown = false;
+    });
+    slider.addEventListener('mouseup', () => {
+        isDown = false;
+    });
+    slider.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - slider.offsetLeft;
+        const walk = (x - startX) * 2;
+        slider.scrollLeft = scrollLeft - walk;
+    });
 </script>
 
 </body>
