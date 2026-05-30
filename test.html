@@ -12,6 +12,9 @@
         --border-color: #333;
         --terminal-green: #00ff41;
     }
+    * {
+        box-sizing: border-box;
+    }
     body {
         background-color: var(--bg-color);
         color: var(--text-color);
@@ -24,7 +27,7 @@
     }
     .terminal-container {
         width: 100%;
-        max-width: 900px;
+        max-width: 1000px;
         border: 1px solid var(--border-color);
         background: #111;
         box-shadow: 0 0 15px rgba(0,0,0,0.8);
@@ -57,6 +60,7 @@
         font-weight: bold;
         margin-bottom: 20px;
     }
+    
     /* Tab System */
     .tabs {
         display: flex;
@@ -96,6 +100,8 @@
         from { opacity: 0; }
         to { opacity: 1; }
     }
+    
+    /* Base Elements */
     h2 {
         color: #fff;
         border-left: 5px solid var(--accent-red);
@@ -123,7 +129,7 @@
         color: var(--terminal-green);
         font-weight: bold;
     }
-    ul {
+    ul.normal-list {
         padding-left: 20px;
     }
     table {
@@ -141,6 +147,138 @@
         background-color: #222;
         color: #fff;
     }
+
+    /* --- Mind Map (Tree) Styles --- */
+    .tree-container {
+        overflow-x: auto;
+        padding-bottom: 20px;
+        margin-top: 20px;
+    }
+    .tree ul {
+        display: flex;
+        justify-content: center;
+        padding-top: 20px;
+        position: relative;
+        padding-left: 0;
+    }
+    .tree li {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        list-style-type: none;
+        position: relative;
+        padding: 20px 10px 0 10px;
+    }
+    
+    /* Connectors */
+    .tree li::before, .tree li::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 50%;
+        border-top: 2px solid var(--border-color);
+        width: 50%;
+        height: 20px;
+    }
+    .tree li::after {
+        right: auto;
+        left: 50%;
+        border-left: 2px solid var(--border-color);
+    }
+    .tree li:only-child::after, .tree li:only-child::before {
+        display: none;
+    }
+    .tree li:only-child {
+        padding-top: 0;
+    }
+    .tree li:first-child::before, .tree li:last-child::after {
+        border: 0 none;
+    }
+    .tree li:last-child::before {
+        border-right: 2px solid var(--border-color);
+        border-radius: 0 5px 0 0;
+    }
+    .tree li:first-child::after {
+        border-radius: 5px 0 0 0;
+    }
+    .tree ul ul::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 50%;
+        border-left: 2px solid var(--border-color);
+        width: 0;
+        height: 20px;
+        transform: translateX(-50%);
+    }
+
+    /* Card Styles */
+    .card-content {
+        background: #151515;
+        border: 1px solid #444;
+        border-radius: 6px;
+        padding: 15px;
+        width: 220px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+        text-align: left;
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 2;
+    }
+    .card-content:hover {
+        border-color: var(--accent-red);
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(139,0,0,0.4);
+    }
+    .card-category {
+        background: #222;
+        color: #ddd;
+        font-weight: bold;
+        text-align: center;
+        width: 180px;
+        border-color: #666;
+    }
+    .card-root {
+        background: rgba(139, 0, 0, 0.2);
+        color: #fff;
+        border: 1px solid var(--accent-red);
+        width: 280px;
+        text-align: center;
+        font-size: 1.1em;
+    }
+    
+    /* Card Typography & Badges */
+    .scp-title {
+        font-size: 1.2em;
+        font-weight: bold;
+        color: #fff;
+        border-bottom: 1px solid #333;
+        padding-bottom: 5px;
+        margin-bottom: 10px;
+    }
+    .scp-subtitle {
+        font-size: 0.8em;
+        color: #888;
+        display: block;
+        margin-top: -5px;
+        margin-bottom: 10px;
+    }
+    .scp-desc {
+        font-size: 0.85em;
+        color: #ccc;
+        line-height: 1.5;
+    }
+    .badge {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 0.75em;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+    .badge.safe { background: #28a745; color: #fff; }
+    .badge.euclid { background: #ffc107; color: #000; }
+    .badge.keter { background: #dc3545; color: #fff; }
 </style>
 </head>
 <body>
@@ -160,7 +298,7 @@
         <button class="tab-btn active" onclick="openTab(event, 'meta')">1. 現実の構造 (メタ視点)</button>
         <button class="tab-btn" onclick="openTab(event, 'world')">2. 財団の構造 (世界観)</button>
         <button class="tab-btn" onclick="openTab(event, 'manual')">3. 報告書の取扱説明</button>
-        <button class="tab-btn" onclick="openTab(event, 'archives')">4. 代表的アーカイブ</button>
+        <button class="tab-btn" onclick="openTab(event, 'archives')">4. 代表的アーカイブ (Map)</button>
     </div>
 
     <!-- 1. 現実の構造 (メタ視点) -->
@@ -169,7 +307,7 @@
         <p>現実世界におけるSCP財団は、Wikidotというサービス上に構築された<b>「共同創作（シェアード・ワールド）サイト」</b>です。</p>
         <div class="box">
             <h3>運営の仕組み</h3>
-            <ul>
+            <ul class="normal-list">
                 <li><b>オープンソースの怪談：</b> クリエイティブ・コモンズ（CC BY-SA 3.0）のライセンス下で運営されており、ルールを守れば誰でも商用・非商用問わず二次創作（ゲーム、動画、イラスト）が可能です。</li>
                 <li><b>厳しい品質管理：</b> 誰でも記事を投稿できますが、サイトメンバーによる「Vote（投票）システム」があり、一定以上の低評価（マイナス）を受けた記事は自動的に削除されます。これにより高いクオリティが維持されています。</li>
                 <li><b>国際的な広がり：</b> 英語の本家サイトに加え、日本（JP）、中国（CN）、韓国（KO）、ロシア（RU）など独自の支部が存在し、相互に翻訳が行われています。</li>
@@ -193,7 +331,7 @@
         </div>
         <div class="box">
             <h3>主要な構成員</h3>
-            <ul>
+            <ul class="normal-list">
                 <li><b>O5評議会：</b> 財団の最高意思決定機関。13人の謎に包まれた人物たち。</li>
                 <li><b>研究員 / 博士：</b> オブジェクトを研究する人々。（例：悪ふざけが多いブライト博士など、名物キャラが存在）</li>
                 <li><b>機動部隊 (MTF)：</b> 収容違反や新しいSCPの確保に向かう重武装のエリート戦闘部隊。</li>
@@ -208,7 +346,7 @@
         <p>すべてのSCP記事は、以下の統一された「科学的な機密文書」のフォーマットで書かれます。この無機質さが恐怖を引き立てます。</p>
         <div class="box">
             <h3>構成要素</h3>
-            <ul>
+            <ul class="normal-list">
                 <li><b>アイテム番号：</b> SCP-○○○（通し番号）</li>
                 <li><b>オブジェクトクラス：</b> Safe / Euclid / Keter 等</li>
                 <li><b>特別収容プロトコル：</b> 「対象をどのように保管し、逃がさないようにするか」の手順。ここで「なぜこんな厳重な手順が必要なのか？」と読者の興味を惹きます。</li>
@@ -223,27 +361,84 @@
         </div>
     </div>
 
-    <!-- 4. 代表的アーカイブ -->
+    <!-- 4. 代表的アーカイブ (Mind Map) -->
     <div id="archives" class="tab-content">
-        <h2>💀 構造を理解するための代表的SCP</h2>
-        <p>初心者がSCPの雰囲気や物語のバリエーションを掴むのに最適な3つの報告書です。</p>
+        <h2>💀 構造を理解するための代表的SCP (マインドマップ)</h2>
+        <p>※各カードにマウスカーソルを合わせると詳細がハイライトされます。</p>
         
-        <div class="box">
-            <h3 style="color: #fff; margin-top: 0;">SCP-173「彫刻 - オリジナル」 (Class: Euclid)</h3>
-            <p><b>【概要】</b> コンクリートと鉄筋でできた不気味な彫刻。普段は動かないが、<b>「誰かが視線を外した（瞬きをした）瞬間」</b>に超高速で移動し、首をへし折ってくる。<br>
-            <b>【メタ視点】</b> 2007年に海外掲示板に投稿された記念すべき「最初のSCP」。ここからすべてが始まりました。「常に3人1組で清掃し、瞬きする時は宣言する」という収容プロトコルが秀逸。</p>
-        </div>
+        <div class="tree-container">
+            <div class="tree">
+                <ul>
+                    <li>
+                        <div class="card-content card-root">
+                            <b>SCP Foundation Database</b><br>
+                            <small style="color: #aaa;">代表的オブジェクト相関図</small>
+                        </div>
+                        <ul>
+                            <!-- 分岐1: 実体 -->
+                            <li>
+                                <div class="card-content card-category">生物・実体 (Entities)</div>
+                                <ul>
+                                    <li>
+                                        <div class="card-content">
+                                            <div class="scp-title">SCP-173</div>
+                                            <span class="scp-subtitle">「彫刻 - オリジナル」</span>
+                                            <span class="badge euclid">Euclid</span>
+                                            <div class="scp-desc">
+                                                視線を外すと超高速で接近し首を折る。SCP財団最古の原点であり、収容違反パニックの代名詞。
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <div class="card-content">
+                                            <div class="scp-title">SCP-096</div>
+                                            <span class="scp-subtitle">「シャイガイ」</span>
+                                            <span class="badge euclid">Euclid</span>
+                                            <div class="scp-desc">
+                                                顔を見た者を世界の果てまで追跡し惨殺する人型の怪物。たった4ピクセルの画像でも発動する。
+                                            </div>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </li>
+                            
+                            <!-- 分岐2: 空間 -->
+                            <li>
+                                <div class="card-content card-category">空間・場所 (Locations)</div>
+                                <ul>
+                                    <li>
+                                        <div class="card-content">
+                                            <div class="scp-title">SCP-3008</div>
+                                            <span class="scp-subtitle">「完全に普通のイケア」</span>
+                                            <span class="badge euclid">Euclid</span>
+                                            <div class="scp-desc">
+                                                出口の無い無限のIKEA店舗。夜間になると「顔のない店員」が襲撃してくるため、客は部族を作りサバイバルしている。
+                                            </div>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </li>
 
-        <div class="box">
-            <h3 style="color: #fff; margin-top: 0;">SCP-096「シャイガイ」 (Class: Euclid)</h3>
-            <p><b>【概要】</b> 痩せこけた青白い人型の怪物。普段はおとなしく泣いているが、その<b>「顔」を直接、または写真や映像で見てしまう</b>と発狂し、地球上のどこに逃げても顔を見た者を殺すまで追跡してくる。<br>
-            <b>【メタ視点】</b> 「どうやってこの事実（顔を見たら死ぬ）が判明したのか？」という実験記録の生々しさや、パニックホラー的な展開を作るのに非常に適しているため、ゲームや動画で大人気の存在。</p>
-        </div>
-
-        <div class="box">
-            <h3 style="color: #fff; margin-top: 0;">SCP-3008「完全に普通の、ありきたりな古いイケア」 (Class: Euclid)</h3>
-            <p><b>【概要】</b> 外見は普通のIKEAの店舗だが、中に入ると空間が無限に広がっており、出口が消失する。中には顔の無い巨大な店員（スタッフ）が徘徊しており、夜になると客を襲う。中に閉じ込められた人々が部族を作ってサバイバルしている。<br>
-            <b>【メタ視点】</b> 「化け物」ではなく「空間」が異常であるというパターン。報告書の中に「閉じ込められた一般人の手記」が添付されており、一つのSFサバイバル小説として完成されています。</p>
+                            <!-- 分岐3: 物品 -->
+                            <li>
+                                <div class="card-content card-category">物品・機械 (Objects)</div>
+                                <ul>
+                                    <li>
+                                        <div class="card-content">
+                                            <div class="scp-title">SCP-914</div>
+                                            <span class="scp-subtitle">「ぜんまい仕掛け」</span>
+                                            <span class="badge safe">Safe</span>
+                                            <div class="scp-desc">
+                                                入れたアイテムを「粗野」から「超精細」の設定で変換する巨大装置。便利な反面、予測不能な結果を招く実験記録の宝庫。
+                                            </div>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
         </div>
     </div>
 
