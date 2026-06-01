@@ -68,7 +68,7 @@
         textarea {
             width: 100%; 
             background: #000; 
-            color: #0f0; /* 緑文字 */
+            color: #0f0; 
             border: 2px solid #fff; 
             padding: 10px; 
             box-sizing: border-box; 
@@ -77,30 +77,31 @@
         }
         textarea:focus { outline: none; border-color: #0f0; }
 
-        /* 入力エリア（高さをキープ） */
+        /* 入力エリア（出力エリアと高さを均等に） */
         #userInput { 
-            height: 120px; 
+            flex: 1; /* 余白を自動で埋める */
             margin-bottom: 15px; 
             font-weight: bold;
             font-size: 1rem;
         }
 
-        /* アクションボタン（赤・青）高さを少し小さく */
+        /* アクションボタン（赤・青） */
         .btn-action { 
             width: 100%; 
-            padding: 10px; /* 15pxから10pxへ縮小 */
+            padding: 10px; 
             font-size: 1rem; 
             margin-bottom: 10px;
             letter-spacing: 1px;
+            flex-shrink: 0; /* ボタンが潰れないようにする */
         }
         .red { background: #d32f2f; color: #fff; }
         .blue { background: #1976d2; color: #fff; }
 
-        /* 出力エリア（編集可能、文字小さめ、画面下部まで拡張） */
+        /* 出力エリア（入力エリアと高さを均等に） */
         #output { 
-            flex: 1; /* 残りの高さを自動で埋める */
+            flex: 1; /* 余白を自動で埋める */
             margin-bottom: 5px;
-            font-size: 0.8rem; /* 文字を小さめに設定して全体を見やすく */
+            font-size: 0.8rem; 
             line-height: 1.4; 
             white-space: pre-wrap; 
         }
@@ -140,6 +141,7 @@
         .modal-content input, .modal-content textarea {
             width: 100%; padding: 10px; margin-bottom: 15px; box-sizing: border-box;
             background: #111; color: #0f0; border: 1px solid #555; 
+            flex: none; /* モーダル内のtextareaはflex拡張しない */
         }
         
         .modal-content label { 
@@ -190,7 +192,6 @@
 </div>
 
 <script>
-    // 起動時にローカルストレージから設定を読み込む
     window.onload = () => {
         document.getElementById('apiKey').value = localStorage.getItem('gemini_key') || '';
         for(let i=1; i<=3; i++) {
@@ -201,7 +202,6 @@
     function openModal(id) { document.getElementById(id).style.display = 'flex'; }
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-    // APIキーと定型文をまとめて保存
     function saveSettings() {
         localStorage.setItem('gemini_key', document.getElementById('apiKey').value);
         for(let i=1; i<=3; i++) {
@@ -211,7 +211,6 @@
         alert('設定を保存しました。');
     }
 
-    // 定型文を入力欄に挿入
     function insertTeikei(num) {
         const val = localStorage.getItem('teikei'+num);
         if(!val) {
@@ -223,7 +222,6 @@
         ta.scrollTop = ta.scrollHeight;
     }
 
-    // プロンプト生成
     async function generatePrompt() {
         const input = document.getElementById('userInput').value;
         const key = localStorage.getItem('gemini_key');
@@ -257,7 +255,6 @@
             });
             const data = await res.json();
             const optimizedTask = data.candidates[0].content.parts[0].text.trim();
-            // innerText ではなく value を使用して更新
             outputArea.value = fixedConstraints + optimizedTask;
         } catch(e) { 
             outputArea.value = "ERROR: 通信に失敗したか、APIキーが間違っています。"; 
@@ -265,9 +262,8 @@
         }
     }
 
-    // クリップボードにコピー
     function copyOutput() {
-        const textToCopy = document.getElementById('output').value; // valueから取得
+        const textToCopy = document.getElementById('output').value;
         if(!textToCopy || textToCopy.includes("Generating...") || textToCopy.includes("結果がここに")) return;
         navigator.clipboard.writeText(textToCopy).then(() => {
             alert('コピーしました！');
