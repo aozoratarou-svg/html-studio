@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HTML STUDIO</title>
+    <style>
+        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; padding: 10px; margin: 0; box-sizing: border-box; height: 100vh; display: flex; flex-direction: column; }
+        .header { text-align: center; font-size: 1.5rem; margin-bottom: 10px; color: #f00; border-bottom: 2px solid #fff; padding-bottom: 5px; }
+        .nav { display: flex; gap: 5px; margin-bottom: 10px; }
+        .nav button { flex: 1; padding: 10px; background: #222; color: #fff; border: 2px solid #fff; cursor: pointer; }
+        .nav button.active { background: #fff; color: #000; }
+        textarea { width: 100%; height: 200px; background: #000; color: #0f0; border: 2px solid #555; padding: 10px; box-sizing: border-box; margin-bottom: 10px; resize: none; }
+        #output { border: 2px solid #0f0; padding: 10px; height: 150px; overflow-y: auto; white-space: pre-wrap; font-size: 0.9rem; margin-bottom: 10px; }
+        .btn-action { width: 100%; padding: 15px; border: none; cursor: pointer; font-weight: bold; margin-bottom: 5px; }
+        .red { background: #d00; color: #fff; }
+        .blue { background: #008; color: #fff; }
+        #settings-layer { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); padding: 20px; box-sizing: border-box; z-index: 10; }
+    </style>
+</head>
+<body>
+
+<div class="header">HTML STUDIO</div>
+<div class="nav">
+    <button class="active">つくる</button>
+    <button onclick="alert('Coming Soon')">みる</button>
+    <button onclick="document.getElementById('settings-layer').style.display='block'">せってい</button>
+</div>
+
+<textarea id="userInput" placeholder="作りたいものを入力..."></textarea>
+<button class="btn-action red" onclick="generatePrompt()">実行 (PROMPT GEN)</button>
+
+<div id="output"></div>
+<button class="btn-action blue" onclick="copyOutput()">コピー (COPY)</button>
+
+<div id="settings-layer">
+    <h3>API SETTINGS</h3>
+    <input type="password" id="apiKey" placeholder="Enter Gemini API Key" style="width:100%; padding:10px; margin-bottom:10px;">
+    <button class="btn-action blue" onclick="saveKey()">SAVE KEY</button>
+    <button class="btn-action" onclick="document.getElementById('settings-layer').style.display='none'">CLOSE</button>
+</div>
+
+<script>
+    document.getElementById('apiKey').value = localStorage.getItem('gemini_key') || '';
+
+    function saveKey() {
+        localStorage.setItem('gemini_key', document.getElementById('apiKey').value);
+        document.getElementById('settings-layer').style.display = 'none';
+        alert('Saved!');
+    }
+
+    async function generatePrompt() {
+        const input = document.getElementById('userInput').value;
+        const key = localStorage.getItem('gemini_key');
+        if(!key) { alert('API Key Required'); return; }
+
+        const outputDiv = document.getElementById('output');
+        outputDiv.innerText = "Generating...";
+
+        const prompt = `Task: Provide concise, token-efficient English technical instructions for the user goal. Constraints: No greetings, no explanations, no closing remarks. Goal: ${input}`;
+
+        try {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${key}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+            });
+            const data = await res.json();
+            outputDiv.innerText = data.candidates[0].content.parts[0].text;
+        } catch(e) { outputDiv.innerText = "ERROR: Connection failed."; }
+    }
+
+    function copyOutput() {
+        navigator.clipboard.writeText(document.getElementById('output').innerText);
+        alert('Copied!');
+    }
+</script>
+</body>
+</html>
