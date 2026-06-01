@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>PROMPT STUDIO</title>
     <style>
-        /* 全体のベース設定（画像参考：黒背景、緑テキスト） */
+        /* 全体のベース設定 */
         body { 
             background: #000; 
             color: #0f0; 
@@ -19,12 +19,12 @@
             overflow-x: hidden;
         }
 
-        /* タイトル（赤文字・白影のレトロ風） */
+        /* タイトル */
         .header { 
             text-align: center; 
             font-size: 1.8rem; 
             font-weight: bold;
-            margin: 10px 0 20px 0; 
+            margin: 10px 0 15px 0; 
             color: #ff3333; 
             text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
             letter-spacing: 2px;
@@ -34,7 +34,7 @@
         .top-row {
             display: flex;
             gap: 8px;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             width: 100%;
         }
 
@@ -44,7 +44,7 @@
             color: #fff;
             border: 2px solid #fff;
             box-shadow: 2px 2px 0px #888;
-            padding: 10px 5px;
+            padding: 8px 5px;
             cursor: pointer;
             font-weight: bold;
             font-size: 0.9rem;
@@ -62,50 +62,47 @@
         }
 
         .btn-teikei { flex: 1; }
-        .btn-setting { width: 50px; font-size: 1.2rem; } /* 歯車ボタン */
+        .btn-setting { width: 50px; font-size: 1.2rem; } 
 
-        /* 入力エリア */
-        textarea { 
+        /* 共通テキストエリア設定 */
+        textarea {
             width: 100%; 
-            height: 120px; 
             background: #000; 
             color: #0f0; /* 緑文字 */
             border: 2px solid #fff; 
             padding: 10px; 
             box-sizing: border-box; 
-            margin-bottom: 15px; 
             resize: none;
-            font-weight: bold;
-            font-size: 1rem;
             font-family: inherit;
         }
         textarea:focus { outline: none; border-color: #0f0; }
 
-        /* アクションボタン（赤・青） */
+        /* 入力エリア（高さをキープ） */
+        #userInput { 
+            height: 120px; 
+            margin-bottom: 15px; 
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        /* アクションボタン（赤・青）高さを少し小さく */
         .btn-action { 
             width: 100%; 
-            padding: 15px; 
-            font-size: 1.1rem; 
-            margin-bottom: 15px;
+            padding: 10px; /* 15pxから10pxへ縮小 */
+            font-size: 1rem; 
+            margin-bottom: 10px;
             letter-spacing: 1px;
         }
         .red { background: #d32f2f; color: #fff; }
         .blue { background: #1976d2; color: #fff; }
 
-        /* 出力エリア */
+        /* 出力エリア（編集可能、文字小さめ、画面下部まで拡張） */
         #output { 
-            flex: 1;
-            width: 100%;
-            background: #000;
-            color: #0f0;
-            border: 2px solid #fff; 
-            padding: 10px; 
-            box-sizing: border-box;
-            overflow-y: auto; 
-            white-space: pre-wrap; 
+            flex: 1; /* 残りの高さを自動で埋める */
+            margin-bottom: 5px;
+            font-size: 0.8rem; /* 文字を小さめに設定して全体を見やすく */
             line-height: 1.4; 
-            font-size: 0.95rem;
-            margin-bottom: 10px;
+            white-space: pre-wrap; 
         }
 
         /* モーダル (設定画面) */
@@ -167,7 +164,7 @@
 
 <button class="btn btn-action blue" onclick="copyOutput()">📋 コピー (COPY)</button>
 
-<div id="output">結果がここに表示されます...</div>
+<textarea id="output" spellcheck="false">結果がここに表示されます... (編集可能)</textarea>
 
 <div id="modal-settings" class="modal-overlay">
     <div class="modal-content">
@@ -233,8 +230,8 @@
         if(!key) { alert('設定(⚙️)からGemini API Keyを入力してください。'); return; }
         if(!input) { alert('入力画面に目的を入力してください。'); return; }
 
-        const outputDiv = document.getElementById('output');
-        outputDiv.innerText = "Generating optimized prompt...";
+        const outputArea = document.getElementById('output');
+        outputArea.value = "Generating optimized prompt...";
 
         const fixedConstraints = 
             "Constraint: English strictly.\n" +
@@ -260,16 +257,17 @@
             });
             const data = await res.json();
             const optimizedTask = data.candidates[0].content.parts[0].text.trim();
-            outputDiv.innerText = fixedConstraints + optimizedTask;
+            // innerText ではなく value を使用して更新
+            outputArea.value = fixedConstraints + optimizedTask;
         } catch(e) { 
-            outputDiv.innerText = "ERROR: 通信に失敗したか、APIキーが間違っています。"; 
+            outputArea.value = "ERROR: 通信に失敗したか、APIキーが間違っています。"; 
             console.error(e);
         }
     }
 
     // クリップボードにコピー
     function copyOutput() {
-        const textToCopy = document.getElementById('output').innerText;
+        const textToCopy = document.getElementById('output').value; // valueから取得
         if(!textToCopy || textToCopy.includes("Generating...") || textToCopy.includes("結果がここに")) return;
         navigator.clipboard.writeText(textToCopy).then(() => {
             alert('コピーしました！');
