@@ -2,78 +2,489 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HTML STUDIO</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lunar Rover Explorer</title>
     <style>
-        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; padding: 10px; margin: 0; box-sizing: border-box; height: 100vh; display: flex; flex-direction: column; }
-        .header { text-align: center; font-size: 1.5rem; margin-bottom: 10px; color: #f00; border-bottom: 2px solid #fff; padding-bottom: 5px; }
-        .nav { display: flex; gap: 5px; margin-bottom: 10px; }
-        .nav button { flex: 1; padding: 10px; background: #222; color: #fff; border: 2px solid #fff; cursor: pointer; }
-        .nav button.active { background: #fff; color: #000; }
-        textarea { width: 100%; height: 200px; background: #000; color: #0f0; border: 2px solid #555; padding: 10px; box-sizing: border-box; margin-bottom: 10px; resize: none; }
-        #output { border: 2px solid #0f0; padding: 10px; height: 150px; overflow-y: auto; white-space: pre-wrap; font-size: 0.9rem; margin-bottom: 10px; }
-        .btn-action { width: 100%; padding: 15px; border: none; cursor: pointer; font-weight: bold; margin-bottom: 5px; }
-        .red { background: #d00; color: #fff; }
-        .blue { background: #008; color: #fff; }
-        #settings-layer { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); padding: 20px; box-sizing: border-box; z-index: 10; }
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: white; }
+        canvas { display: block; }
+        #ui-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        #hud { position: absolute; top: 20px; left: 20px; background: rgba(0, 0, 0, 0.5); padding: 15px; border-radius: 8px; border-left: 4px solid #00ffff; }
+        #score { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
+        #compass { position: absolute; top: 20px; right: 20px; width: 100px; height: 100px; background: rgba(0, 0, 0, 0.5); border-radius: 50%; border: 2px solid #00ffff; }
+        #compass-needle { position: absolute; top: 50%; left: 50%; width: 2px; height: 40px; background: #ff3333; transform-origin: bottom center; transform: translate(-50%, -100%) rotate(0deg); }
+        #location-banner { position: absolute; bottom: 100px; width: 100%; text-align: center; font-size: 32px; font-weight: bold; text-shadow: 0 0 10px rgba(0, 255, 255, 0.8); opacity: 0; transition: opacity 0.5s; }
+        #controls-hint { position: absolute; bottom: 20px; left: 20px; font-size: 14px; color: #ccc; }
+        #mission-complete { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; color: black; display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
+        #mission-complete h1 { font-size: 48px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
+    <div id="ui-container">
+        <div id="hud">
+            <div id="score">Points: 0 / 400</div>
+            <div id="status">System: Ready</div>
+        </div>
+        <div id="compass">
+            <div id="compass-needle"></div>
+            <div style="position: absolute; top: 5px; left: 50%; transform: translateX(-50%); font-size: 10px;">N</div>
+        </div>
+        <div id="location-banner">Discovered: Sea of Tranquility</div>
+        <div id="controls-hint">WASD: Drive | Space: Thrusters | Mouse: Look</div>
+    </div>
+    <div id="mission-complete">
+        <h1>Mission Complete</h1>
+        <p>Lunar Data Secured.</p>
+    </div>
 
-<div class="header">HTML STUDIO</div>
-<div class="nav">
-    <button class="active">つくる</button>
-    <button onclick="alert('Coming Soon')">みる</button>
-    <button onclick="document.getElementById('settings-layer').style.display='block'">せってい</button>
-</div>
+    <!-- Three.js and Cannon.js via CDN -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+                "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
+            }
+        }
+    </script>
 
-<textarea id="userInput" placeholder="作りたいものを入力..."></textarea>
-<button class="btn-action red" onclick="generatePrompt()">実行 (PROMPT GEN)</button>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import * as CANNON from 'cannon-es';
 
-<div id="output"></div>
-<button class="btn-action blue" onclick="copyOutput()">コピー (COPY)</button>
+        // --- Configuration ---
+        const CONFIG = {
+            gravity: -1.62,
+            roverMass: 150,
+            sunIntensity: 3,
+            terrainSize: 500,
+            terrainResolution: 64
+        };
 
-<div id="settings-layer">
-    <h3>API SETTINGS</h3>
-    <input type="password" id="apiKey" placeholder="Enter Gemini API Key" style="width:100%; padding:10px; margin-bottom:10px;">
-    <button class="btn-action blue" onclick="saveKey()">SAVE KEY</button>
-    <button class="btn-action" onclick="document.getElementById('settings-layer').style.display='none'">CLOSE</button>
-</div>
+        // --- Core Variables ---
+        let scene, camera, renderer, world, clock;
+        let rover = {
+            mesh: null,
+            body: null,
+            wheels: [],
+            controls: { forward: false, backward: false, left: false, right: false, jump: false }
+        };
+        let terrain, skybox, earth;
+        let pois = [];
+        let currentScore = 0;
+        let maxScore = 400;
+        let isGameEnded = false;
+        let ascentVehicle = { mesh: null, active: false };
 
-<script>
-    document.getElementById('apiKey').value = localStorage.getItem('gemini_key') || '';
+        // --- Initialization ---
+        function init() {
+            // Scene & Renderer
+            scene = new THREE.Scene();
+            clock = new THREE.Clock();
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
 
-    function saveKey() {
-        localStorage.setItem('gemini_key', document.getElementById('apiKey').value);
-        document.getElementById('settings-layer').style.display = 'none';
-        alert('Saved!');
-    }
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+            camera.position.set(10, 10, 10);
 
-    async function generatePrompt() {
-        const input = document.getElementById('userInput').value;
-        const key = localStorage.getItem('gemini_key');
-        if(!key) { alert('API Key Required'); return; }
+            // Physics World
+            world = new CANNON.World();
+            world.gravity.set(0, CONFIG.gravity, 0);
+            world.broadphase = new CANNON.NaiveBroadphase();
+            world.solver.iterations = 10;
 
-        const outputDiv = document.getElementById('output');
-        outputDiv.innerText = "Generating...";
+            createEnvironment();
+            createRover();
+            createPOIs();
+            
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
 
-        const prompt = `Task: Provide concise, token-efficient English technical instructions for the user goal. Constraints: No greetings, no explanations, no closing remarks. Goal: ${input}`;
+        function createEnvironment() {
+            // 1. Skybox & Stars
+            const starGeometry = new THREE.BufferGeometry();
+            const starCount = 5000;
+            const starPositions = new Float32Array(starCount * 3);
+            for (let i = 0; i < starCount; i++) {
+                starPositions[i * 3] = (Math.random() - 0.5) * 1500;
+                starPositions[i * 3 + 1] = (Math.random() - 0.5) * 1500;
+                starPositions[i * 3 + 2] = (Math.random() - 0.5) * 1500;
+            }
+            starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+            const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.7, sizeAttenuation: true });
+            const stars = new THREE.Points(starGeometry, starMaterial);
+            scene.add(stars);
 
-        try {
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${key}`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+            // 2. Sun (Directional Light)
+            const sun = new THREE.DirectionalLight(0xffffff, CONFIG.sunIntensity);
+            sun.position.set(100, 100, 50);
+            sun.castShadow = true;
+            sun.shadow.camera.left = -300;
+            sun.shadow.camera.right = 300;
+            sun.shadow.camera.top = 300;
+            sun.shadow.camera.bottom = -300;
+            sun.shadow.mapSize.width = 2048;
+            sun.shadow.mapSize.height = 2048;
+            scene.add(sun);
+
+            const ambient = new THREE.AmbientLight(0x222222, 0.5);
+            scene.add(ambient);
+
+            // 3. Earth
+            const earthGeo = new THREE.SphereGeometry(20, 32, 32);
+            const earthMat = new THREE.MeshPhongMaterial({ 
+                color: 0x2233ff, 
+                emissive: 0x112244,
+                shininess: 5
             });
-            const data = await res.json();
-            outputDiv.innerText = data.candidates[0].content.parts[0].text;
-        } catch(e) { outputDiv.innerText = "ERROR: Connection failed."; }
-    }
+            earth = new THREE.Mesh(earthGeo, earthMat);
+            earth.position.set(-200, 150, -300);
+            scene.add(earth);
 
-    function copyOutput() {
-        navigator.clipboard.writeText(document.getElementById('output').innerText);
-        alert('Copied!');
-    }
-</script>
+            // 4. Terrain (Heightmap-ish)
+            const geometry = new THREE.PlaneGeometry(CONFIG.terrainSize, CONFIG.terrainSize, CONFIG.terrainResolution, CONFIG.terrainResolution);
+            geometry.rotateX(-Math.PI / 2);
+            
+            const vertices = geometry.attributes.position.array;
+            for (let i = 0; i < vertices.length; i += 3) {
+                const x = vertices[i];
+                const z = vertices[i + 2];
+                // Simple procedural craters using sine/noise
+                let h = Math.sin(x * 0.05) * Math.cos(z * 0.05) * 2;
+                h += Math.sin(x * 0.1) * 0.5;
+                // Random small bumps
+                h += (Math.random() - 0.5) * 0.2;
+                vertices[i + 1] = h;
+            }
+            geometry.computeVertexNormals();
+
+            // Procedural Moon Texture
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#888888';
+            ctx.fillRect(0, 0, 512, 512);
+            for (let i = 0; i < 2000; i++) {
+                const x = Math.random() * 512;
+                const y = Math.random() * 512;
+                const r = Math.random() * 2;
+                ctx.fillStyle = Math.random() > 0.5 ? '#777777' : '#999999';
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(20, 20);
+
+            const terrainMat = new THREE.MeshStandardMaterial({ 
+                map: texture,
+                roughness: 1.0, 
+                metalness: 0.0 
+            });
+            terrain = new THREE.Mesh(geometry, terrainMat);
+            terrain.receiveShadow = true;
+            scene.add(terrain);
+
+            // Physics Terrain
+            const terrainShape = new CANNON.Plane();
+            const terrainBody = new CANNON.Body({ mass: 0 });
+            terrainBody.addShape(terrainShape);
+            terrainBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+            world.addBody(terrainBody);
+        }
+
+        function createRover() {
+            // 1. Physics Body (Rigidbody)
+            const shape = new CANNON.Box(new CANNON.Vec3(1.5, 0.5, 1));
+            rover.body = new CANNON.Body({
+                mass: CONFIG.roverMass,
+                position: new CANNON.Vec3(0, 5, 0)
+            });
+            rover.body.addShape(shape);
+            world.addBody(rover.body);
+
+            // 2. Visual Mesh
+            const geometry = new THREE.BoxGeometry(3, 1, 2);
+            const material = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+            rover.mesh = new THREE.Mesh(geometry, material);
+            rover.mesh.castShadow = true;
+            scene.add(rover.mesh);
+
+            // 3. Wheels (Simplified Visuals)
+            const wheelGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.4, 16);
+            wheelGeo.rotateZ(Math.PI / 2);
+            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+            
+            const wheelOffsets = [
+                { x: -1.2, y: -0.5, z: 1 }, { x: 1.2, y: -0.5, z: 1 },
+                { x: -1.2, y: -0.5, z: -1 }, { x: 1.2, y: -0.5, z: -1 }
+            ];
+
+            wheelOffsets.forEach(offset => {
+                const wheelMesh = new THREE.Mesh(wheelGeo, wheelMat);
+                rover.mesh.add(wheelMesh);
+                wheelMesh.position.set(offset.x, offset.y, offset.z);
+                rover.wheels.push(wheelMesh);
+            });
+
+            // 4. Input Listeners
+            window.addEventListener('keydown', (e) => handleKey(e, true));
+            window.addEventListener('keyup', (e) => handleKey(e, false));
+        }
+
+        function handleKey(e, isDown) {
+            switch(e.code) {
+                case 'KeyW': case 'ArrowUp': rover.controls.forward = isDown; break;
+                case 'KeyS': case 'ArrowDown': rover.controls.backward = isDown; break;
+                case 'KeyA': case 'ArrowLeft': rover.controls.left = isDown; break;
+                case 'KeyD': case 'ArrowRight': rover.controls.right = isDown; break;
+                case 'Space': rover.controls.jump = isDown; break;
+            }
+        }
+
+        function updateRover() {
+            if (!rover.body || isGameEnded) return;
+
+            const force = 1500;
+            const torque = 1000;
+            const upForce = 2000;
+
+            // Movement
+            if (rover.controls.forward) {
+                const direction = new CANNON.Vec3(-1, 0, 0);
+                const worldDirection = rover.body.quaternion.vmult(direction);
+                rover.body.applyForce(worldDirection.scale(force), rover.body.position);
+            }
+            if (rover.controls.backward) {
+                const direction = new CANNON.Vec3(1, 0, 0);
+                const worldDirection = rover.body.quaternion.vmult(direction);
+                rover.body.applyForce(worldDirection.scale(force), rover.body.position);
+            }
+            if (rover.controls.left) {
+                rover.body.angularVelocity.y = 2;
+            } else if (rover.controls.right) {
+                rover.body.angularVelocity.y = -2;
+            } else {
+                rover.body.angularVelocity.y *= 0.95;
+            }
+
+            // Thruster (RCS)
+            if (rover.controls.jump) {
+                rover.body.applyForce(new CANNON.Vec3(0, upForce, 0), rover.body.position);
+                document.getElementById('status').innerText = "System: Thrusters Active";
+            } else {
+                document.getElementById('status').innerText = "System: Nominal";
+            }
+
+            // Sync Mesh
+            rover.mesh.position.copy(rover.body.position);
+            rover.mesh.quaternion.copy(rover.body.quaternion);
+
+            // Camera Follow
+            const relativeCameraOffset = new THREE.Vector3(10, 5, 0);
+            const cameraOffset = relativeCameraOffset.applyMatrix4(rover.mesh.matrixWorld);
+            camera.position.lerp(cameraOffset, 0.1);
+            camera.lookAt(rover.mesh.position);
+        }
+
+        function createPOIs() {
+            const poiData = [
+                { name: "Apollo 11 Site", pos: { x: 50, z: 50 }, color: 0xffd700, type: "landmark" },
+                { name: "US Flag", pos: { x: -60, z: 30 }, color: 0xffffff, type: "landmark" },
+                { name: "Lunokhod 1", pos: { x: 20, z: -80 }, color: 0xaaaaaa, type: "landmark" },
+                { name: "Surveyor Probe", pos: { x: -40, z: -40 }, color: 0x00ffff, type: "landmark" },
+                { name: "Sea of Tranquility", pos: { x: 100, z: -100 }, color: 0x444444, type: "region", size: 40 }
+            ];
+
+            poiData.forEach(data => {
+                const group = new THREE.Group();
+                group.position.set(data.pos.x, 0, data.pos.z);
+
+                // Landmark Visual
+                if (data.type === "landmark") {
+                    const baseGeo = new THREE.CylinderGeometry(1, 1.5, 1, 6);
+                    const baseMat = new THREE.MeshStandardMaterial({ color: data.color });
+                    const base = new THREE.Mesh(baseGeo, baseMat);
+                    group.add(base);
+                    
+                    const antennaGeo = new THREE.CylinderGeometry(0.05, 0.05, 3);
+                    const antenna = new THREE.Mesh(antennaGeo, baseMat);
+                    antenna.position.y = 1.5;
+                    group.add(antenna);
+                } else {
+                    // Region visual (faint circle)
+                    const circleGeo = new THREE.RingGeometry(data.size - 1, data.size, 64);
+                    circleGeo.rotateX(-Math.PI / 2);
+                    const circleMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.3 });
+                    const circle = new THREE.Mesh(circleGeo, circleMat);
+                    group.add(circle);
+                }
+
+                scene.add(group);
+
+                pois.push({
+                    name: data.name,
+                    mesh: group,
+                    isVisited: false,
+                    pointsValue: 100,
+                    radius: data.size || 5
+                });
+            });
+        }
+
+        function updateHUD() {
+            // Compass Logic
+            let nearestPOI = null;
+            let minDist = Infinity;
+
+            pois.forEach(poi => {
+                if (!poi.isVisited) {
+                    const dist = rover.mesh.position.distanceTo(poi.mesh.position);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        nearestPOI = poi;
+                    }
+                }
+            });
+
+            if (nearestPOI) {
+                const roverPos = rover.mesh.position;
+                const poiPos = nearestPOI.mesh.position;
+                const angle = Math.atan2(poiPos.x - roverPos.x, poiPos.z - roverPos.z);
+                
+                // Rover rotation correction (rover's forward is -X in this setup)
+                const roverRotation = rover.mesh.rotation.y;
+                const needleAngle = angle - roverRotation + Math.PI/2;
+                document.getElementById('compass-needle').style.transform = `translate(-50%, -100%) rotate(${needleAngle * (180/Math.PI)}deg)`;
+            }
+
+            // Detection Logic
+            pois.forEach(poi => {
+                if (!poi.isVisited) {
+                    const dist = rover.mesh.position.distanceTo(poi.mesh.position);
+                    if (dist < poi.radius) {
+                        discoverPOI(poi);
+                    }
+                }
+            });
+        }
+
+        function discoverPOI(poi) {
+            poi.isVisited = true;
+            currentScore += poi.pointsValue;
+            
+            document.getElementById('score').innerText = `Points: ${currentScore} / ${maxScore}`;
+            
+            const banner = document.getElementById('location-banner');
+            banner.innerText = `Discovered: ${poi.name}`;
+            banner.style.opacity = 1;
+            
+            setTimeout(() => {
+                banner.style.opacity = 0;
+            }, 3000);
+
+            if (currentScore >= maxScore) {
+                activateExtraction();
+            }
+        }
+
+        function activateExtraction() {
+            if (ascentVehicle.active) return;
+            ascentVehicle.active = true;
+
+            // Create Ascent Vehicle at start
+            const group = new THREE.Group();
+            group.position.set(0, 0, 0);
+
+            const bodyGeo = new THREE.CylinderGeometry(2, 3, 4, 8);
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 0.8, roughness: 0.2 });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            group.add(body);
+
+            const topGeo = new THREE.SphereGeometry(1.5, 8, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+            const top = new THREE.Mesh(topGeo, bodyMat);
+            top.position.y = 2;
+            group.add(top);
+
+            scene.add(group);
+            ascentVehicle.mesh = group;
+
+            // Add as a POI to be trackable by compass
+            pois.push({
+                name: "Ascent Vehicle (Extraction)",
+                mesh: group,
+                isVisited: false,
+                pointsValue: 0,
+                radius: 6,
+                isExtraction: true
+            });
+
+            document.getElementById('status').innerText = "System: Extraction Ready. Return to Base.";
+            document.getElementById('status').style.color = "#00ff00";
+        }
+
+        function checkExtraction() {
+            if (!ascentVehicle.active || isGameEnded) return;
+
+            const dist = rover.mesh.position.distanceTo(ascentVehicle.mesh.position);
+            if (dist < 6) {
+                startWinSequence();
+            }
+        }
+
+        function startWinSequence() {
+            isGameEnded = true;
+            document.getElementById('status').innerText = "System: Docking Complete.";
+            
+            // Parent rover to vehicle
+            rover.mesh.position.set(0, 0, 0);
+            ascentVehicle.mesh.add(rover.mesh);
+            
+            // Remove physics
+            world.removeBody(rover.body);
+
+            let altitude = 0;
+            const liftOff = setInterval(() => {
+                altitude += 0.2;
+                ascentVehicle.mesh.position.y += altitude;
+                
+                // Camera follows vehicle
+                camera.lookAt(ascentVehicle.mesh.position);
+
+                if (altitude > 10) {
+                    clearInterval(liftOff);
+                    document.getElementById('mission-complete').style.display = 'flex';
+                }
+            }, 16);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            
+            if (world) world.step(1/60);
+            updateRover();
+            updateHUD();
+            checkExtraction();
+            renderer.render(scene, camera);
+        }
+
+        init();
+    </script>
 </body>
 </html>
