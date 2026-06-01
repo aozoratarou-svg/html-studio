@@ -3,99 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TOKEN-SAVER PROMPT STUDIO</title>
+    <title>PROMPT STUDIO</title>
     <style>
-        /* ファミコン風ベースカラーとフォント設定 */
+        /* 全体のベース設定（画像参考：黒背景、緑テキスト） */
         body { 
-            background: #E8D0A0; /* ファミコンのコントローラー風ゴールド/クリーム */
-            color: #000; 
+            background: #000; 
+            color: #0f0; 
             font-family: 'Courier New', Courier, monospace; 
-            padding: 15px; 
+            padding: 10px; 
             margin: 0; 
             box-sizing: border-box; 
             height: 100vh; 
             display: flex; 
             flex-direction: column; 
+            overflow-x: hidden;
         }
 
-        /* ヘッダー (ファミコンレッド) */
+        /* タイトル（赤文字・白影のレトロ風） */
         .header { 
             text-align: center; 
-            font-size: 1.5rem; 
-            font-weight: 900;
-            margin-bottom: 15px; 
-            background: #980000; /* えんじ色 */
-            color: #fff; 
-            border: 4px solid #000; 
-            padding: 10px;
-            box-shadow: 4px 4px 0px #000;
+            font-size: 1.8rem; 
+            font-weight: bold;
+            margin: 10px 0 20px 0; 
+            color: #ff3333; 
+            text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
             letter-spacing: 2px;
         }
 
-        /* テキストエリアと出力エリア */
-        textarea, #output { 
+        /* 上部：定型ボタンと設定ボタンの横一列 */
+        .top-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+            width: 100%;
+        }
+
+        /* 汎用ボタン（白枠＋グレー影） */
+        .btn {
+            background: #000;
+            color: #fff;
+            border: 2px solid #fff;
+            box-shadow: 2px 2px 0px #888;
+            padding: 10px 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.9rem;
+            text-align: center;
+            font-family: 'Courier New', Courier, monospace;
+            transition: all 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn:active { 
+            transform: translate(2px, 2px); 
+            box-shadow: 0px 0px 0px #888; 
+        }
+
+        .btn-teikei { flex: 1; }
+        .btn-setting { width: 50px; font-size: 1.2rem; } /* 歯車ボタン */
+
+        /* 入力エリア */
+        textarea { 
             width: 100%; 
+            height: 120px; 
             background: #000; 
-            color: #fff; 
-            border: 4px solid #000; 
-            padding: 12px; 
+            color: #0f0; /* 緑文字 */
+            border: 2px solid #fff; 
+            padding: 10px; 
             box-sizing: border-box; 
-            margin-bottom: 10px; 
+            margin-bottom: 15px; 
             resize: none;
             font-weight: bold;
             font-size: 1rem;
-            border-radius: 0;
-            box-shadow: 4px 4px 0px #000;
-            font-family: 'Courier New', Courier, monospace;
+            font-family: inherit;
         }
-        
-        textarea { height: 120px; }
-        textarea:focus { outline: none; border-color: #980000; }
+        textarea:focus { outline: none; border-color: #0f0; }
 
-        #output { 
-            height: 160px; 
-            overflow-y: auto; 
-            white-space: pre-wrap; 
-            line-height: 1.4; 
-        }
-        
-        /* 6つのボタンを集約するグリッドレイアウト */
-        .btn-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        /* レトロなボタンデザイン */
-        .btn {
-            padding: 10px 5px;
-            background: #E4E4E4; /* コントローラーのグレー */
-            color: #000;
-            border: 4px solid #000;
-            cursor: pointer;
-            font-weight: 900;
-            font-size: 0.85rem;
-            text-align: center;
-            border-radius: 0;
-            box-shadow: 3px 3px 0px #000;
-            transition: transform 0.1s, box-shadow 0.1s;
-            font-family: 'Courier New', Courier, monospace;
-        }
-        
-        /* 押し込み時の挙動 */
-        .btn:active { 
-            transform: translate(3px, 3px); 
-            box-shadow: 0px 0px 0px #000; 
-        }
-        
-        /* 実行ボタン (大きめのファミコンレッド) */
+        /* アクションボタン（赤・青） */
         .btn-action { 
-            background: #980000; 
-            color: #fff; 
             width: 100%; 
             padding: 15px; 
             font-size: 1.1rem; 
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+        }
+        .red { background: #d32f2f; color: #fff; }
+        .blue { background: #1976d2; color: #fff; }
+
+        /* 出力エリア */
+        #output { 
+            flex: 1;
+            width: 100%;
+            background: #000;
+            color: #0f0;
+            border: 2px solid #fff; 
+            padding: 10px; 
+            box-sizing: border-box;
+            overflow-y: auto; 
+            white-space: pre-wrap; 
+            line-height: 1.4; 
+            font-size: 0.95rem;
             margin-bottom: 10px;
         }
 
@@ -105,93 +114,86 @@
             position: fixed; 
             top: 0; left: 0; 
             width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.8); 
+            background: rgba(0,0,0,0.85); 
             z-index: 10; 
+            justify-content: center;
+            align-items: center;
         }
         
         .modal-content {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            background: #E8D0A0;
-            border: 6px solid #000;
-            padding: 20px;
+            background: #000;
+            border: 2px solid #fff;
+            padding: 15px;
             width: 90%;
             max-width: 400px;
+            max-height: 90vh;
+            overflow-y: auto;
             box-sizing: border-box;
-            box-shadow: 8px 8px 0px #000;
+            box-shadow: 4px 4px 0px #888;
         }
 
         .modal-content h3 { 
             color: #fff; 
-            background: #000; 
-            padding: 5px; 
+            border-bottom: 2px solid #fff;
+            padding-bottom: 5px; 
             margin-top: 0; 
             text-align: center; 
-            border: 4px solid #000;
         }
         
         .modal-content input, .modal-content textarea {
             width: 100%; padding: 10px; margin-bottom: 15px; box-sizing: border-box;
-            background: #fff; color: #000; border: 4px solid #000; font-weight: bold; border-radius: 0;
+            background: #111; color: #0f0; border: 1px solid #555; 
         }
         
         .modal-content label { 
-            color: #000; font-weight: bold; display: block; margin-bottom: 5px; 
+            color: #fff; font-weight: bold; display: block; margin-bottom: 5px; font-size: 0.9rem;
         }
     </style>
 </head>
 <body>
 
-<div class="header">PROMPT OPTIMIZER</div>
+<div class="header">PROMPT STUDIO</div>
+
+<div class="top-row">
+    <div class="btn btn-teikei" onclick="insertTeikei(1)">定型1</div>
+    <div class="btn btn-teikei" onclick="insertTeikei(2)">定型2</div>
+    <div class="btn btn-teikei" onclick="insertTeikei(3)">定型3</div>
+    <div class="btn btn-setting" onclick="openModal('modal-settings')">⚙️</div>
+</div>
 
 <textarea id="userInput" placeholder="AIに何をさせたいですか？"></textarea>
 
-<div class="btn-grid">
-    <button class="btn" onclick="insertTeikei(1)">定型 1</button>
-    <button class="btn" onclick="insertTeikei(2)">定型 2</button>
-    <button class="btn" onclick="insertTeikei(3)">定型 3</button>
-    <button class="btn" onclick="openModal('modal-teikei')" style="background: #aaccff;">📝 登録</button>
-    <button class="btn" onclick="copyOutput()" style="background: #aaccff;">📋 コピー</button>
-    <button class="btn" onclick="openModal('modal-api')" style="background: #cccccc;">⚙️ 設定</button>
-</div>
+<button class="btn btn-action red" onclick="generatePrompt()">💾 START (生成)</button>
 
-<button class="btn btn-action" onclick="generatePrompt()">START (生成)</button>
+<button class="btn btn-action blue" onclick="copyOutput()">📋 コピー (COPY)</button>
 
-<div id="output"></div>
+<div id="output">結果がここに表示されます...</div>
 
-<div id="modal-teikei" class="modal-overlay">
+<div id="modal-settings" class="modal-overlay">
     <div class="modal-content">
-        <h3>定型文の登録</h3>
-        <label>定型 1</label>
-        <textarea id="teikei1" rows="2" placeholder="例：Pythonで記述して"></textarea>
+        <h3>SETTINGS</h3>
         
-        <label>定型 2</label>
-        <textarea id="teikei2" rows="2" placeholder="例：エラーハンドリングも含めて"></textarea>
-        
-        <label>定型 3</label>
-        <textarea id="teikei3" rows="2" placeholder="例：初心者向けにコメントを多めに"></textarea>
-        
-        <div style="display: flex; gap: 10px;">
-            <button class="btn" style="flex: 1; background: #980000; color: #fff;" onclick="saveTeikei()">SAVE</button>
-            <button class="btn" style="flex: 1;" onclick="closeModal('modal-teikei')">CLOSE</button>
-        </div>
-    </div>
-</div>
-
-<div id="modal-api" class="modal-overlay">
-    <div class="modal-content">
-        <h3>API SETTINGS</h3>
         <label>Gemini API Key</label>
         <input type="password" id="apiKey" placeholder="Enter API Key">
-        <div style="display: flex; gap: 10px;">
-            <button class="btn" style="flex: 1; background: #980000; color: #fff;" onclick="saveApiKey()">SAVE KEY</button>
-            <button class="btn" style="flex: 1;" onclick="closeModal('modal-api')">CLOSE</button>
+        
+        <label>定型文 1</label>
+        <textarea id="teikei1" rows="2" placeholder="例：Pythonで記述して"></textarea>
+        
+        <label>定型文 2</label>
+        <textarea id="teikei2" rows="2" placeholder="例：エラーハンドリングも含めて"></textarea>
+        
+        <label>定型文 3</label>
+        <textarea id="teikei3" rows="2" placeholder="例：初心者向けにコメントを多めに"></textarea>
+        
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+            <button class="btn blue" style="flex: 2; color:#fff;" onclick="saveSettings()">SAVE (保存)</button>
+            <button class="btn" style="flex: 1;" onclick="closeModal('modal-settings')">CLOSE</button>
         </div>
     </div>
 </div>
 
 <script>
+    // 起動時にローカルストレージから設定を読み込む
     window.onload = () => {
         document.getElementById('apiKey').value = localStorage.getItem('gemini_key') || '';
         for(let i=1; i<=3; i++) {
@@ -199,27 +201,24 @@
         }
     };
 
-    function openModal(id) { document.getElementById(id).style.display = 'block'; }
+    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-    function saveApiKey() {
+    // APIキーと定型文をまとめて保存
+    function saveSettings() {
         localStorage.setItem('gemini_key', document.getElementById('apiKey').value);
-        closeModal('modal-api');
-        alert('API Key Saved!');
-    }
-
-    function saveTeikei() {
         for(let i=1; i<=3; i++) {
             localStorage.setItem('teikei'+i, document.getElementById('teikei'+i).value);
         }
-        closeModal('modal-teikei');
-        alert('定型文を保存しました！');
+        closeModal('modal-settings');
+        alert('設定を保存しました。');
     }
 
+    // 定型文を入力欄に挿入
     function insertTeikei(num) {
         const val = localStorage.getItem('teikei'+num);
         if(!val) {
-            alert(`定型 ${num} が未登録です。「📝 登録」ボタンから設定してください。`);
+            alert(`定型 ${num} が未設定です。右の ⚙️ ボタンから設定してください。`);
             return;
         }
         const ta = document.getElementById('userInput');
@@ -227,11 +226,12 @@
         ta.scrollTop = ta.scrollHeight;
     }
 
+    // プロンプト生成
     async function generatePrompt() {
         const input = document.getElementById('userInput').value;
         const key = localStorage.getItem('gemini_key');
-        if(!key) { alert('API設定からGemini API Keyを入力してください。'); return; }
-        if(!input) { alert('目的を入力してください。'); return; }
+        if(!key) { alert('設定(⚙️)からGemini API Keyを入力してください。'); return; }
+        if(!input) { alert('入力画面に目的を入力してください。'); return; }
 
         const outputDiv = document.getElementById('output');
         outputDiv.innerText = "Generating optimized prompt...";
@@ -262,16 +262,20 @@
             const optimizedTask = data.candidates[0].content.parts[0].text.trim();
             outputDiv.innerText = fixedConstraints + optimizedTask;
         } catch(e) { 
-            outputDiv.innerText = "ERROR: Connection failed or API limit reached."; 
+            outputDiv.innerText = "ERROR: 通信に失敗したか、APIキーが間違っています。"; 
             console.error(e);
         }
     }
 
+    // クリップボードにコピー
     function copyOutput() {
         const textToCopy = document.getElementById('output').innerText;
-        if(!textToCopy || textToCopy.includes("Generating...")) return;
-        navigator.clipboard.writeText(textToCopy);
-        alert('Copied to clipboard!');
+        if(!textToCopy || textToCopy.includes("Generating...") || textToCopy.includes("結果がここに")) return;
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            alert('コピーしました！');
+        }).catch(err => {
+            alert('コピーに失敗しました。');
+        });
     }
 </script>
 </body>
