@@ -2,562 +2,392 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>8-BIT AGENT STUDIO v4</title>
-    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>AI Visualizer Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        /* 全体のベース設定（ファミコン風） */
-        body { 
-            background: #000000; 
-            color: #ffffff; 
-            font-family: 'DotGothic16', monospace; 
-            padding: 10px; 
-            margin: 0; 
-            box-sizing: border-box; 
-            height: 100vh; 
-            display: flex; 
-            flex-direction: column; 
-            overflow-x: hidden;
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
-
-        /* タイトル */
-        .header { 
-            text-align: center; 
-            font-size: 1.5rem; 
-            margin: 10px 0 15px 0; 
-            color: #E52521;
-            text-shadow: 2px 2px 0 #fff;
-            letter-spacing: 2px;
+        .glass {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
         }
-
-        /* 上部：定型ボタンと設定ボタンの横一列 */
-        .top-row {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 10px;
+        .glass-input {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #f8fafc;
+        }
+        .glass-input:focus {
+            border-color: #818cf8;
+            background: rgba(255, 255, 255, 0.08);
+            outline: none;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+        .chart-container {
+            position: relative;
+            height: 250px;
             width: 100%;
         }
-
-        /* 汎用ボタン（ドット風の枠と影） */
-        .btn {
-            background: #000;
-            color: #fff;
-            border: 2px solid #fff;
-            box-shadow: 2px 2px 0px #fff;
-            padding: 8px 5px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            text-align: center;
-            font-family: 'DotGothic16', monospace;
-            transition: all 0.1s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            user-select: none;
+        @media (max-width: 640px) {
+            .chart-container {
+                height: 200px;
+            }
         }
-        
-        .btn:active { 
-            transform: translate(2px, 2px); 
-            box-shadow: 0px 0px 0px #fff; 
-        }
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .btn-teikei { flex: 1; }
-        .btn-setting { width: 50px; font-size: 1.2rem; } 
-
-        /* 共通テキストエリア設定 */
-        textarea {
-            width: 100%; 
-            background: #0000AA; 
-            color: #fff; 
-            border: 2px solid #fff; 
-            padding: 10px; 
-            box-sizing: border-box; 
-            resize: none;
-            font-family: 'DotGothic16', monospace;
-            font-size: 1rem;
-            line-height: 1.4;
-        }
-        textarea:focus { outline: none; border-color: #E52521; }
-        textarea::placeholder { color: #aaaaaa; }
-
-        #userInput { flex: 1; margin-bottom: 10px; }
-
-        /* エージェント進捗ステータスエリア */
-        #status-board {
-            display: none;
-            background: #000;
-            border: 2px dashed #fff;
-            padding: 8px;
-            margin-bottom: 10px;
-            font-size: 0.9rem;
-        }
-        .agent-status { margin: 4px 0; }
-        .status-wait { color: #aaaaaa; }
-        .status-run { color: #f39c12; animation: blink 1s infinite; }
-        .status-done { color: #2ecc71; }
-        .status-err { color: #e74c3c; }
-        .status-skip { color: #555555; text-decoration: line-through; }
-
-        @keyframes blink { 50% { opacity: 0.5; } }
-
-        /* アクションボタン（縦積み配置） */
-        .btn-action { 
-            width: 100%; 
-            padding: 12px; 
-            font-size: 1rem; 
-            margin-bottom: 10px;
-            letter-spacing: 1px;
-            flex-shrink: 0; 
-        }
-        .red { background: #E52521; color: #fff; border-color: #fff; box-shadow: 2px 2px 0px #fff;}
-        .blue { background: #0047BB; color: #fff; border-color: #fff; box-shadow: 2px 2px 0px #fff;}
-        .gray { background: #444444; color: #fff; border-color: #fff; box-shadow: 2px 2px 0px #fff;}
-
-        /* 出力コンソール */
-        .output-console { 
-            flex: 1.2; 
-            margin-bottom: 5px;
-            background: #000;
-            color: #fff;
-            border: 2px solid #fff;
-            padding: 10px;
-            box-sizing: border-box;
-            font-family: 'DotGothic16', monospace;
-            font-size: 0.95rem;
-            line-height: 1.5;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-        
-        .section-title {
-            color: #E52521;
-            margin-top: 15px;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        .section-title:first-child { margin-top: 0; }
-        .audit-text { color: #2ecc71; }
-
-        /* モーダル */
-        .modal-overlay { 
-            display: none; 
-            position: fixed; 
-            top: 0; left: 0; 
-            width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.85); 
-            z-index: 10; 
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .modal-content {
-            background: #000;
-            border: 4px solid #fff;
-            padding: 15px;
-            width: 90%;
-            max-width: 400px;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-sizing: border-box;
-        }
-
-        .modal-content h3 { 
-            color: #E52521; 
-            border-bottom: 2px dashed #fff;
-            padding-bottom: 5px; 
-            margin-top: 0; 
-            text-align: center; 
-        }
-        
-        .modal-content input, .modal-content textarea {
-            width: 100%; padding: 10px; margin-bottom: 15px; box-sizing: border-box;
-            background: #111; color: #fff; border: 2px solid #555; 
-            flex: none; font-family: 'DotGothic16', monospace;
-        }
-        
-        .modal-content label { 
-            color: #fff; display: block; margin-bottom: 5px; font-size: 0.9rem;
-        }
-        
-        .checkbox-label {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            cursor: pointer;
-            margin-bottom: 15px;
-        }
-        .checkbox-label input { width: auto; margin: 0; transform: scale(1.2); }
-
     </style>
 </head>
-<body>
+<body class="text-slate-100 min-h-screen pb-12">
+    <div class="max-w-2xl mx-auto px-4 pt-6 space-y-6">
+        <!-- Header -->
+        <header class="flex justify-between items-center py-2">
+            <div class="flex items-center space-x-2">
+                <i data-lucide="layout-dashboard" class="text-indigo-400 w-6 h-6"></i>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400">AI Visualizer</h1>
+                    <p class="text-[10px] text-slate-400">Glassmorphism Dashboard v1.0</p>
+                </div>
+            </div>
+            <nav class="flex space-x-4">
+                <button class="text-slate-400 hover:text-white transition-colors"><i data-lucide="bell" class="w-5 h-5"></i></button>
+                <button class="text-slate-400 hover:text-white transition-colors"><i data-lucide="settings" class="w-5 h-5"></i></button>
+            </nav>
+        </header>
 
-<div class="header">MULTI AGENT 8-BIT</div>
-
-<div class="top-row">
-    <div class="btn btn-teikei" onclick="insertTeikei(1)">定型1</div>
-    <div class="btn btn-teikei" onclick="insertTeikei(2)">定型2</div>
-    <div class="btn btn-teikei" onclick="insertTeikei(3)">定型3</div>
-    <div class="btn btn-setting" onclick="openModal('modal-settings')">⚙️</div>
-</div>
-
-<textarea id="userInput" placeholder="▶AIニ 何ヲ サセマスカ？"></textarea>
-
-<div id="status-board">
-    <div id="status-pm" class="agent-status status-wait">🧠 親(PM) : 待機中...</div>
-    <div id="status-en" class="agent-status status-wait">🗣️ 子A(EN): 待機中...</div>
-    <div id="status-code" class="agent-status status-wait">💻 子B(CD): 待機中...</div>
-    <div id="status-audit" class="agent-status status-wait" style="display:none;">🕵️ 監査(AU): 待機中...</div>
-</div>
-
-<button id="startDevBtn" class="btn btn-action red" onclick="runMultiAgent('dev')">🛠️ 開発スタート（コードあり）</button>
-<button id="startPromptBtn" class="btn btn-action blue" onclick="runMultiAgent('prompt')">📝 指示書スタート（コードなし）</button>
-<button id="copyBtn" class="btn btn-action gray" onclick="copyOutput()">📋 COPY (出力のみコピー)</button>
-
-<div id="output" class="output-console">
-    <div style="color:#aaaaaa;">▶ケッカガ ココニ タイピング サレマス</div>
-</div>
-
-<div id="modal-settings" class="modal-overlay">
-    <div class="modal-content">
-        <h3>SETTINGS</h3>
-        
-        <label>Gemini API Key (3.5 Flash用)</label>
-        <input type="password" id="apiKey" placeholder="Enter API Key">
-        
-        <label>マイ・コンテキスト (前提条件/技術スタック)</label>
-        <textarea id="myContext" rows="3" placeholder="例: PythonとReactを好む。シンプルでモダンなUI設計。"></textarea>
-
-        <label class="checkbox-label">
-            <input type="checkbox" id="soundToggle" checked>
-            <span>タイピング音 (SOUND) 鳴らす</span>
-        </label>
-
-        <label>定型文 1</label>
-        <textarea id="teikei1" rows="2" placeholder="例：Pythonで記述して"></textarea>
-        
-        <label>定型文 2</label>
-        <textarea id="teikei2" rows="2" placeholder="例：エラーハンドリングも含めて"></textarea>
-        
-        <label>定型文 3</label>
-        <textarea id="teikei3" rows="2" placeholder="例：コアなロジック部分のみ"></textarea>
-        
-        <div style="display: flex; gap: 10px; margin-top: 10px;">
-            <button class="btn red" style="flex: 2;" onclick="saveSettings()">SAVE</button>
-            <button class="btn" style="flex: 1;" onclick="closeModal('modal-settings')">CLOSE</button>
-        </div>
-    </div>
-</div>
-
-<script>
-    // -------------------------------------------------------------------
-    // 設定と初期化
-    // -------------------------------------------------------------------
-    const MODEL_NAME = "gemini-3.5-flash";
-    const API_BASE_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}`;
-    
-    let audioCtx = null;
-    let currentAppMode = 'dev'; // 実行したモードを保持
-
-    window.onload = () => {
-        document.getElementById('apiKey').value = localStorage.getItem('gemini_key') || '';
-        document.getElementById('myContext').value = localStorage.getItem('my_context') || '';
-        document.getElementById('soundToggle').checked = localStorage.getItem('sound_toggle') !== 'false';
-        for(let i=1; i<=3; i++) {
-            document.getElementById('teikei'+i).value = localStorage.getItem('teikei'+i) || '';
-        }
-    };
-
-    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-
-    function saveSettings() {
-        localStorage.setItem('gemini_key', document.getElementById('apiKey').value);
-        localStorage.setItem('my_context', document.getElementById('myContext').value);
-        localStorage.setItem('sound_toggle', document.getElementById('soundToggle').checked);
-        for(let i=1; i<=3; i++) {
-            localStorage.setItem('teikei'+i, document.getElementById('teikei'+i).value);
-        }
-        closeModal('modal-settings');
-        alert('セッテイ ヲ ホゾンシマシタ。');
-    }
-
-    function insertTeikei(num) {
-        const val = localStorage.getItem('teikei'+num);
-        if(!val) {
-            alert(`テイケイ ${num} ガ ミセッテイ デス。⚙️ カラ セッテイシテクダサイ。`);
-            return;
-        }
-        const ta = document.getElementById('userInput');
-        ta.value = ta.value ? ta.value + '\n' + val : val;
-        ta.scrollTop = ta.scrollHeight;
-    }
-
-    function updateStatus(agentId, state, text) {
-        const el = document.getElementById(agentId);
-        if(el) {
-            el.className = `agent-status status-${state}`;
-            el.innerText = text;
-            el.style.display = 'block';
-        }
-    }
-
-    // --- 音声演出 ---
-    function initAudio() {
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-    }
-
-    function playBeep() {
-        const soundOn = document.getElementById('soundToggle').checked;
-        if (!soundOn || !audioCtx) return;
-        try {
-            const osc = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(400 + Math.random()*200, audioCtx.currentTime); 
-            gainNode.gain.setValueAtTime(0.015, audioCtx.currentTime); 
-            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
-            osc.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.05);
-        } catch(e) {}
-    }
-
-    // -------------------------------------------------------------------
-    // API Callers
-    // -------------------------------------------------------------------
-    async function callGeminiJSON(prompt, apiKey) {
-        const res = await fetch(`${API_BASE_URL}:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ 
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { 
-                    temperature: 0.1,
-                    responseMimeType: "application/json" 
-                }
-            })
-        });
-        if (!res.ok) throw new Error(`API Error: ${res.status}`);
-        const data = await res.json();
-        return JSON.parse(data.candidates[0].content.parts[0].text);
-    }
-
-    async function callGeminiStream(prompt, apiKey, onChunk) {
-        const res = await fetch(`${API_BASE_URL}:streamGenerateContent?alt=sse&key=${apiKey}`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ 
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { temperature: 0.2 }
-            })
-        });
-        
-        if (!res.ok) throw new Error(`API Error: ${res.status}`);
-        
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder("utf-8");
-        let fullText = "";
-        
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n');
+        <!-- Input Section -->
+        <section class="glass rounded-2xl p-5 space-y-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="database" class="text-indigo-300 w-4 h-4"></i>
+                    <h2 class="text-sm font-semibold text-indigo-300 tracking-wider uppercase">Data Input</h2>
+                </div>
+                <button onclick="loadSample()" class="text-xs text-cyan-400 hover:text-cyan-300 transition-colors flex items-center gap-1">
+                    <i data-lucide="refresh-cw" class="w-3 h-3"></i>サンプル読込
+                </button>
+            </div>
             
-            for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                    const dataStr = line.substring(6).trim();
-                    if (dataStr) {
-                        try {
-                            const dataObj = JSON.parse(dataStr);
-                            const parts = dataObj?.candidates?.[0]?.content?.parts;
-                            if (parts && parts[0] && parts[0].text) {
-                                const t = parts[0].text;
-                                fullText += t;
-                                onChunk(t); 
-                                playBeep(); 
+            <textarea id="jsonInput" oninput="autoUpdate()" class="w-full h-32 glass-input rounded-xl p-3 text-xs font-mono resize-none transition-all" placeholder="JSONデータを貼り付けてください..."></textarea>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="space-y-1">
+                    <label class="text-[10px] text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                        <i data-lucide="key" class="w-3 h-3"></i>Gemini API Key
+                    </label>
+                    <input type="password" id="apiKey" class="w-full glass-input rounded-lg px-3 py-2 text-xs" placeholder="APIキーを入力">
+                </div>
+                <div class="flex items-end">
+                    <button onclick="visualize()" class="w-full py-2 bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white font-semibold rounded-xl text-sm transition-all duration-200 active:scale-[0.98] shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2">
+                        <i data-lucide="zap" class="w-4 h-4"></i>分析を実行
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dashboard Output -->
+        <main id="dashboard" class="space-y-6">
+            <!-- Metrics Grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div class="glass rounded-2xl p-4 flex flex-col items-center justify-center text-center">
+                    <i data-lucide="award" class="text-yellow-400 w-5 h-5 mb-1"></i>
+                    <span class="text-[10px] text-slate-400 uppercase tracking-wider">Winner</span>
+                    <p id="winnerName" class="text-sm font-bold text-white truncate w-full">-</p>
+                </div>
+                <div class="glass rounded-2xl p-4 flex flex-col items-center justify-center text-center">
+                    <i data-lucide="trending-up" class="text-rose-400 w-5 h-5 mb-1"></i>
+                    <span class="text-[10px] text-slate-400 uppercase tracking-wider">Growth</span>
+                    <p id="growthRate" class="text-sm font-bold text-rose-400">-</p>
+                </div>
+                <div class="glass rounded-2xl p-4 flex flex-col items-center justify-center text-center">
+                    <i data-lucide="dollar-sign" class="text-emerald-400 w-5 h-5 mb-1"></i>
+                    <span class="text-[10px] text-slate-400 uppercase tracking-wider">Profit</span>
+                    <p id="winnerProfit" class="text-sm font-bold text-emerald-400">-</p>
+                </div>
+                <div class="glass rounded-2xl p-4 flex flex-col items-center justify-center text-center">
+                    <i data-lucide="activity" class="text-cyan-400 w-5 h-5 mb-1"></i>
+                    <span class="text-[10px] text-slate-400 uppercase tracking-wider">Status</span>
+                    <p id="aiStatus" class="text-[10px] font-bold text-cyan-400">Ready</p>
+                </div>
+            </div>
+
+            <!-- Chart Card -->
+            <div class="glass rounded-2xl p-5 space-y-4">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-2">
+                        <i data-lucide="bar-chart-3" class="text-indigo-300 w-4 h-4"></i>
+                        <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Profit Comparison</h4>
+                    </div>
+                    <div class="flex bg-white/5 rounded-lg p-1">
+                        <button onclick="toggleChartType('bar')" id="btnBar" class="px-3 py-1 text-[10px] rounded-md bg-indigo-500 text-white transition-all">Bar</button>
+                        <button onclick="toggleChartType('line')" id="btnLine" class="px-3 py-1 text-[10px] rounded-md text-slate-400 hover:text-white transition-all">Line</button>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="profitChart"></canvas>
+                </div>
+            </div>
+
+            <!-- AI Summary Card -->
+            <div class="glass rounded-2xl p-5 space-y-3 relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10">
+                    <i data-lucide="sparkles" class="w-12 h-12 text-indigo-400"></i>
+                </div>
+                <div class="flex justify-between items-center border-b border-white/10 pb-2">
+                    <div class="flex items-center space-x-2">
+                        <i data-lucide="brain-circuit" class="text-indigo-300 w-4 h-4"></i>
+                        <h4 class="text-xs font-semibold text-indigo-300 uppercase tracking-wider">AI Executive Summary</h4>
+                    </div>
+                    <button onclick="exportData()" class="text-[10px] text-slate-400 hover:text-white flex items-center gap-1">
+                        <i data-lucide="download" class="w-3 h-3"></i>Export
+                    </button>
+                </div>
+                <div id="summaryContent" class="text-xs text-slate-200 leading-relaxed min-h-[60px]">
+                    データを入力して「分析を実行」をクリックしてください。
+                </div>
+            </div>
+            
+            <!-- Reasoning Footer -->
+            <div class="glass rounded-2xl p-4 flex items-start space-x-3">
+                <i data-lucide="info" class="text-slate-400 w-4 h-4 mt-0.5"></i>
+                <div>
+                    <h5 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Reasoning Context</h5>
+                    <p id="reasoningText" class="text-[11px] text-slate-400 italic">-</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let chartInstance = null;
+        let currentChartType = 'bar';
+        let currentData = null;
+
+        const sampleData = {
+            "alpha_profit": 2160000,
+            "beta_profit": 1760000,
+            "winner": "AlphaCorp",
+            "q1_growth_rate": "12.5%",
+            "reasoning": "Market expansion in APAC region and optimized supply chain costs."
+        };
+
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        function loadSample() {
+            document.getElementById('jsonInput').value = JSON.stringify(sampleData, null, 2);
+            visualize();
+        }
+
+        function autoUpdate() {
+            const inputVal = document.getElementById('jsonInput').value.trim();
+            if (!inputVal) return;
+            try {
+                const data = JSON.parse(inputVal);
+                updateUI(data);
+            } catch (e) {
+                // Silent fail on partial JSON during typing
+            }
+        }
+
+        async function visualize() {
+            const inputVal = document.getElementById('jsonInput').value.trim();
+            if (!inputVal) return alert('JSONデータを入力してください。');
+
+            try {
+                currentData = JSON.parse(inputVal);
+                updateUI(currentData);
+                await generateSummary(currentData);
+            } catch (e) {
+                return alert('JSONのパースに失敗しました。フォーマットを確認してください。');
+            }
+        }
+
+        function updateUI(data) {
+            document.getElementById('winnerName').innerText = data.winner || 'N/A';
+            document.getElementById('growthRate').innerText = data.q1_growth_rate || 'N/A';
+            document.getElementById('reasoningText').innerText = data.reasoning || 'N/A';
+
+            const winnerKey = String(data.winner).toLowerCase().includes('alpha') ? 'alpha_profit' : 'beta_profit';
+            const winnerProfitVal = data[winnerKey] || data.alpha_profit || data.beta_profit;
+            document.getElementById('winnerProfit').innerText = winnerProfitVal ? `¥${Number(winnerProfitVal).toLocaleString()}` : 'N/A';
+
+            renderChart(data.alpha_profit, data.beta_profit);
+        }
+
+        function toggleChartType(type) {
+            currentChartType = type;
+            const btnBar = document.getElementById('btnBar');
+            const btnLine = document.getElementById('btnLine');
+            
+            if (type === 'bar') {
+                btnBar.className = "px-3 py-1 text-[10px] rounded-md bg-indigo-500 text-white transition-all";
+                btnLine.className = "px-3 py-1 text-[10px] rounded-md text-slate-400 hover:text-white transition-all";
+            } else {
+                btnLine.className = "px-3 py-1 text-[10px] rounded-md bg-indigo-500 text-white transition-all";
+                btnBar.className = "px-3 py-1 text-[10px] rounded-md text-slate-400 hover:text-white transition-all";
+            }
+            
+            if (currentData) {
+                renderChart(currentData.alpha_profit, currentData.beta_profit);
+            }
+        }
+
+        function renderChart(alpha, beta) {
+            const ctx = document.getElementById('profitChart').getContext('2d');
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            const gradientIndigo = ctx.createLinearGradient(0, 0, 0, 400);
+            gradientIndigo.addColorStop(0, 'rgba(99, 102, 241, 0.8)');
+            gradientIndigo.addColorStop(1, 'rgba(99, 102, 241, 0.1)');
+
+            const gradientCyan = ctx.createLinearGradient(0, 0, 0, 400);
+            gradientCyan.addColorStop(0, 'rgba(6, 182, 212, 0.8)');
+            gradientCyan.addColorStop(1, 'rgba(6, 182, 212, 0.1)');
+
+            chartInstance = new Chart(ctx, {
+                type: currentChartType,
+                data: {
+                    labels: ['AlphaCorp', 'BetaCorp'],
+                    datasets: [{
+                        label: 'Profit',
+                        data: [alpha || 0, beta || 0],
+                        backgroundColor: currentChartType === 'bar' ? [gradientIndigo, gradientCyan] : 'rgba(99, 102, 241, 0.2)',
+                        borderColor: currentChartType === 'bar' ? ['#818cf8', '#22d3ee'] : '#818cf8',
+                        borderWidth: 2,
+                        borderRadius: 8,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleColor: '#818cf8',
+                            bodyColor: '#f8fafc',
+                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: false,
+                            callbacks: {
+                                label: (context) => `¥${context.parsed.y.toLocaleString()}`
                             }
-                        } catch(e) {}
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { 
+                                color: '#94a3b8', 
+                                font: { size: 10 },
+                                callback: (value) => `¥${(value / 1000000).toFixed(1)}M`
+                            }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8', font: { size: 10 } }
+                        }
                     }
                 }
-            }
+            });
         }
-        return fullText;
-    }
 
-    // -------------------------------------------------------------------
-    // メインワークフロー
-    // -------------------------------------------------------------------
-    async function runMultiAgent(mode) {
-        const input = document.getElementById('userInput').value;
-        const key = localStorage.getItem('gemini_key');
-        const myContext = localStorage.getItem('my_context') || "特になし";
-        
-        if(!key) { alert('⚙️ カラ Gemini API Key (3.5 Flash) ヲ ニュウリョクシテクダサイ。'); return; }
-        if(!input) { alert('ヨウボウ ヲ ニュウリョクシテクダサイ。'); return; }
+        async function generateSummary(data) {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const summaryEl = document.getElementById('summaryContent');
+            const statusEl = document.getElementById('aiStatus');
 
-        currentAppMode = mode;
-        initAudio(); 
-
-        const outputConsole = document.getElementById('output');
-        const statusBoard = document.getElementById('status-board');
-        const startDevBtn = document.getElementById('startDevBtn');
-        const startPromptBtn = document.getElementById('startPromptBtn');
-        const copyBtn = document.getElementById('copyBtn');
-        
-        // UI初期化・ボタン無効化
-        startDevBtn.disabled = true;
-        startPromptBtn.disabled = true;
-        copyBtn.disabled = true;
-        
-        startDevBtn.innerText = mode === 'dev' ? "⏳ ギョウムチュウ..." : "🛠️ 開発スタート（コードあり）";
-        startPromptBtn.innerText = mode === 'prompt' ? "⏳ ギョウムチュウ..." : "📝 指示書スタート（コードなし）";
-
-        const codeSectionHTML = currentAppMode === 'dev' ? `
-            <div id="cd-section">
-                <div class="section-title">--- [ Core Logic Code ] ---</div>
-                <div id="cd-text"></div>
-            </div>` : '';
-
-        outputConsole.innerHTML = `
-            <div id="en-section">
-                <div class="section-title">--- [ Task / EN Prompt ] ---</div>
-                <div id="en-text"></div>
-            </div>
-            ${codeSectionHTML}
-            <div id="audit-section" style="display:none;">
-                <div class="section-title">--- [ AUDIT REFLECTION ] ---</div>
-                <div id="audit-text" class="audit-text"></div>
-            </div>
-        `;
-        
-        const enTextEl = document.getElementById('en-text');
-        const cdTextEl = document.getElementById('cd-text');
-        const auditTextEl = document.getElementById('audit-text');
-        const auditSection = document.getElementById('audit-section');
-
-        const scrollToBottom = () => { outputConsole.scrollTop = outputConsole.scrollHeight; };
-
-        statusBoard.style.display = "block";
-        updateStatus('status-pm', 'run', '🧠 親(PM) : コンテキスト適用＆JSON要件設計中...');
-        updateStatus('status-en', 'wait', '🗣️ 子A(EN): 待機中...');
-        
-        if(currentAppMode === 'dev') {
-            updateStatus('status-code', 'wait', '💻 子B(CD): 待機中...');
-        } else {
-            updateStatus('status-code', 'skip', '💻 子B(CD): 休止中 (指示書モードのためスキップ)');
-        }
-        updateStatus('status-audit', 'wait', '🕵️ 監査(AU): 待機中...');
-
-        try {
-            // フェーズ1: 親(PM)
-            const jsonSchema = currentAppMode === 'dev' 
-                ? `{\n  "english_prompt": "AIにタスクを指示するための極限まで短い英語の要件定義(Keywords only)",\n  "core_logic": "システムのコア機能を作成するための技術的な要件定義"\n}`
-                : `{\n  "english_prompt": "AIにタスクを指示するための極限まで短い英語の要件定義(Keywords only)"\n}`;
-
-            const pmPrompt = `
-あなたは優秀なPMです。以下の【前提条件】と【ユーザー要望】を分析し、JSONフォーマットのみを出力してください。
-挨拶や解説は一切不要です。
-【前提条件】: ${myContext}
-【ユーザー要望】: ${input}
-
-${jsonSchema}
-`;
-            const pmJson = await callGeminiJSON(pmPrompt, key);
-            updateStatus('status-pm', 'done', '🧠 親(PM) : JSON要件定義 完了！');
-
-            // フェーズ2: 子エージェント処理
-            updateStatus('status-en', 'run', '🗣️ 子A(EN): 英文プロンプト ストリーミング中...');
-            
-            const enPrompt = `あなたはプロンプトエンジニアです。以下の【要件】を元に、他のAIに渡すための、極限までトークンを節約した英語の指示文を作成してください。\nConstraint: English strictly. Provide raw artifact only.\n【要件】:\n${pmJson.english_prompt}`;
-            
-            let enResult = "";
-            let cdResult = "";
-
-            if (currentAppMode === 'dev') {
-                updateStatus('status-code', 'run', '💻 子B(CD): コアコード ストリーミング中...');
-                const cdPrompt = `あなたはシニアアーキテクトです。以下の【要件】を元に、最も重要となる「コア機能」のコードのみを作成してください。\n解説不要。純粋なコードブロックのみ出力。\n【要件】:\n${pmJson.core_logic}`;
+            if (!apiKey) {
+                statusEl.innerText = "Local Engine";
+                statusEl.className = "text-[10px] font-bold text-slate-400";
                 
-                [enResult, cdResult] = await Promise.all([
-                    callGeminiStream(enPrompt, key, (chunk) => { enTextEl.innerText += chunk; scrollToBottom(); }),
-                    callGeminiStream(cdPrompt, key, (chunk) => { cdTextEl.innerText += chunk; scrollToBottom(); })
-                ]);
-                updateStatus('status-code', 'done', '💻 子B(CD): コード生成 完了！');
-            } else {
-                enResult = await callGeminiStream(enPrompt, key, (chunk) => { enTextEl.innerText += chunk; scrollToBottom(); });
+                const diff = Math.abs((data.alpha_profit || 0) - (data.beta_profit || 0));
+                summaryEl.innerHTML = `
+                    <div class="space-y-2">
+                        <p><strong class="text-indigo-300">【簡易分析】</strong></p>
+                        <p>現在の勝者は <span class="text-white font-bold">${data.winner || '未定'}</span> です。利益差額は <span class="text-emerald-400">¥${diff.toLocaleString()}</span> です。</p>
+                        <p>成長率は「${data.q1_growth_rate || '不明'}」で、主な要因は「${data.reasoning || '記載なし'}」です。</p>
+                        <p class="text-[10px] text-slate-500 mt-2 italic">* 詳細なAI分析にはGemini APIキーを設定してください。</p>
+                    </div>
+                `;
+                return;
             }
-            updateStatus('status-en', 'done', '🗣️ 子A(EN): 英文生成 完了！');
 
-            // フェーズ3: 監査(Audit)
-            updateStatus('status-audit', 'run', '🕵️ 監査(AU): 生成結果の反省・レビュー中...');
-            auditSection.style.display = 'block';
+            statusEl.innerText = "Gemini Processing";
+            statusEl.className = "text-[10px] font-bold text-indigo-400 animate-pulse";
+            summaryEl.innerHTML = `
+                <div class="flex items-center gap-2 text-indigo-300">
+                    <i data-lucide="loader-2" class="w-3 h-3 animate-spin"></i>
+                    <span>AIがデータを分析中...</span>
+                </div>
+            `;
+            lucide.createIcons();
 
-            const auditContext = currentAppMode === 'dev' 
-                ? `【生成結果(EN)】: ${enResult}\n【生成結果(Code)】: ${cdResult}`
-                : `【生成結果(EN)】: ${enResult}`;
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: `以下のJSONデータを分析し、ビジネスの総括と今後のアクションプランを、モバイル端末で読みやすいように簡潔な日本語の箇条書き（3項目程度）で出力してください。HTMLタグは使わず、Markdown形式の箇条書きで出力してください。\n\nJSON: ${JSON.stringify(data)}`
+                            }]
+                        }]
+                    })
+                });
 
-            const auditPrompt = `
-あなたは監査エージェントです。以下の生成結果が、元の【前提条件】と【ユーザー要望】を満たしているか、迅速に判定してください。
-要件を満たしているか、不足している修正点があるかを、簡潔に日本語で報告してください。（最大3文まで）
-【前提条件】: ${myContext}
-【ユーザー要望】: ${input}
-${auditContext}
-`;
-            await callGeminiStream(auditPrompt, key, (chunk) => { auditTextEl.innerText += chunk; scrollToBottom(); });
-            updateStatus('status-audit', 'done', '🕵️ 監査(AU): レビュー完了！');
-
-        } catch(e) {
-            outputConsole.innerHTML += `<div style="color:#e74c3c; margin-top:10px;">ERROR: 通信エラー発生。APIキーやネットワークを確認してください。\n${e.message}</div>`;
-            updateStatus('status-pm', 'err', '🧠 親(PM) : エラー停止');
-            updateStatus('status-en', 'err', '🗣️ 子A(EN): エラー停止');
-            if(currentAppMode === 'dev') updateStatus('status-code', 'err', '💻 子B(CD): エラー停止');
-            updateStatus('status-audit', 'err', '🕵️ 監査(AU): エラー停止');
-        } finally {
-            // ボタン復帰
-            startDevBtn.disabled = false;
-            startPromptBtn.disabled = false;
-            copyBtn.disabled = false;
-            startDevBtn.innerText = "🛠️ 開発スタート（コードあり）";
-            startPromptBtn.innerText = "📝 指示書スタート（コードなし）";
+                if (!response.ok) throw new Error('API request failed');
+                const resData = await response.json();
+                let aiResponse = resData?.candidates?.[0]?.content?.parts?.[0]?.text || "応答を解析できませんでした。";
+                
+                // Simple markdown-like formatter for the summary
+                aiResponse = aiResponse.replace(/\n/g, '<br>').replace(/\* /g, '• ');
+                summaryEl.innerHTML = `<div class="animate-in fade-in duration-500">${aiResponse}</div>`;
+                
+                statusEl.innerText = "Gemini 1.5 Flash";
+                statusEl.className = "text-[10px] font-bold text-indigo-400";
+            } catch (error) {
+                console.error(error);
+                summaryEl.innerText = "Gemini APIによる生成に失敗しました。キーまたはネットワークを確認してください。";
+                statusEl.innerText = "API Error";
+                statusEl.className = "text-[10px] font-bold text-rose-400";
+            }
         }
-    }
 
-    // -------------------------------------------------------------------
-    // 最適化コピー
-    // -------------------------------------------------------------------
-    function copyOutput() {
-        const enTextEl = document.getElementById('en-text');
-        const cdTextEl = document.getElementById('cd-text');
-        
-        if(!enTextEl) return;
-        const enText = enTextEl.innerText.trim();
-        
-        let finalOut = "";
-        if (currentAppMode === 'dev' && cdTextEl) {
-            const cdText = cdTextEl.innerText.trim();
-            if(!enText && !cdText) { alert('コピー スル データ ガ アリマセン。'); return; }
-            finalOut = `Task:\n${enText}\n\nReference_Core_Code:\n${cdText}`;
-        } else {
-            if(!enText) { alert('コピー スル データ ガ アリマセン。'); return; }
-            finalOut = `Task:\n${enText}`;
+        function exportData() {
+            if (!currentData) return alert('エクスポートするデータがありません。');
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentData, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "dashboard_data.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
         }
-        
-        navigator.clipboard.writeText(finalOut).then(() => {
-            alert('コピー カンリョウ！ 他ノAIニ ハリツケテ クダサイ。\n(※監査結果はコピー対象から外しています)');
-        }).catch(err => {
-            alert('コピーニ シッパイ シマシタ。');
-        });
-    }
-</script>
+
+        window.onload = loadSample;
+    </script>
 </body>
 </html>
