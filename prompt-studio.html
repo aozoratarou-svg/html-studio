@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PROMPT STUDIO</title>
+    <title>8-BIT AGENT STUDIO v4</title>
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
     <style>
-        /* 全体のベース設定 */
+        /* 全体のベース設定（ファミコン風） */
         body { 
-            background: #000; 
-            color: #0f0; 
-            font-family: 'Courier New', Courier, monospace; 
+            background: #000000; 
+            color: #ffffff; 
+            font-family: 'DotGothic16', monospace; 
             padding: 10px; 
             margin: 0; 
             box-sizing: border-box; 
@@ -22,11 +23,10 @@
         /* タイトル */
         .header { 
             text-align: center; 
-            font-size: 1.8rem; 
-            font-weight: bold;
+            font-size: 1.5rem; 
             margin: 10px 0 15px 0; 
-            color: #ff3333; 
-            text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
+            color: #E52521;
+            text-shadow: 2px 2px 0 #fff;
             letter-spacing: 2px;
         }
 
@@ -38,27 +38,31 @@
             width: 100%;
         }
 
-        /* 汎用ボタン（白枠＋グレー影） */
+        /* 汎用ボタン（ドット風の枠と影） */
         .btn {
             background: #000;
             color: #fff;
             border: 2px solid #fff;
-            box-shadow: 2px 2px 0px #888;
+            box-shadow: 2px 2px 0px #fff;
             padding: 8px 5px;
             cursor: pointer;
-            font-weight: bold;
             font-size: 0.9rem;
             text-align: center;
-            font-family: 'Courier New', Courier, monospace;
+            font-family: 'DotGothic16', monospace;
             transition: all 0.1s;
             display: flex;
             align-items: center;
             justify-content: center;
+            user-select: none;
         }
         
         .btn:active { 
             transform: translate(2px, 2px); 
-            box-shadow: 0px 0px 0px #888; 
+            box-shadow: 0px 0px 0px #fff; 
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
         .btn-teikei { flex: 1; }
@@ -67,46 +71,79 @@
         /* 共通テキストエリア設定 */
         textarea {
             width: 100%; 
-            background: #000; 
-            color: #0f0; 
+            background: #0000AA; 
+            color: #fff; 
             border: 2px solid #fff; 
             padding: 10px; 
             box-sizing: border-box; 
             resize: none;
-            font-family: inherit;
-        }
-        textarea:focus { outline: none; border-color: #0f0; }
-
-        /* 入力エリア（出力エリアと高さを均等に） */
-        #userInput { 
-            flex: 1; /* 余白を自動で埋める */
-            margin-bottom: 15px; 
-            font-weight: bold;
+            font-family: 'DotGothic16', monospace;
             font-size: 1rem;
+            line-height: 1.4;
         }
+        textarea:focus { outline: none; border-color: #E52521; }
+        textarea::placeholder { color: #aaaaaa; }
 
-        /* アクションボタン（赤・青） */
+        #userInput { flex: 1; margin-bottom: 10px; }
+
+        /* エージェント進捗ステータスエリア */
+        #status-board {
+            display: none;
+            background: #000;
+            border: 2px dashed #fff;
+            padding: 8px;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+        .agent-status { margin: 4px 0; }
+        .status-wait { color: #aaaaaa; }
+        .status-run { color: #f39c12; animation: blink 1s infinite; }
+        .status-done { color: #2ecc71; }
+        .status-err { color: #e74c3c; }
+        .status-skip { color: #555555; text-decoration: line-through; }
+
+        @keyframes blink { 50% { opacity: 0.5; } }
+
+        /* アクションボタン（縦積み配置） */
         .btn-action { 
             width: 100%; 
-            padding: 10px; 
+            padding: 12px; 
             font-size: 1rem; 
             margin-bottom: 10px;
             letter-spacing: 1px;
-            flex-shrink: 0; /* ボタンが潰れないようにする */
+            flex-shrink: 0; 
         }
-        .red { background: #d32f2f; color: #fff; }
-        .blue { background: #1976d2; color: #fff; }
+        .red { background: #E52521; color: #fff; border-color: #fff; box-shadow: 2px 2px 0px #fff;}
+        .blue { background: #0047BB; color: #fff; border-color: #fff; box-shadow: 2px 2px 0px #fff;}
+        .gray { background: #444444; color: #fff; border-color: #fff; box-shadow: 2px 2px 0px #fff;}
 
-        /* 出力エリア（入力エリアと高さを均等に） */
-        #output { 
-            flex: 1; /* 余白を自動で埋める */
+        /* 出力コンソール */
+        .output-console { 
+            flex: 1.2; 
             margin-bottom: 5px;
-            font-size: 0.8rem; 
-            line-height: 1.4; 
-            white-space: pre-wrap; 
+            background: #000;
+            color: #fff;
+            border: 2px solid #fff;
+            padding: 10px;
+            box-sizing: border-box;
+            font-family: 'DotGothic16', monospace;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
         }
+        
+        .section-title {
+            color: #E52521;
+            margin-top: 15px;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .section-title:first-child { margin-top: 0; }
+        .audit-text { color: #2ecc71; }
 
-        /* モーダル (設定画面) */
+        /* モーダル */
         .modal-overlay { 
             display: none; 
             position: fixed; 
@@ -120,19 +157,18 @@
         
         .modal-content {
             background: #000;
-            border: 2px solid #fff;
+            border: 4px solid #fff;
             padding: 15px;
             width: 90%;
             max-width: 400px;
             max-height: 90vh;
             overflow-y: auto;
             box-sizing: border-box;
-            box-shadow: 4px 4px 0px #888;
         }
 
         .modal-content h3 { 
-            color: #fff; 
-            border-bottom: 2px solid #fff;
+            color: #E52521; 
+            border-bottom: 2px dashed #fff;
             padding-bottom: 5px; 
             margin-top: 0; 
             text-align: center; 
@@ -140,18 +176,28 @@
         
         .modal-content input, .modal-content textarea {
             width: 100%; padding: 10px; margin-bottom: 15px; box-sizing: border-box;
-            background: #111; color: #0f0; border: 1px solid #555; 
-            flex: none; /* モーダル内のtextareaはflex拡張しない */
+            background: #111; color: #fff; border: 2px solid #555; 
+            flex: none; font-family: 'DotGothic16', monospace;
         }
         
         .modal-content label { 
-            color: #fff; font-weight: bold; display: block; margin-bottom: 5px; font-size: 0.9rem;
+            color: #fff; display: block; margin-bottom: 5px; font-size: 0.9rem;
         }
+        
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+        .checkbox-label input { width: auto; margin: 0; transform: scale(1.2); }
+
     </style>
 </head>
 <body>
 
-<div class="header">PROMPT STUDIO</div>
+<div class="header">MULTI AGENT 8-BIT</div>
 
 <div class="top-row">
     <div class="btn btn-teikei" onclick="insertTeikei(1)">定型1</div>
@@ -160,21 +206,38 @@
     <div class="btn btn-setting" onclick="openModal('modal-settings')">⚙️</div>
 </div>
 
-<textarea id="userInput" placeholder="AIに何をさせたいですか？"></textarea>
+<textarea id="userInput" placeholder="▶AIニ 何ヲ サセマスカ？"></textarea>
 
-<button class="btn btn-action red" onclick="generatePrompt()">💾 START (生成)</button>
+<div id="status-board">
+    <div id="status-pm" class="agent-status status-wait">🧠 親(PM) : 待機中...</div>
+    <div id="status-en" class="agent-status status-wait">🗣️ 子A(EN): 待機中...</div>
+    <div id="status-code" class="agent-status status-wait">💻 子B(CD): 待機中...</div>
+    <div id="status-audit" class="agent-status status-wait" style="display:none;">🕵️ 監査(AU): 待機中...</div>
+</div>
 
-<button class="btn btn-action blue" onclick="copyOutput()">📋 コピー (COPY)</button>
+<button id="startDevBtn" class="btn btn-action red" onclick="runMultiAgent('dev')">🛠️ 開発スタート（コードあり）</button>
+<button id="startPromptBtn" class="btn btn-action blue" onclick="runMultiAgent('prompt')">📝 指示書スタート（コードなし）</button>
+<button id="copyBtn" class="btn btn-action gray" onclick="copyOutput()">📋 COPY (出力のみコピー)</button>
 
-<textarea id="output" spellcheck="false">結果がここに表示されます... (編集可能)</textarea>
+<div id="output" class="output-console">
+    <div style="color:#aaaaaa;">▶ケッカガ ココニ タイピング サレマス</div>
+</div>
 
 <div id="modal-settings" class="modal-overlay">
     <div class="modal-content">
         <h3>SETTINGS</h3>
         
-        <label>Gemini API Key</label>
+        <label>Gemini API Key (3.5 Flash用)</label>
         <input type="password" id="apiKey" placeholder="Enter API Key">
         
+        <label>マイ・コンテキスト (前提条件/技術スタック)</label>
+        <textarea id="myContext" rows="3" placeholder="例: PythonとReactを好む。シンプルでモダンなUI設計。"></textarea>
+
+        <label class="checkbox-label">
+            <input type="checkbox" id="soundToggle" checked>
+            <span>タイピング音 (SOUND) 鳴らす</span>
+        </label>
+
         <label>定型文 1</label>
         <textarea id="teikei1" rows="2" placeholder="例：Pythonで記述して"></textarea>
         
@@ -182,18 +245,29 @@
         <textarea id="teikei2" rows="2" placeholder="例：エラーハンドリングも含めて"></textarea>
         
         <label>定型文 3</label>
-        <textarea id="teikei3" rows="2" placeholder="例：初心者向けにコメントを多めに"></textarea>
+        <textarea id="teikei3" rows="2" placeholder="例：コアなロジック部分のみ"></textarea>
         
         <div style="display: flex; gap: 10px; margin-top: 10px;">
-            <button class="btn blue" style="flex: 2; color:#fff;" onclick="saveSettings()">SAVE (保存)</button>
+            <button class="btn red" style="flex: 2;" onclick="saveSettings()">SAVE</button>
             <button class="btn" style="flex: 1;" onclick="closeModal('modal-settings')">CLOSE</button>
         </div>
     </div>
 </div>
 
 <script>
+    // -------------------------------------------------------------------
+    // 設定と初期化
+    // -------------------------------------------------------------------
+    const MODEL_NAME = "gemini-3.5-flash";
+    const API_BASE_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}`;
+    
+    let audioCtx = null;
+    let currentAppMode = 'dev'; // 実行したモードを保持
+
     window.onload = () => {
         document.getElementById('apiKey').value = localStorage.getItem('gemini_key') || '';
+        document.getElementById('myContext').value = localStorage.getItem('my_context') || '';
+        document.getElementById('soundToggle').checked = localStorage.getItem('sound_toggle') !== 'false';
         for(let i=1; i<=3; i++) {
             document.getElementById('teikei'+i).value = localStorage.getItem('teikei'+i) || '';
         }
@@ -204,17 +278,19 @@
 
     function saveSettings() {
         localStorage.setItem('gemini_key', document.getElementById('apiKey').value);
+        localStorage.setItem('my_context', document.getElementById('myContext').value);
+        localStorage.setItem('sound_toggle', document.getElementById('soundToggle').checked);
         for(let i=1; i<=3; i++) {
             localStorage.setItem('teikei'+i, document.getElementById('teikei'+i).value);
         }
         closeModal('modal-settings');
-        alert('設定を保存しました。');
+        alert('セッテイ ヲ ホゾンシマシタ。');
     }
 
     function insertTeikei(num) {
         const val = localStorage.getItem('teikei'+num);
         if(!val) {
-            alert(`定型 ${num} が未設定です。右の ⚙️ ボタンから設定してください。`);
+            alert(`テイケイ ${num} ガ ミセッテイ デス。⚙️ カラ セッテイシテクダサイ。`);
             return;
         }
         const ta = document.getElementById('userInput');
@@ -222,53 +298,264 @@
         ta.scrollTop = ta.scrollHeight;
     }
 
-    async function generatePrompt() {
-        const input = document.getElementById('userInput').value;
-        const key = localStorage.getItem('gemini_key');
-        if(!key) { alert('設定(⚙️)からGemini API Keyを入力してください。'); return; }
-        if(!input) { alert('入力画面に目的を入力してください。'); return; }
-
-        const outputArea = document.getElementById('output');
-        outputArea.value = "Generating optimized prompt...";
-
-        const fixedConstraints = 
-            "Constraint: English strictly.\n" +
-            "Constraint: No greetings, no explanations, no filler.\n" +
-            "Constraint: Provide raw artifact only.\n" +
-            "Task: ";
-
-        const promptForGemini = `
-あなたはプロンプトエンジニアです。以下の「ユーザーの目的」を、他のAIに実行させるための、極限までトークンを節約した英語の指示文（短い命令形やキーワードの羅列）に翻訳・要約してください。
-挨拶や説明は一切不要で、純粋な英語のタスク指示のみを出力してください。
-
-ユーザーの目的: ${input}
-`;
-
-        try {
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${key}`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ 
-                    contents: [{ parts: [{ text: promptForGemini }] }],
-                    generationConfig: { temperature: 0.2 }
-                })
-            });
-            const data = await res.json();
-            const optimizedTask = data.candidates[0].content.parts[0].text.trim();
-            outputArea.value = fixedConstraints + optimizedTask;
-        } catch(e) { 
-            outputArea.value = "ERROR: 通信に失敗したか、APIキーが間違っています。"; 
-            console.error(e);
+    function updateStatus(agentId, state, text) {
+        const el = document.getElementById(agentId);
+        if(el) {
+            el.className = `agent-status status-${state}`;
+            el.innerText = text;
+            el.style.display = 'block';
         }
     }
 
+    // --- 音声演出 ---
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playBeep() {
+        const soundOn = document.getElementById('soundToggle').checked;
+        if (!soundOn || !audioCtx) return;
+        try {
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(400 + Math.random()*200, audioCtx.currentTime); 
+            gainNode.gain.setValueAtTime(0.015, audioCtx.currentTime); 
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.05);
+        } catch(e) {}
+    }
+
+    // -------------------------------------------------------------------
+    // API Callers
+    // -------------------------------------------------------------------
+    async function callGeminiJSON(prompt, apiKey) {
+        const res = await fetch(`${API_BASE_URL}:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ 
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: { 
+                    temperature: 0.1,
+                    responseMimeType: "application/json" 
+                }
+            })
+        });
+        if (!res.ok) throw new Error(`API Error: ${res.status}`);
+        const data = await res.json();
+        return JSON.parse(data.candidates[0].content.parts[0].text);
+    }
+
+    async function callGeminiStream(prompt, apiKey, onChunk) {
+        const res = await fetch(`${API_BASE_URL}:streamGenerateContent?alt=sse&key=${apiKey}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ 
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: { temperature: 0.2 }
+            })
+        });
+        
+        if (!res.ok) throw new Error(`API Error: ${res.status}`);
+        
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let fullText = "";
+        
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n');
+            
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    const dataStr = line.substring(6).trim();
+                    if (dataStr) {
+                        try {
+                            const dataObj = JSON.parse(dataStr);
+                            const parts = dataObj?.candidates?.[0]?.content?.parts;
+                            if (parts && parts[0] && parts[0].text) {
+                                const t = parts[0].text;
+                                fullText += t;
+                                onChunk(t); 
+                                playBeep(); 
+                            }
+                        } catch(e) {}
+                    }
+                }
+            }
+        }
+        return fullText;
+    }
+
+    // -------------------------------------------------------------------
+    // メインワークフロー
+    // -------------------------------------------------------------------
+    async function runMultiAgent(mode) {
+        const input = document.getElementById('userInput').value;
+        const key = localStorage.getItem('gemini_key');
+        const myContext = localStorage.getItem('my_context') || "特になし";
+        
+        if(!key) { alert('⚙️ カラ Gemini API Key (3.5 Flash) ヲ ニュウリョクシテクダサイ。'); return; }
+        if(!input) { alert('ヨウボウ ヲ ニュウリョクシテクダサイ。'); return; }
+
+        currentAppMode = mode;
+        initAudio(); 
+
+        const outputConsole = document.getElementById('output');
+        const statusBoard = document.getElementById('status-board');
+        const startDevBtn = document.getElementById('startDevBtn');
+        const startPromptBtn = document.getElementById('startPromptBtn');
+        const copyBtn = document.getElementById('copyBtn');
+        
+        // UI初期化・ボタン無効化
+        startDevBtn.disabled = true;
+        startPromptBtn.disabled = true;
+        copyBtn.disabled = true;
+        
+        startDevBtn.innerText = mode === 'dev' ? "⏳ ギョウムチュウ..." : "🛠️ 開発スタート（コードあり）";
+        startPromptBtn.innerText = mode === 'prompt' ? "⏳ ギョウムチュウ..." : "📝 指示書スタート（コードなし）";
+
+        const codeSectionHTML = currentAppMode === 'dev' ? `
+            <div id="cd-section">
+                <div class="section-title">--- [ Core Logic Code ] ---</div>
+                <div id="cd-text"></div>
+            </div>` : '';
+
+        outputConsole.innerHTML = `
+            <div id="en-section">
+                <div class="section-title">--- [ Task / EN Prompt ] ---</div>
+                <div id="en-text"></div>
+            </div>
+            ${codeSectionHTML}
+            <div id="audit-section" style="display:none;">
+                <div class="section-title">--- [ AUDIT REFLECTION ] ---</div>
+                <div id="audit-text" class="audit-text"></div>
+            </div>
+        `;
+        
+        const enTextEl = document.getElementById('en-text');
+        const cdTextEl = document.getElementById('cd-text');
+        const auditTextEl = document.getElementById('audit-text');
+        const auditSection = document.getElementById('audit-section');
+
+        const scrollToBottom = () => { outputConsole.scrollTop = outputConsole.scrollHeight; };
+
+        statusBoard.style.display = "block";
+        updateStatus('status-pm', 'run', '🧠 親(PM) : コンテキスト適用＆JSON要件設計中...');
+        updateStatus('status-en', 'wait', '🗣️ 子A(EN): 待機中...');
+        
+        if(currentAppMode === 'dev') {
+            updateStatus('status-code', 'wait', '💻 子B(CD): 待機中...');
+        } else {
+            updateStatus('status-code', 'skip', '💻 子B(CD): 休止中 (指示書モードのためスキップ)');
+        }
+        updateStatus('status-audit', 'wait', '🕵️ 監査(AU): 待機中...');
+
+        try {
+            // フェーズ1: 親(PM)
+            const jsonSchema = currentAppMode === 'dev' 
+                ? `{\n  "english_prompt": "AIにタスクを指示するための極限まで短い英語の要件定義(Keywords only)",\n  "core_logic": "システムのコア機能を作成するための技術的な要件定義"\n}`
+                : `{\n  "english_prompt": "AIにタスクを指示するための極限まで短い英語の要件定義(Keywords only)"\n}`;
+
+            const pmPrompt = `
+あなたは優秀なPMです。以下の【前提条件】と【ユーザー要望】を分析し、JSONフォーマットのみを出力してください。
+挨拶や解説は一切不要です。
+【前提条件】: ${myContext}
+【ユーザー要望】: ${input}
+
+${jsonSchema}
+`;
+            const pmJson = await callGeminiJSON(pmPrompt, key);
+            updateStatus('status-pm', 'done', '🧠 親(PM) : JSON要件定義 完了！');
+
+            // フェーズ2: 子エージェント処理
+            updateStatus('status-en', 'run', '🗣️ 子A(EN): 英文プロンプト ストリーミング中...');
+            
+            const enPrompt = `あなたはプロンプトエンジニアです。以下の【要件】を元に、他のAIに渡すための、極限までトークンを節約した英語の指示文を作成してください。\nConstraint: English strictly. Provide raw artifact only.\n【要件】:\n${pmJson.english_prompt}`;
+            
+            let enResult = "";
+            let cdResult = "";
+
+            if (currentAppMode === 'dev') {
+                updateStatus('status-code', 'run', '💻 子B(CD): コアコード ストリーミング中...');
+                const cdPrompt = `あなたはシニアアーキテクトです。以下の【要件】を元に、最も重要となる「コア機能」のコードのみを作成してください。\n解説不要。純粋なコードブロックのみ出力。\n【要件】:\n${pmJson.core_logic}`;
+                
+                [enResult, cdResult] = await Promise.all([
+                    callGeminiStream(enPrompt, key, (chunk) => { enTextEl.innerText += chunk; scrollToBottom(); }),
+                    callGeminiStream(cdPrompt, key, (chunk) => { cdTextEl.innerText += chunk; scrollToBottom(); })
+                ]);
+                updateStatus('status-code', 'done', '💻 子B(CD): コード生成 完了！');
+            } else {
+                enResult = await callGeminiStream(enPrompt, key, (chunk) => { enTextEl.innerText += chunk; scrollToBottom(); });
+            }
+            updateStatus('status-en', 'done', '🗣️ 子A(EN): 英文生成 完了！');
+
+            // フェーズ3: 監査(Audit)
+            updateStatus('status-audit', 'run', '🕵️ 監査(AU): 生成結果の反省・レビュー中...');
+            auditSection.style.display = 'block';
+
+            const auditContext = currentAppMode === 'dev' 
+                ? `【生成結果(EN)】: ${enResult}\n【生成結果(Code)】: ${cdResult}`
+                : `【生成結果(EN)】: ${enResult}`;
+
+            const auditPrompt = `
+あなたは監査エージェントです。以下の生成結果が、元の【前提条件】と【ユーザー要望】を満たしているか、迅速に判定してください。
+要件を満たしているか、不足している修正点があるかを、簡潔に日本語で報告してください。（最大3文まで）
+【前提条件】: ${myContext}
+【ユーザー要望】: ${input}
+${auditContext}
+`;
+            await callGeminiStream(auditPrompt, key, (chunk) => { auditTextEl.innerText += chunk; scrollToBottom(); });
+            updateStatus('status-audit', 'done', '🕵️ 監査(AU): レビュー完了！');
+
+        } catch(e) {
+            outputConsole.innerHTML += `<div style="color:#e74c3c; margin-top:10px;">ERROR: 通信エラー発生。APIキーやネットワークを確認してください。\n${e.message}</div>`;
+            updateStatus('status-pm', 'err', '🧠 親(PM) : エラー停止');
+            updateStatus('status-en', 'err', '🗣️ 子A(EN): エラー停止');
+            if(currentAppMode === 'dev') updateStatus('status-code', 'err', '💻 子B(CD): エラー停止');
+            updateStatus('status-audit', 'err', '🕵️ 監査(AU): エラー停止');
+        } finally {
+            // ボタン復帰
+            startDevBtn.disabled = false;
+            startPromptBtn.disabled = false;
+            copyBtn.disabled = false;
+            startDevBtn.innerText = "🛠️ 開発スタート（コードあり）";
+            startPromptBtn.innerText = "📝 指示書スタート（コードなし）";
+        }
+    }
+
+    // -------------------------------------------------------------------
+    // 最適化コピー
+    // -------------------------------------------------------------------
     function copyOutput() {
-        const textToCopy = document.getElementById('output').value;
-        if(!textToCopy || textToCopy.includes("Generating...") || textToCopy.includes("結果がここに")) return;
-        navigator.clipboard.writeText(textToCopy).then(() => {
-            alert('コピーしました！');
+        const enTextEl = document.getElementById('en-text');
+        const cdTextEl = document.getElementById('cd-text');
+        
+        if(!enTextEl) return;
+        const enText = enTextEl.innerText.trim();
+        
+        let finalOut = "";
+        if (currentAppMode === 'dev' && cdTextEl) {
+            const cdText = cdTextEl.innerText.trim();
+            if(!enText && !cdText) { alert('コピー スル データ ガ アリマセン。'); return; }
+            finalOut = `Task:\n${enText}\n\nReference_Core_Code:\n${cdText}`;
+        } else {
+            if(!enText) { alert('コピー スル データ ガ アリマセン。'); return; }
+            finalOut = `Task:\n${enText}`;
+        }
+        
+        navigator.clipboard.writeText(finalOut).then(() => {
+            alert('コピー カンリョウ！ 他ノAIニ ハリツケテ クダサイ。\n(※監査結果はコピー対象から外しています)');
         }).catch(err => {
-            alert('コピーに失敗しました。');
+            alert('コピーニ シッパイ シマシタ。');
         });
     }
 </script>
