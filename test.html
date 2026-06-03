@@ -6,10 +6,9 @@
     <title>NEO AGENT STUDIO</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700;900&display=swap" rel="stylesheet">
     <style>
-        /* ネオブルータリズム & スマホ最適化ベース */
         * { box-sizing: border-box; }
         body { 
-            background: #B4F8C8; /* ポップなミントグリーン */
+            background: #B4F8C8; 
             color: #000; 
             font-family: 'Noto Sans JP', sans-serif; 
             margin: 0; 
@@ -17,10 +16,9 @@
             height: 100vh; 
             display: flex; 
             flex-direction: column; 
-            overflow: hidden; /* 全体スクロール禁止（1画面完結） */
+            overflow: hidden;
         }
 
-        /* 共通：ネオブルータリズムのカードスタイル */
         .neo-card {
             background: #fff;
             border: 3px solid #000;
@@ -28,9 +26,8 @@
             border-radius: 8px;
         }
 
-        /* 共通：ネオブルータリズムのボタンスタイル */
         .neo-btn {
-            background: #FFAEBC; /* ビビッドピンク */
+            background: #FFAEBC;
             color: #000;
             font-weight: 900;
             border: 3px solid #000;
@@ -48,7 +45,6 @@
         .btn-blue { background: #A0E7E5; }
         .btn-yellow { background: #FBE7C6; }
 
-        /* ヘッダー（右上に設定を隠す） */
         .header { 
             display: flex; 
             justify-content: space-between; 
@@ -61,17 +57,15 @@
         .header h1 { margin: 0; font-size: 1.2rem; font-weight: 900; letter-spacing: -0.5px; }
         .btn-setting { padding: 5px 10px; font-size: 1rem; }
 
-        /* メインのBento UI エリア */
         .bento-workspace {
             flex: 1;
             padding: 10px;
             display: flex;
             flex-direction: column;
             gap: 10px;
-            min-height: 0; /* フレックスバグ回避 */
+            min-height: 0; 
         }
 
-        /* ステータスボード（コンパクトに） */
         #status-board {
             flex-shrink: 0;
             max-height: 120px;
@@ -85,23 +79,23 @@
         .status-run { color: #f39c12; }
         .status-err { color: #e74c3c; font-weight: bold; }
 
-        /* プレビュー画面（主役として大きく配置） */
         .preview-container {
             flex: 1;
             display: flex;
             flex-direction: column;
             overflow: hidden;
             background: #fff;
+            position: relative;
         }
         .preview-header {
             background: #000; color: #fff; padding: 4px 10px; font-size: 0.8rem;
             text-align: center; border-bottom: 3px solid #000;
+            display: flex; justify-content: space-between; align-items: center;
         }
         #preview-frame {
             flex: 1; width: 100%; border: none; background: #fff;
         }
 
-        /* ボトムコントロール（親指ファースト） */
         .bottom-control {
             background: #fff;
             border-top: 3px solid #000;
@@ -124,13 +118,20 @@
             font-family: inherit; 
             font-size: 1rem; 
             resize: none; 
-            height: 50px;
+            height: 60px;
         }
         #userInput:focus { outline: none; background: #f0f0f0; }
         
-        #startBtn { padding: 0 20px; font-size: 1rem; }
+        /* 実行とコピーボタンを縦に並べるエリア */
+        .action-btns {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex-shrink: 0;
+            width: 80px;
+        }
+        .action-btns button { flex: 1; font-size: 0.9rem; }
 
-        /* モーダル */
         .modal-overlay { 
             display: none; position: fixed; top: 0; left: 0; 
             width: 100%; height: 100%; background: rgba(0,0,0,0.6); 
@@ -148,7 +149,6 @@
         .modal-btn-row { display: flex; gap: 10px; margin-top: 10px; }
         .modal-btn-row button { flex: 1; padding: 12px 0; }
         
-        /* 隠し要素（今回は生コード出力を裏に隠す） */
         #output { display: none; }
     </style>
 </head>
@@ -165,7 +165,9 @@
     </div>
 
     <div class="neo-card preview-container">
-        <div class="preview-header">LIVE PREVIEW</div>
+        <div class="preview-header">
+            <span>LIVE PREVIEW</span>
+        </div>
         <iframe id="preview-frame" sandbox="allow-scripts allow-same-origin"></iframe>
     </div>
     
@@ -180,7 +182,10 @@
     </div>
     <div class="input-row">
         <textarea id="userInput" placeholder="要件を入力..."></textarea>
-        <button id="startBtn" class="neo-btn" onclick="runMultiAgent()">実行</button>
+        <div class="action-btns">
+            <button id="startBtn" class="neo-btn" onclick="runMultiAgent()">実行</button>
+            <button id="copyBtn" class="neo-btn btn-yellow" onclick="copyCode()">ｺﾋﾟｰ</button>
+        </div>
     </div>
 </footer>
 
@@ -199,7 +204,6 @@
 </div>
 
 <script>
-    // --- ロジック部分は前回のSwarms + iframe自己修正をそのまま継承 ---
     const MODEL_NAME = "gemini-3.5-flash";
     const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent`;
     let latestGeneratedHTML = "";
@@ -305,6 +309,21 @@
         }
     }
 
+    // コピー機能の実装
+    function copyCode() {
+        // UIとして生成されたHTMLがあればそれを優先、なければ全体ログをコピー
+        const textToCopy = latestGeneratedHTML || document.getElementById('output').value;
+        if (!textToCopy || textToCopy.trim() === "") {
+            alert('まだコピーするコードがありません。');
+            return;
+        }
+        navigator.clipboard.writeText(textToCopy.trim()).then(() => {
+            alert('コードをクリップボードにコピーしました！');
+        }).catch(err => {
+            alert('コピーに失敗しました。');
+        });
+    }
+
     async function runMultiAgent() {
         const input = document.getElementById('userInput').value;
         const key = localStorage.getItem('gemini_key');
@@ -313,8 +332,10 @@
 
         const statusBoard = document.getElementById('status-board');
         const startBtn = document.getElementById('startBtn');
+        const outputArea = document.getElementById('output');
         
         document.getElementById('preview-frame').srcdoc = "";
+        outputArea.value = "";
         isFixing = false;
         latestGeneratedHTML = "";
         
@@ -323,8 +344,7 @@
         startBtn.disabled = true;
         startBtn.innerText = "処理中";
         
-        // 実行開始時、入力欄は空にしてコピペの邪魔にならないようにする
-        document.getElementById('userInput').value = "";
+        // ★入力欄の自動クリアを廃止（エラー時のリカバリーのため）
 
         try {
             const spawnTool = {
@@ -407,14 +427,15 @@
                     if (agent.is_html_output || result.includes("```html")) {
                         finalHTML = result;
                     }
-                    return result;
+                    return `### [担当: ${agent.role}]\n${result}\n\n`;
                 } catch (err) {
                     updateStatus(`status-child-${index}`, 'err', `子[${agent.role}]: 失敗`);
                     return "";
                 }
             });
 
-            await Promise.all(childPromises);
+            const results = await Promise.all(childPromises);
+            outputArea.value = "=== 8-BIT SWARM OUTPUT ===\n\n" + results.join("");
 
             if (finalHTML) {
                 renderPreview(finalHTML);
