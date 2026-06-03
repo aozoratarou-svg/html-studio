@@ -1,320 +1,118 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>8-BIT AGENT STUDIO</title>
-    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/acorn/8.11.3/acorn.min.js"></script>
-
-    <style>
-        /* 全体のベース設定（ファミコン風） - 変更なし */
-        body { 
-            background: #000000; 
-            color: #ffffff; 
-            font-family: 'DotGothic16', monospace; 
-            padding: 10px; 
-            margin: 0; 
-            box-sizing: border-box; 
-            height: 100vh; 
-            display: flex; 
-            flex-direction: column; 
-            overflow-x: hidden;
-        }
-
-        .header { 
-            text-align: center; 
-            font-size: 1.5rem; 
-            margin: 10px 0 15px 0; 
-            color: #E52521; 
-            text-shadow: 2px 2px 0 #fff;
-            letter-spacing: 2px;
-        }
-
-        .top-row { display: flex; gap: 8px; margin-bottom: 10px; width: 100%; }
-
-        .btn {
-            background: #000; color: #fff; border: 2px solid #fff; box-shadow: 2px 2px 0px #fff;
-            padding: 8px 5px; cursor: pointer; font-size: 0.9rem; text-align: center;
-            font-family: 'DotGothic16', monospace; transition: all 0.1s; display: flex;
-            align-items: center; justify-content: center;
-        }
-        
-        .btn:active { transform: translate(2px, 2px); box-shadow: 0px 0px 0px #fff; }
-        .btn-teikei { flex: 1; }
-        .btn-setting { width: 50px; font-size: 1.2rem; } 
-
-        textarea {
-            width: 100%; background: #0000AA; color: #fff; border: 2px solid #fff; 
-            padding: 10px; box-sizing: border-box; resize: none;
-            font-family: 'DotGothic16', monospace; font-size: 1rem; line-height: 1.4;
-        }
-        textarea:focus { outline: none; border-color: #E52521; }
-        textarea::placeholder { color: #aaaaaa; }
-
-        #userInput { flex: 1; margin-bottom: 10px; }
-
-        #status-board {
-            display: none; background: #000; border: 2px dashed #fff;
-            padding: 8px; margin-bottom: 10px; font-size: 0.9rem;
-        }
-        .agent-status { margin: 4px 0; }
-        .status-wait { color: #aaaaaa; }
-        .status-run { color: #f39c12; animation: blink 1s infinite; }
-        .status-done { color: #2ecc71; }
-        .status-err { color: #e74c3c; }
-        .status-retry { color: #9b59b6; animation: blink 0.5s infinite; } /* ★追加: リトライ用ステータス */
-
-        @keyframes blink { 50% { opacity: 0.5; } }
-
-        .btn-action { width: 100%; padding: 12px; font-size: 1rem; margin-bottom: 10px; letter-spacing: 1px; flex-shrink: 0; }
-        .red { background: #E52521; color: #fff; border-color: #fff; box-shadow: 2px 2px 0px #fff;}
-        .blue { background: #0047BB; color: #fff; border-color: #fff; box-shadow: 2px 2px 0px #fff;}
-
-        #output { flex: 1.2; margin-bottom: 5px; background: #000; }
-
-        .modal-overlay { 
-            display: none; position: fixed; top: 0; left: 0; 
-            width: 100%; height: 100%; background: rgba(0,0,0,0.85); 
-            z-index: 10; justify-content: center; align-items: center;
-        }
-        
-        .modal-content {
-            background: #000; border: 4px solid #fff; padding: 15px;
-            width: 90%; max-width: 400px; max-height: 90vh; overflow-y: auto; box-sizing: border-box;
-        }
-
-        .modal-content h3 { color: #E52521; border-bottom: 2px dashed #fff; padding-bottom: 5px; margin-top: 0; text-align: center; }
-        .modal-content input, .modal-content textarea { width: 100%; padding: 10px; margin-bottom: 15px; box-sizing: border-box; background: #111; color: #fff; border: 2px solid #555; flex: none; }
-        .modal-content label { color: #fff; display: block; margin-bottom: 5px; font-size: 0.9rem; }
-    </style>
-</head>
-<body>
-
-<div class="header">MULTI AGENT 8-BIT</div>
-
-<div class="top-row">
-    <div class="btn btn-teikei" onclick="insertTeikei(1)">定型1</div>
-    <div class="btn btn-teikei" onclick="insertTeikei(2)">定型2</div>
-    <div class="btn btn-teikei" onclick="insertTeikei(3)">定型3</div>
-    <div class="btn btn-setting" onclick="openModal('modal-settings')">⚙️</div>
-</div>
-
-<textarea id="userInput" placeholder="▶AIニ 何ヲ サセマスカ？"></textarea>
-
-<div id="status-board">
-    <div id="status-pm" class="agent-status status-wait">🧠 親(PM) : 待機中...</div>
-    <div id="status-en" class="agent-status status-wait">🗣️ 子A(EN): 待機中...</div>
-    <div id="status-code" class="agent-status status-wait">💻 子B(CD): 待機中...</div>
-</div>
-
-<button id="startBtn" class="btn btn-action red" onclick="runMultiAgent()">🕹️ START (生成)</button>
-<button class="btn btn-action blue" onclick="copyOutput()">📋 COPY (最適化コピー)</button>
-
-<textarea id="output" spellcheck="false" placeholder="▶ケッカガ ココニ ヒョウジサレマス"></textarea>
-
-<div id="modal-settings" class="modal-overlay">
-    <div class="modal-content">
-        <h3>SETTINGS</h3>
-        <label>Gemini API Key (3.5 Flash)</label>
-        <input type="password" id="apiKey" placeholder="Enter API Key">
-        <label>定型文 1</label>
-        <textarea id="teikei1" rows="2" placeholder="例：Pythonで記述して"></textarea>
-        <label>定型文 2</label>
-        <textarea id="teikei2" rows="2" placeholder="例：エラーハンドリングも含めて"></textarea>
-        <label>定型文 3</label>
-        <textarea id="teikei3" rows="2" placeholder="例：コアなロジック部分のみ"></textarea>
-        <div style="display: flex; gap: 10px; margin-top: 10px;">
-            <button class="btn red" style="flex: 2;" onclick="saveSettings()">SAVE</button>
-            <button class="btn" style="flex: 1;" onclick="closeModal('modal-settings')">CLOSE</button>
-        </div>
-    </div>
-</div>
-
-<script>
-    const MODEL_NAME = "gemini-3.5-flash";
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent`;
-
-    window.onload = () => {
-        document.getElementById('apiKey').value = localStorage.getItem('gemini_key') || '';
-        for(let i=1; i<=3; i++) {
-            document.getElementById('teikei'+i).value = localStorage.getItem('teikei'+i) || '';
-        }
-    };
-
-    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-    function saveSettings() {
-        localStorage.setItem('gemini_key', document.getElementById('apiKey').value);
-        for(let i=1; i<=3; i++) { localStorage.setItem('teikei'+i, document.getElementById('teikei'+i).value); }
-        closeModal('modal-settings'); alert('セッテイ ヲ ホゾンシマシタ。');
-    }
-
-    function insertTeikei(num) {
-        const val = localStorage.getItem('teikei'+num);
-        if(!val) { alert(`テイケイ ${num} ガ ミセッテイ デス。`); return; }
-        const ta = document.getElementById('userInput');
-        ta.value = ta.value ? ta.value + '\n' + val : val;
-        ta.scrollTop = ta.scrollHeight;
-    }
-
-    function updateStatus(agentId, state, text) {
-        const el = document.getElementById(agentId);
+// --- 動的ステータス更新用ヘルパー（既存のものを拡張） ---
+function updateStatus(agentId, state, text) {
+    const el = document.getElementById(agentId);
+    if (el) {
         el.className = `agent-status status-${state}`;
         el.innerText = text;
     }
+}
 
-    async function callGemini(prompt, apiKey, temp = 0.2) {
-        const res = await fetch(`${API_URL}?key=${apiKey}`, {
+// --- 新しい自律型マルチエージェント・ワークフロー ---
+async function runMultiAgent() {
+    const input = document.getElementById('userInput').value;
+    const key = localStorage.getItem('gemini_key');
+    if(!key) { alert('⚙️ カラ Gemini API Key ヲ ニュウリョクシテクダサイ。'); return; }
+    if(!input) { alert('ヨウボウ ヲ ニュウリョクシテクダサイ。'); return; }
+
+    const outputArea = document.getElementById('output');
+    const statusBoard = document.getElementById('status-board');
+    const startBtn = document.getElementById('startBtn');
+    
+    // UI初期化（固定の子エージェントではなく、動的に生成するため一旦クリア）
+    outputArea.value = "";
+    statusBoard.style.display = "block";
+    statusBoard.innerHTML = '<div id="status-pm" class="agent-status status-run">🧠 親(PM) : チーム編成中... (Function Calling)</div>';
+    startBtn.disabled = true;
+    startBtn.innerText = "⏳ ギョウムチュウ...";
+
+    try {
+        // 【ステップ1】PMに持たせる「部下召喚ツール」の定義（JSON Schema）
+        const spawnTool = {
+            functionDeclarations: [{
+                name: "spawn_agents",
+                description: "ユーザーの要望を達成するために必要な専門エージェントのチームを編成します。",
+                parameters: {
+                    type: "OBJECT",
+                    properties: {
+                        agents: {
+                            type: "ARRAY",
+                            description: "必要な子エージェントのリスト",
+                            items: {
+                                type: "OBJECT",
+                                properties: {
+                                    role: { type: "STRING", description: "役割 (例: 'UI Engineer', 'Backend', 'Translator', 'Reviewer')" },
+                                    task: { type: "STRING", description: "この子エージェントが実行すべき具体的なタスク指示" }
+                                }
+                            }
+                        }
+                    },
+                    required: ["agents"]
+                }
+            }]
+        };
+
+        // 【ステップ2】PMエージェントを呼び出し、ツールを使わせる
+        const pmPrompt = `あなたは優秀なPMです。以下の要望を分析し、タスクを分解して 'spawn_agents' ツールを実行してください。必要な人数はあなたが自由に決めて構いません。\n\n要望: ${input}`;
+        
+        const pmRes = await fetch(`${API_URL}?key=${key}`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ 
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { temperature: temp }
+                contents: [{ parts: [{ text: pmPrompt }] }],
+                tools: [spawnTool], // ★ここでPMにツールを渡す
+                generationConfig: { temperature: 0.2 }
             })
         });
-        if (!res.ok) throw new Error(`API Error: ${res.status}`);
-        const data = await res.json();
-        return data.candidates[0].content.parts[0].text.trim();
-    }
-
-    // ★追加機能1: ローカルLint (Acorn等を使用し、危険な関数を回避)
-    const LocalLinter = {
-        checkCode: function(code) {
-            // Markdownの ```javascript などを除去して純粋なコードにする
-            const cleanCode = code.replace(/^```[a-z]*\n|\n```$/gi, '').trim();
-            
-            try {
-                // Acornによるパース（new Functionを使わない安全な構文チェック）
-                if (typeof acorn !== 'undefined') {
-                    acorn.parse(cleanCode, { ecmaVersion: "latest" });
-                }
-                return { isValid: true, error: null, cleanCode: cleanCode };
-            } catch (e) {
-                return { isValid: false, error: e.message, cleanCode: cleanCode };
-            }
-        }
-    };
-
-    // ★追加機能2: ASTを使ったコード目次生成
-    function generateCodeIndex(cleanCode) {
-        if (typeof acorn === 'undefined') return "AST Parser Not Loaded.";
-        try {
-            const ast = acorn.parse(cleanCode, { ecmaVersion: "latest" });
-            const indexList = [];
-            
-            ast.body.forEach(node => {
-                if (node.type === "FunctionDeclaration") {
-                    indexList.push(`- Function: ${node.id.name}()`);
-                } else if (node.type === "VariableDeclaration") {
-                    node.declarations.forEach(decl => {
-                        if (decl.init && (decl.init.type === "ArrowFunctionExpression" || decl.init.type === "FunctionExpression")) {
-                            indexList.push(`- Function (Arrow): ${decl.id.name}()`);
-                        }
-                    });
-                }
-            });
-            return indexList.length > 0 ? indexList.join('\n') : "- No standalone functions found.";
-        } catch (error) {
-            return "- Parse Error during index generation.";
-        }
-    }
-
-    // ★追加機能3: 子エージェントB (コード生成) の自動リトライループ
-    async function runCodeAgentWithRetry(prompt, key) {
-        let codeResult = await callGemini(prompt, key, 0.0);
-        let lint = LocalLinter.checkCode(codeResult);
         
-        // エラーがあった場合は1回だけ自動リトライ
-        if (!lint.isValid) {
-            updateStatus('status-code', 'retry', '💻 子B(CD): 構文エラー検知！自己修復中...');
-            const retryPrompt = `${prompt}\n\n【重要】前回の出力に以下の構文エラーがありました。修正して再出力してください。\nエラー: ${lint.error}`;
-            codeResult = await callGemini(retryPrompt, key, 0.0);
-            lint = LocalLinter.checkCode(codeResult); // リトライ後の再チェック
+        if (!pmRes.ok) throw new Error(`API Error: ${pmRes.status}`);
+        const pmData = await pmRes.json();
+
+        // 【ステップ3】PMの判断（ツールの実行要求）を解析する
+        const parts = pmData.candidates[0].content.parts;
+        const functionCall = parts.find(p => p.functionCall)?.functionCall;
+
+        if (!functionCall || functionCall.name !== "spawn_agents") {
+            throw new Error("PMがツールを使用せず、テキストを返しました。やり直してください。");
         }
-        return lint.cleanCode;
-    }
 
-    async function runMultiAgent() {
-        const input = document.getElementById('userInput').value;
-        const key = localStorage.getItem('gemini_key');
-        if(!key) { alert('⚙️ カラ Gemini API Key ヲ ニュウリョクシテクダサイ。'); return; }
-        if(!input) { alert('ヨウボウ ヲ ニュウリョクシテクダサイ。'); return; }
-
-        const outputArea = document.getElementById('output');
-        const statusBoard = document.getElementById('status-board');
-        const startBtn = document.getElementById('startBtn');
+        const agentTeam = functionCall.args.agents;
         
-        outputArea.value = "";
-        statusBoard.style.display = "block";
-        startBtn.disabled = true;
-        startBtn.innerText = "⏳ ギョウムチュウ...";
-        updateStatus('status-pm', 'run', '🧠 親(PM) : 要件を分析・要約中...');
-        updateStatus('status-en', 'wait', '🗣️ 子A(EN): 待機中...');
-        updateStatus('status-code', 'wait', '💻 子B(CD): 待機中...');
+        document.getElementById('status-pm').className = "agent-status status-done";
+        document.getElementById('status-pm').innerText = `🧠 親(PM) : 編成完了！ ${agentTeam.length}名のエージェントを召喚します。`;
 
-        try {
-            const pmPrompt = `あなたは優秀なPMです。以下のユーザーの要望を分析し、システム開発のための「明確な仕様・要件定義」としてMarkdownで要約してください。挨拶や不要な解説は省き要点のみを箇条書きでまとめてください。\nユーザー要望: ${input}`;
-            const pmSummary = await callGemini(pmPrompt, key, 0.2);
-            updateStatus('status-pm', 'done', '🧠 親(PM) : 要件定義 完了！');
-
-            updateStatus('status-en', 'run', '🗣️ 子A(EN): 英文プロンプト生成中...');
-            updateStatus('status-code', 'run', '💻 子B(CD): コアコード設計中...');
-
-            const enPrompt = `あなたはプロンプトエンジニアです。以下の【要件定義】を元に、他のAIに渡すための、極限までトークンを節約した英語の指示文を作成してください。Constraint: English strictly. No greetings. Provide raw artifact only.\n【要件定義】:\n${pmSummary}`;
-            const codePrompt = `あなたはシニアアーキテクトです。以下の【要件定義】を元に、最も重要となる「コア機能」のJavaScriptコードのみを作成してください。全体のセットアップやファイル構成、挨拶、解説文は一切不要です。\n【要件定義】:\n${pmSummary}`;
-
-            // 並列実行（子Bは自動リトライ機能付き）
-            const [enResult, codeResult] = await Promise.all([
-                callGemini(enPrompt, key, 0.0).then(res => {
-                    updateStatus('status-en', 'done', '🗣️ 子A(EN): 英文生成 完了！');
-                    return res;
-                }),
-                runCodeAgentWithRetry(codePrompt, key).then(res => {
-                    updateStatus('status-code', 'done', '💻 子B(CD): コード生成＆検証 完了！');
-                    return res;
-                })
-            ]);
-
-            // ★ASTインデックスの生成
-            const astIndex = generateCodeIndex(codeResult);
-
-            // 最終統合出力 (Claude等へのコピペ用)
-            const finalOutput = 
-`Task:
-${enResult}
-
-Code_Index (AST):
-${astIndex}
-
-Reference_Core_Code:
-${codeResult}`;
-
-            outputArea.value = finalOutput;
-
-        } catch(e) {
-            outputArea.value = "ERROR: 通信エラー発生。APIキーやネットワークを確認してください。";
-            updateStatus('status-pm', 'err', '🧠 親(PM) : エラー停止');
-            updateStatus('status-en', 'err', '🗣️ 子A(EN): エラー停止');
-            updateStatus('status-code', 'err', '💻 子B(CD): エラー停止');
-            console.error(e);
-        } finally {
-            startBtn.disabled = false;
-            startBtn.innerText = "🕹️ START (生成)";
-        }
-    }
-
-    function copyOutput() {
-        const textToCopy = document.getElementById('output').value;
-        if(!textToCopy || textToCopy.includes("▶ケッカガ")) return;
-        const optimizedText = textToCopy.trim();
-        navigator.clipboard.writeText(optimizedText).then(() => {
-            alert('コピー カンリョウ！ Claudeニ ハリツケテ クダサイ。');
-        }).catch(err => {
-            alert('コピーニ シッパイ シマシタ。');
+        // 【ステップ4】編成された人数の分だけ、動的にUIへステータスを追加
+        agentTeam.forEach((agent, index) => {
+            statusBoard.innerHTML += `<div id="status-child-${index}" class="agent-status status-wait">🤖 子[${agent.role}]: 待機中...</div>`;
         });
+
+        // 【ステップ5】子エージェントたちの並列実行（Swarm）
+        const childPromises = agentTeam.map(async (agent, index) => {
+            updateStatus(`status-child-${index}`, 'run', `🤖 子[${agent.role}]: タスク実行中...`);
+
+            // 子エージェント用のプロンプト
+            const childPrompt = `あなたは専門家「${agent.role}」です。以下のタスクのみを実行し、挨拶や解説を省いて純粋な結果のみを出力してください。\n\n【タスク】:\n${agent.task}`;
+            
+            // （※必要に応じて、ここで先ほどのrunCodeAgentWithRetryを使うことも可能です）
+            const result = await callGemini(childPrompt, key, 0.0);
+
+            updateStatus(`status-child-${index}`, 'done', `🤖 子[${agent.role}]: 完了！`);
+            
+            // 出力フォーマットを整える
+            return `### 担当: ${agent.role}\n${result}\n\n`;
+        });
+
+        // 全員が完了するのを待つ
+        const results = await Promise.all(childPromises);
+
+        // 【ステップ6】最終統合出力
+        outputArea.value = "=== 8-BIT SWARM OUTPUT ===\n\n" + results.join("");
+
+    } catch(e) {
+        outputArea.value = "ERROR: " + e.message;
+        console.error(e);
+        updateStatus('status-pm', 'err', '🧠 親(PM) : エラー停止');
+    } finally {
+        startBtn.disabled = false;
+        startBtn.innerText = "🕹️ START (生成)";
     }
-</script>
-</body>
-</html>
+}
