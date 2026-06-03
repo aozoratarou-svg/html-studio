@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>8-BIT AGENT STUDIO (Swarms Edition)</title>
+    <title>8-BIT AGENT STUDIO (Swarms & Robust Edition)</title>
     <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
     <style>
         /* 全体のベース設定（ファミコン風） */
@@ -155,7 +155,6 @@
         ta.scrollTop = ta.scrollHeight;
     }
 
-    // ステータスUIの動的更新
     function updateStatus(agentId, state, text) {
         const el = document.getElementById(agentId);
         if (el) {
@@ -164,7 +163,10 @@
         }
     }
 
-    // Gemini API汎用呼び出し関数
+    // ユーティリティ：待機関数
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    // Gemini API汎用呼び出し関数 (エラー時はステータスコードを含めてthrowする)
     async function callGemini(prompt, apiKey, temp = 0.0) {
         const res = await fetch(`${API_URL}?key=${apiKey}`, {
             method: 'POST',
@@ -174,12 +176,15 @@
                 generationConfig: { temperature: temp }
             })
         });
-        if (!res.ok) throw new Error(`API Error: ${res.status}`);
+        if (!res.ok) {
+            // エラーコード（503など）を含めたエラーを投げる
+            throw new Error(`${res.status}`);
+        }
         const data = await res.json();
         return data.candidates[0].content.parts[0].text.trim();
     }
 
-    // --- 完全自律型マルチエージェント (Swarms) ワークフロー ---
+    // --- 完全自律型マルチエージェント (Swarms) 堅牢化ワークフロー ---
     async function runMultiAgent() {
         const input = document.getElementById('userInput').value;
         const key = localStorage.getItem('gemini_key');
@@ -192,13 +197,12 @@
         
         outputArea.value = "";
         statusBoard.style.display = "block";
-        // ボードをリセットし、PMだけを表示
         statusBoard.innerHTML = '<div id="status-pm" class="agent-status status-run">🧠 親(PM) : チーム編成中... (Function Calling)</div>';
         startBtn.disabled = true;
         startBtn.innerText = "⏳ ギョウムチュウ...";
 
         try {
-            // 【ステップ1】PMに渡す「部下召喚ツール（Swarms）」の定義
+            // 【ステップ1】PMに渡す「部下召喚ツール」
             const spawnTool = {
                 functionDeclarations: [{
                     name: "spawn_agents",
@@ -212,7 +216,7 @@
                                 items: {
                                     type: "OBJECT",
                                     properties: {
-                                        role: { type: "STRING", description: "役割 (例: 'UI Designer', 'Python Dev', 'English Translator')" },
+                                        role: { type: "STRING", description: "役割 (例: 'Game Physics Developer', 'Frontend UI', 'Sound Designer')" },
                                         task: { type: "STRING", description: "この子エージェントが実行すべき具体的なタスク指示" }
                                     }
                                 }
@@ -223,17 +227,16 @@
                 }]
             };
 
-            // PMへの指示。ここで「デザイン憲法」の遵守を厳命する。
             const pmPrompt = `あなたは優秀なオーケストレーターです。以下の要望を分析し、タスクを分解して 'spawn_agents' ツールを実行してください。必要な役割と人数はあなたが自由に決めて構いません。\n\n【重要：デザイン憲法】\nもしUIやフロントエンドを作成する担当者を召喚する場合、その者のタスク指示(task)の中には必ず「デザインは角丸禁止、太いボーダーを使用し、全体を8-bitのレトロゲーム風テイストに統一すること」という制約を含めてください。\n\n要望: ${input}`;
             
-            // 【ステップ2】PM呼び出し (ツール使用を強制)
+            // 【ステップ2】PM呼び出し
             const pmRes = await fetch(`${API_URL}?key=${key}`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ 
                     contents: [{ parts: [{ text: pmPrompt }] }],
                     tools: [spawnTool],
-                    toolConfig: { functionCallingConfig: { mode: "ANY" } }, // 確実にツールを使わせる
+                    toolConfig: { functionCallingConfig: { mode: "ANY" } }, 
                     generationConfig: { temperature: 0.2 }
                 })
             });
@@ -241,7 +244,6 @@
             if (!pmRes.ok) throw new Error(`API Error: ${pmRes.status}`);
             const pmData = await pmRes.json();
 
-            // PMがツールをどう使ったかをパース
             const parts = pmData.candidates[0].content.parts;
             const functionCall = parts.find(p => p.functionCall)?.functionCall;
 
@@ -253,23 +255,54 @@
             
             updateStatus('status-pm', 'done', `🧠 親(PM) : 編成完了！ ${agentTeam.length}名のエージェントを召喚します。`);
 
-            // 【ステップ3】動的にUIへ子エージェントのステータスを追加
+            // 【ステップ3】UIへ子エージェントのステータスを追加
             agentTeam.forEach((agent, index) => {
                 statusBoard.innerHTML += `<div id="status-child-${index}" class="agent-status status-wait">🤖 子[${agent.role}]: 待機中...</div>`;
             });
 
-            // 【ステップ4】子エージェントたちを並列実行 (非相関コンテキスト)
+            // 【ステップ4】子エージェントたちを並列・時差・リトライ付きで実行
             const childPromises = agentTeam.map(async (agent, index) => {
-                updateStatus(`status-child-${index}`, 'run', `🤖 子[${agent.role}]: タスク実行中...`);
-
                 const childPrompt = `あなたは専門家「${agent.role}」です。以下のタスクのみを実行し、挨拶や不要な解説文を一切省いて、純粋な成果物（コードやテキスト）のみを出力してください。\n\n【タスク】:\n${agent.task}`;
                 
-                // 子エージェントは最速・最も決定論的な temperature: 0.0 で実行
-                const result = await callGemini(childPrompt, key, 0.0);
+                try {
+                    // ★堅牢化1：バースト対策の時差（Staggering）
+                    // 1人目は0秒、2人目は2秒、3人目は4秒後にスタート
+                    if (index > 0) {
+                        updateStatus(`status-child-${index}`, 'run', `🤖 子[${agent.role}]: 時差待機中(${index * 2}秒)...`);
+                        await sleep(index * 2000);
+                    }
+                    
+                    updateStatus(`status-child-${index}`, 'run', `🤖 子[${agent.role}]: タスク実行中...`);
 
-                updateStatus(`status-child-${index}`, 'done', `🤖 子[${agent.role}]: 完了！`);
-                
-                return `### [担当: ${agent.role}]\n${result}\n\n`;
+                    // ★堅牢化2：エラー時の自動リトライ（最大2回トライ）
+                    let result = null;
+                    let lastErrorMsg = "";
+                    for (let attempt = 1; attempt <= 2; attempt++) {
+                        try {
+                            result = await callGemini(childPrompt, key, 0.0);
+                            break; // 成功したらループを抜ける
+                        } catch (err) {
+                            lastErrorMsg = err.message; // 503などのコードを保持
+                            if (attempt < 2) {
+                                // 503等で弾かれたら、5秒のクールダウンを挟んで再挑戦
+                                updateStatus(`status-child-${index}`, 'err', `🤖 子[${agent.role}]: サーバー混雑(${lastErrorMsg})。5秒後に再試行...`);
+                                await sleep(5000); 
+                                updateStatus(`status-child-${index}`, 'run', `🤖 子[${agent.role}]: タスク再実行中(2回目)...`);
+                            }
+                        }
+                    }
+
+                    // 2回やってもダメだった場合は最終的にcatchブロックへ飛ばす
+                    if (!result) throw new Error(lastErrorMsg);
+
+                    updateStatus(`status-child-${index}`, 'done', `🤖 子[${agent.role}]: 完了！`);
+                    return `### [担当: ${agent.role}]\n${result}\n\n`;
+
+                } catch (err) {
+                    // 最終的なエラーハンドリング（他のエージェントは止めない）
+                    updateStatus(`status-child-${index}`, 'err', `🤖 子[${agent.role}]: 取得失敗`);
+                    return `### [担当: ${agent.role}]\n⚠️ APIエラーにより取得失敗 (Error: ${err.message})\n\n`;
+                }
             });
 
             // 全員の作業が終わるのを待つ
@@ -281,7 +314,7 @@
         } catch(e) {
             outputArea.value = "ERROR: " + e.message;
             console.error(e);
-            updateStatus('status-pm', 'err', '🧠 親(PM) : エラー停止');
+            updateStatus('status-pm', 'err', `🧠 親(PM) : エラー停止 (${e.message})`);
         } finally {
             startBtn.disabled = false;
             startBtn.innerText = "🕹️ START (Swarms編成)";
