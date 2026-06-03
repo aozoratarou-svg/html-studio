@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>8-BIT AGENT STUDIO (Swarms & Robust Edition)</title>
+    <title>8-BIT AGENT STUDIO (Swarms & Token Saver)</title>
     <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
     <style>
         /* 全体のベース設定（ファミコン風） */
@@ -177,14 +177,13 @@
             })
         });
         if (!res.ok) {
-            // エラーコード（503など）を含めたエラーを投げる
             throw new Error(`${res.status}`);
         }
         const data = await res.json();
         return data.candidates[0].content.parts[0].text.trim();
     }
 
-    // --- 完全自律型マルチエージェント (Swarms) 堅牢化ワークフロー ---
+    // --- 完全自律型マルチエージェント (Swarms) トークン節約・堅牢化ワークフロー ---
     async function runMultiAgent() {
         const input = document.getElementById('userInput').value;
         const key = localStorage.getItem('gemini_key');
@@ -227,7 +226,8 @@
                 }]
             };
 
-            const pmPrompt = `あなたは優秀なオーケストレーターです。以下の要望を分析し、タスクを分解して 'spawn_agents' ツールを実行してください。必要な役割と人数はあなたが自由に決めて構いません。\n\n【重要：デザイン憲法】\nもしUIやフロントエンドを作成する担当者を召喚する場合、その者のタスク指示(task)の中には必ず「デザインは角丸禁止、太いボーダーを使用し、全体を8-bitのレトロゲーム風テイストに統一すること」という制約を含めてください。\n\n要望: ${input}`;
+            // ★変更箇所1：PMエージェントへの指示（英語でタスクを書かせる＆デザイン憲法）
+            const pmPrompt = `あなたは優秀なオーケストレーターです。要望を分析しタスクを分解して 'spawn_agents' を実行してください。\n\n【トークン節約ルール】\n子エージェントへのタスク指示(task)は、トークン消費を抑えるため「極限まで短い英語(English)」で記述してください。\n\n【重要：デザイン憲法】\nUI担当を召喚する場合、task内に必ず「Constraint: 8-bit retro game style, NO border-radius, thick solid borders」を含めてください。\n\n要望: ${input}`;
             
             // 【ステップ2】PM呼び出し
             const pmRes = await fetch(`${API_URL}?key=${key}`, {
@@ -262,11 +262,12 @@
 
             // 【ステップ4】子エージェントたちを並列・時差・リトライ付きで実行
             const childPromises = agentTeam.map(async (agent, index) => {
-                const childPrompt = `あなたは専門家「${agent.role}」です。以下のタスクのみを実行し、挨拶や不要な解説文を一切省いて、純粋な成果物（コードやテキスト）のみを出力してください。\n\n【タスク】:\n${agent.task}`;
+                
+                // ★変更箇所2：子エージェントへの指示（英語・絶対無言・生データのみを強制）
+                const childPrompt = `Role: Expert ${agent.role}\nConstraint: English strictly. NO greetings. NO explanations. Provide raw artifact only.\nTask: ${agent.task}`;
                 
                 try {
-                    // ★堅牢化1：バースト対策の時差（Staggering）
-                    // 1人目は0秒、2人目は2秒、3人目は4秒後にスタート
+                    // バースト対策の時差（Staggering）: 1人目は0秒、2人目は2秒、3人目は4秒後にスタート
                     if (index > 0) {
                         updateStatus(`status-child-${index}`, 'run', `🤖 子[${agent.role}]: 時差待機中(${index * 2}秒)...`);
                         await sleep(index * 2000);
@@ -274,7 +275,7 @@
                     
                     updateStatus(`status-child-${index}`, 'run', `🤖 子[${agent.role}]: タスク実行中...`);
 
-                    // ★堅牢化2：エラー時の自動リトライ（最大2回トライ）
+                    // エラー時の自動リトライ（最大2回トライ）
                     let result = null;
                     let lastErrorMsg = "";
                     for (let attempt = 1; attempt <= 2; attempt++) {
@@ -292,14 +293,12 @@
                         }
                     }
 
-                    // 2回やってもダメだった場合は最終的にcatchブロックへ飛ばす
                     if (!result) throw new Error(lastErrorMsg);
 
                     updateStatus(`status-child-${index}`, 'done', `🤖 子[${agent.role}]: 完了！`);
                     return `### [担当: ${agent.role}]\n${result}\n\n`;
 
                 } catch (err) {
-                    // 最終的なエラーハンドリング（他のエージェントは止めない）
                     updateStatus(`status-child-${index}`, 'err', `🤖 子[${agent.role}]: 取得失敗`);
                     return `### [担当: ${agent.role}]\n⚠️ APIエラーにより取得失敗 (Error: ${err.message})\n\n`;
                 }
