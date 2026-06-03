@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>8-BIT AGENT STUDIO (Swarms & Token Saver)</title>
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+    <style>
+        /* 全体のベース設定（ファミコン風） */
+        body { 
+            background: #000000; 
+            color: #ffffff; 
+            font-family: 'DotGothic16', monospace; 
+            padding: 10px; 
+            margin: 0; 
+            box-sizing: border-box; 
+            height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            overflow-x: hidden;
+        }
+
+        .header { 
+            text-align: center; 
+            font-size: 1.5rem; 
+            margin: 10px 0 15px 0; 
+            color: #E52521; 
+            text-shadow: 2px 2px 0 #fff;
+            letter-spacing: 2px;
+        }
+
+        .top-row { display: flex; gap: 8px; margin-bottom: 10px; width: 100%; }
+
+        .btn {
+            background: #000; color: #fff; border: 2px solid #fff; box-shadow: 2px 2px 0px #fff;
+            padding: 8px 5px; cursor: pointer; font-size: 0.9rem; text-align: center;
+            font-family: 'DotGothic16', monospace; transition: all 0.1s; display: flex;
+            align-items: center; justify-content: center;
+        }
+        
+        .btn:active { transform: translate(2px, 2px); box-shadow: 0px 0px 0px #fff; }
+        .btn-teikei { flex: 1; }
+        .btn-setting { width: 50px; font-size: 1.2rem; } 
+
+        textarea {
+            width: 100%; background: #0000AA; color: #fff; border: 2px solid #fff; 
+            padding: 10px; box-sizing: border-box; resize: none;
+            font-family: 'DotGothic16', monospace; font-size: 1rem; line-height: 1.4;
+        }
+        textarea:focus { outline: none; border-color: #E52521; }
+        textarea::placeholder { color: #aaaaaa; }
+
+        #userInput { flex: 1; margin-bottom: 10px; }
+
+        /* エージェント進捗ステータスエリア（動的追加に対応） */
+        #status-board {
+            display: none; background: #000; border: 2px dashed #fff;
+            padding: 8px; margin-bottom: 10px; font-size: 0.9rem;
+            max-height: 150px; overflow-y: auto;
+        }
+        .agent-status { margin: 4px 0; }
+        .status-wait { color: #aaaaaa; }
+        .status-run { color: #f39c12; animation: blink 1s infinite; }
+        .status-done { color: #2ecc71; }
+        .status-err { color: #e74c3c; }
+
+        @keyframes blink { 50% { opacity: 0.5; } }
+
+        .btn-action { width: 100%; padding: 12px; font-size: 1rem; margin-bottom: 10px; letter-spacing: 1px; flex-shrink: 0; }
+        .red { background: #E52521; color: #fff; border-color: #fff; box-shadow: 2px 2px 0px #fff;}
+        .blue { background: #0047BB; color: #fff; border-color: #fff; box-shadow: 2px 2px 0px #fff;}
+
+        #output { flex: 1.2; margin-bottom: 5px; background: #000; }
+
+        .modal-overlay { 
+            display: none; position: fixed; top: 0; left: 0; 
+            width: 100%; height: 100%; background: rgba(0,0,0,0.85); 
+            z-index: 10; justify-content: center; align-items: center;
+        }
+        
+        .modal-content {
+            background: #000; border: 4px solid #fff; padding: 15px;
+            width: 90%; max-width: 400px; max-height: 90vh; overflow-y: auto; box-sizing: border-box;
+        }
+
+        .modal-content h3 { color: #E52521; border-bottom: 2px dashed #fff; padding-bottom: 5px; margin-top: 0; text-align: center; }
+        .modal-content input, .modal-content textarea { width: 100%; padding: 10px; margin-bottom: 15px; box-sizing: border-box; background: #111; color: #fff; border: 2px solid #555; flex: none; }
+        .modal-content label { color: #fff; display: block; margin-bottom: 5px; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+<div class="header">MULTI AGENT 8-BIT</div>
+
+<div class="top-row">
+    <div class="btn btn-teikei" onclick="insertTeikei(1)">定型1</div>
+    <div class="btn btn-teikei" onclick="insertTeikei(2)">定型2</div>
+    <div class="btn btn-teikei" onclick="insertTeikei(3)">定型3</div>
+    <div class="btn btn-setting" onclick="openModal('modal-settings')">⚙️</div>
+</div>
+
+<textarea id="userInput" placeholder="▶AIニ 何ヲ サセマスカ？"></textarea>
+
+<div id="status-board">
+    <div id="status-pm" class="agent-status status-wait">🧠 親(PM) : 待機中...</div>
+</div>
+
+<button id="startBtn" class="btn btn-action red" onclick="runMultiAgent()">🕹️ START (Swarms編成)</button>
+<button class="btn btn-action blue" onclick="copyOutput()">📋 COPY (最適化コピー)</button>
+
+<textarea id="output" spellcheck="false" placeholder="▶ケッカガ ココニ ヒョウジサレマス"></textarea>
+
+<div id="modal-settings" class="modal-overlay">
+    <div class="modal-content">
+        <h3>SETTINGS</h3>
+        <label>Gemini API Key (3.5 Flash)</label>
+        <input type="password" id="apiKey" placeholder="Enter API Key">
+        <label>定型文 1</label>
+        <textarea id="teikei1" rows="2" placeholder="例：UIを作る時はレトロゲーム風に"></textarea>
+        <label>定型文 2</label>
+        <textarea id="teikei2" rows="2" placeholder="例：バックエンドはPythonで記述して"></textarea>
+        <label>定型文 3</label>
+        <textarea id="teikei3" rows="2" placeholder="例：不要な挨拶や解説は一切省いて出力して"></textarea>
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+            <button class="btn red" style="flex: 2;" onclick="saveSettings()">SAVE</button>
+            <button class="btn" style="flex: 1;" onclick="closeModal('modal-settings')">CLOSE</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const MODEL_NAME = "gemini-3.5-flash";
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent`;
+
+    window.onload = () => {
+        document.getElementById('apiKey').value = localStorage.getItem('gemini_key') || '';
+        for(let i=1; i<=3; i++) {
+            document.getElementById('teikei'+i).value = localStorage.getItem('teikei'+i) || '';
+        }
+    };
+
+    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    function saveSettings() {
+        localStorage.setItem('gemini_key', document.getElementById('apiKey').value);
+        for(let i=1; i<=3; i++) { localStorage.setItem('teikei'+i, document.getElementById('teikei'+i).value); }
+        closeModal('modal-settings'); alert('セッテイ ヲ ホゾンシマシタ。');
+    }
+
+    function insertTeikei(num) {
+        const val = localStorage.getItem('teikei'+num);
+        if(!val) { alert(`テイケイ ${num} ガ ミセッテイ デス。`); return; }
+        const ta = document.getElementById('userInput');
+        ta.value = ta.value ? ta.value + '\n' + val : val;
+        ta.scrollTop = ta.scrollHeight;
+    }
+
+    function updateStatus(agentId, state, text) {
+        const el = document.getElementById(agentId);
+        if (el) {
+            el.className = `agent-status status-${state}`;
+            el.innerText = text;
+        }
+    }
+
+    // ユーティリティ：待機関数
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    // Gemini API汎用呼び出し関数 (エラー時はステータスコードを含めてthrowする)
+    async function callGemini(prompt, apiKey, temp = 0.0) {
+        const res = await fetch(`${API_URL}?key=${apiKey}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ 
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: { temperature: temp }
+            })
+        });
+        if (!res.ok) {
+            throw new Error(`${res.status}`);
+        }
+        const data = await res.json();
+        return data.candidates[0].content.parts[0].text.trim();
+    }
+
+    // --- 完全自律型マルチエージェント (Swarms) トークン節約・堅牢化ワークフロー ---
+    async function runMultiAgent() {
+        const input = document.getElementById('userInput').value;
+        const key = localStorage.getItem('gemini_key');
+        if(!key) { alert('⚙️ カラ Gemini API Key ヲ ニュウリョクシテクダサイ。'); return; }
+        if(!input) { alert('ヨウボウ ヲ ニュウリョクシテクダサイ。'); return; }
+
+        const outputArea = document.getElementById('output');
+        const statusBoard = document.getElementById('status-board');
+        const startBtn = document.getElementById('startBtn');
+        
+        outputArea.value = "";
+        statusBoard.style.display = "block";
+        statusBoard.innerHTML = '<div id="status-pm" class="agent-status status-run">🧠 親(PM) : チーム編成中... (Function Calling)</div>';
+        startBtn.disabled = true;
+        startBtn.innerText = "⏳ ギョウムチュウ...";
+
+        try {
+            // 【ステップ1】PMに渡す「部下召喚ツール」
+            const spawnTool = {
+                functionDeclarations: [{
+                    name: "spawn_agents",
+                    description: "ユーザーの要望を達成するために必要な専門エージェントのチームを編成します。",
+                    parameters: {
+                        type: "OBJECT",
+                        properties: {
+                            agents: {
+                                type: "ARRAY",
+                                description: "必要な子エージェントのリスト",
+                                items: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        role: { type: "STRING", description: "役割 (例: 'Game Physics Developer', 'Frontend UI', 'Sound Designer')" },
+                                        task: { type: "STRING", description: "この子エージェントが実行すべき具体的なタスク指示" }
+                                    }
+                                }
+                            }
+                        },
+                        required: ["agents"]
+                    }
+                }]
+            };
+
+            // ★変更箇所1：PMエージェントへの指示（英語でタスクを書かせる＆デザイン憲法）
+            const pmPrompt = `あなたは優秀なオーケストレーターです。要望を分析しタスクを分解して 'spawn_agents' を実行してください。\n\n【トークン節約ルール】\n子エージェントへのタスク指示(task)は、トークン消費を抑えるため「極限まで短い英語(English)」で記述してください。\n\n【重要：デザイン憲法】\nUI担当を召喚する場合、task内に必ず「Constraint: 8-bit retro game style, NO border-radius, thick solid borders」を含めてください。\n\n要望: ${input}`;
+            
+            // 【ステップ2】PM呼び出し
+            const pmRes = await fetch(`${API_URL}?key=${key}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ 
+                    contents: [{ parts: [{ text: pmPrompt }] }],
+                    tools: [spawnTool],
+                    toolConfig: { functionCallingConfig: { mode: "ANY" } }, 
+                    generationConfig: { temperature: 0.2 }
+                })
+            });
+            
+            if (!pmRes.ok) throw new Error(`API Error: ${pmRes.status}`);
+            const pmData = await pmRes.json();
+
+            const parts = pmData.candidates[0].content.parts;
+            const functionCall = parts.find(p => p.functionCall)?.functionCall;
+
+            if (!functionCall || functionCall.name !== "spawn_agents") {
+                throw new Error("PMがチーム編成ツールを使用しませんでした。");
+            }
+
+            const agentTeam = functionCall.args.agents;
+            
+            updateStatus('status-pm', 'done', `🧠 親(PM) : 編成完了！ ${agentTeam.length}名のエージェントを召喚します。`);
+
+            // 【ステップ3】UIへ子エージェントのステータスを追加
+            agentTeam.forEach((agent, index) => {
+                statusBoard.innerHTML += `<div id="status-child-${index}" class="agent-status status-wait">🤖 子[${agent.role}]: 待機中...</div>`;
+            });
+
+            // 【ステップ4】子エージェントたちを並列・時差・リトライ付きで実行
+            const childPromises = agentTeam.map(async (agent, index) => {
+                
+                // ★変更箇所2：子エージェントへの指示（英語・絶対無言・生データのみを強制）
+                const childPrompt = `Role: Expert ${agent.role}\nConstraint: English strictly. NO greetings. NO explanations. Provide raw artifact only.\nTask: ${agent.task}`;
+                
+                try {
+                    // バースト対策の時差（Staggering）: 1人目は0秒、2人目は2秒、3人目は4秒後にスタート
+                    if (index > 0) {
+                        updateStatus(`status-child-${index}`, 'run', `🤖 子[${agent.role}]: 時差待機中(${index * 2}秒)...`);
+                        await sleep(index * 2000);
+                    }
+                    
+                    updateStatus(`status-child-${index}`, 'run', `🤖 子[${agent.role}]: タスク実行中...`);
+
+                    // エラー時の自動リトライ（最大2回トライ）
+                    let result = null;
+                    let lastErrorMsg = "";
+                    for (let attempt = 1; attempt <= 2; attempt++) {
+                        try {
+                            result = await callGemini(childPrompt, key, 0.0);
+                            break; // 成功したらループを抜ける
+                        } catch (err) {
+                            lastErrorMsg = err.message; // 503などのコードを保持
+                            if (attempt < 2) {
+                                // 503等で弾かれたら、5秒のクールダウンを挟んで再挑戦
+                                updateStatus(`status-child-${index}`, 'err', `🤖 子[${agent.role}]: サーバー混雑(${lastErrorMsg})。5秒後に再試行...`);
+                                await sleep(5000); 
+                                updateStatus(`status-child-${index}`, 'run', `🤖 子[${agent.role}]: タスク再実行中(2回目)...`);
+                            }
+                        }
+                    }
+
+                    if (!result) throw new Error(lastErrorMsg);
+
+                    updateStatus(`status-child-${index}`, 'done', `🤖 子[${agent.role}]: 完了！`);
+                    return `### [担当: ${agent.role}]\n${result}\n\n`;
+
+                } catch (err) {
+                    updateStatus(`status-child-${index}`, 'err', `🤖 子[${agent.role}]: 取得失敗`);
+                    return `### [担当: ${agent.role}]\n⚠️ APIエラーにより取得失敗 (Error: ${err.message})\n\n`;
+                }
+            });
+
+            // 全員の作業が終わるのを待つ
+            const results = await Promise.all(childPromises);
+
+            // 【ステップ5】最終出力を結合
+            outputArea.value = "=== 8-BIT SWARM OUTPUT ===\n\n" + results.join("");
+
+        } catch(e) {
+            outputArea.value = "ERROR: " + e.message;
+            console.error(e);
+            updateStatus('status-pm', 'err', `🧠 親(PM) : エラー停止 (${e.message})`);
+        } finally {
+            startBtn.disabled = false;
+            startBtn.innerText = "🕹️ START (Swarms編成)";
+        }
+    }
+
+    function copyOutput() {
+        const textToCopy = document.getElementById('output').value;
+        if(!textToCopy || textToCopy.includes("▶ケッカガ")) return;
+        const optimizedText = textToCopy.trim();
+        navigator.clipboard.writeText(optimizedText).then(() => {
+            alert('コピー カンリョウ！ Claudeニ ハリツケテ クダサイ。');
+        }).catch(err => {
+            alert('コピーニ シッパイ シマシタ。');
+        });
+    }
+</script>
+</body>
+</html>
