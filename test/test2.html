@@ -8,37 +8,20 @@
     <style>
         * { box-sizing: border-box; }
         body { 
-            background: #B4F8C8; 
-            color: #000; 
-            font-family: 'Noto Sans JP', sans-serif; 
-            margin: 0; 
-            padding: 0;
-            height: 100vh; 
-            display: flex; 
-            flex-direction: column; 
-            overflow: hidden;
+            background: #B4F8C8; color: #000; font-family: 'Noto Sans JP', sans-serif; 
+            margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+            /* スワイプ時の画面揺れ防止 */
+            overscroll-behavior: none; 
         }
 
         .neo-card {
-            background: #fff;
-            border: 3px solid #000;
-            box-shadow: 4px 4px 0px #000;
-            border-radius: 8px;
+            background: #fff; border: 3px solid #000; box-shadow: 4px 4px 0px #000; border-radius: 8px;
         }
 
         .neo-btn {
-            background: #FFAEBC;
-            color: #000;
-            font-weight: 900;
-            border: 3px solid #000;
-            box-shadow: 4px 4px 0px #000;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.1s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
+            background: #FFAEBC; color: #000; font-weight: 900; border: 3px solid #000;
+            box-shadow: 4px 4px 0px #000; border-radius: 8px; cursor: pointer; transition: all 0.1s;
+            display: flex; align-items: center; justify-content: center; user-select: none;
         }
         .neo-btn:active { transform: translate(4px, 4px); box-shadow: 0px 0px 0px #000; }
         
@@ -65,7 +48,8 @@
         .status-err { color: #e74c3c; font-weight: bold; }
 
         .preview-container {
-            flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #fff; position: relative; transition: all 0.2s;
+            flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #fff; 
+            position: relative; transition: all 0.2s;
         }
         .preview-header {
             background: #000; color: #fff; padding: 4px 10px; font-size: 0.8rem;
@@ -79,6 +63,12 @@
             z-index: 9999; border-radius: 0; border: none; box-shadow: none;
         }
 
+        /* 全画面トグルボタンをプレビュー画面の右下に絶対配置 */
+        .fullscreen-btn {
+            position: absolute; bottom: 10px; right: 10px; z-index: 10;
+            padding: 5px 10px; font-size: 0.8rem; border-radius: 20px;
+        }
+
         .bottom-control {
             background: #fff; border-top: 3px solid #000; padding: 10px; display: flex; flex-direction: column; gap: 10px; z-index: 5;
         }
@@ -87,18 +77,37 @@
         .btn-teikei { flex: 1; padding: 8px 0; font-size: 0.8rem; }
         .btn-reset { padding: 8px 10px; font-size: 0.8rem; flex-shrink: 0; }
 
-        .input-row { display: flex; gap: 8px; }
+        .input-row { display: flex; gap: 8px; align-items: center; }
         #userInput { 
             flex: 1; border: 3px solid #000; border-radius: 8px; padding: 10px; 
-            font-family: inherit; font-size: 1rem; resize: none; height: 90px;
+            font-family: inherit; font-size: 1rem; resize: none; height: 80px;
         }
         #userInput:focus { outline: none; background: #f0f0f0; }
         
-        /* アクションボタン（実行・コピー・Git）のレイアウト */
-        .action-btns {
-            display: flex; flex-direction: column; gap: 5px; width: 65px; flex-shrink: 0;
+        /* ---------------------------------------------------
+           アクション・ジョイスティック (スワイプUI) 
+        --------------------------------------------------- */
+        .joystick-pad {
+            width: 70px; height: 90px; background: #f0f0f0; border: 3px solid #000; border-radius: 12px;
+            box-shadow: 4px 4px 0px #000; position: relative; display: flex; justify-content: center; align-items: center;
+            flex-shrink: 0; touch-action: none; /* デフォルトのスクロールを無効化 */
         }
-        .action-btns button { flex: 1; font-size: 0.85rem; padding: 0; }
+        /* 上下のラベル（ガイド） */
+        .joystick-label {
+            position: absolute; font-size: 0.65rem; font-weight: bold; color: #888; pointer-events: none;
+        }
+        .joystick-label.top { top: 5px; }
+        .joystick-label.bottom { bottom: 5px; }
+        
+        /* 動かすノブ（つまみ） */
+        .joystick-knob {
+            width: 50px; height: 50px; background: #FFAEBC; border: 3px solid #000; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center; font-size: 0.9rem; font-weight: bold;
+            cursor: pointer; position: absolute; z-index: 2; transition: transform 0.1s, background 0.2s;
+            box-shadow: 2px 2px 0px rgba(0,0,0,0.3);
+        }
+
+        /* --------------------------------------------------- */
 
         .modal-overlay { 
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
@@ -129,9 +138,9 @@
     <div class="neo-card preview-container" id="previewContainer">
         <div class="preview-header">
             <span>LIVE PREVIEW</span>
-            <button class="neo-btn btn-yellow" style="padding: 2px 8px; font-size: 0.75rem;" onclick="toggleFullscreen()">全画面切替</button>
         </div>
         <iframe id="preview-frame" sandbox="allow-scripts allow-same-origin"></iframe>
+        <button class="neo-btn btn-yellow fullscreen-btn" onclick="toggleFullscreen()">全画面 ⛶</button>
     </div>
     
     <textarea id="output"></textarea>
@@ -145,11 +154,13 @@
     </div>
     <div class="input-row">
         <textarea id="userInput" placeholder="要望を入力...（続けて入力で修正・追加）"></textarea>
-        <div class="action-btns">
-            <button id="startBtn" class="neo-btn" style="height: 40px;">実行</button>
-            <button id="copyBtn" class="neo-btn btn-yellow" onclick="copyCode()">ｺﾋﾟｰ</button>
-            <button id="gitBtn" class="neo-btn btn-blue" onclick="pushToGitHub()">Git</button>
+        
+        <div class="joystick-pad" id="joystickPad">
+            <span class="joystick-label top">ｺﾋﾟｰ</span>
+            <div class="joystick-knob" id="joystickKnob">実行</div>
+            <span class="joystick-label bottom">Git</span>
         </div>
+
     </div>
 </footer>
 
@@ -191,8 +202,73 @@
         document.getElementById('ghPath').value = localStorage.getItem('gh_path') || 'test/test.html';
         for(let i=1; i<=2; i++) { document.getElementById('teikei'+i).value = localStorage.getItem('teikei'+i) || ''; }
         window.addEventListener('message', handleIframeError);
+        initJoystick();
     };
 
+    /* ==========================================
+       ジョイスティック (スワイプUI) のロジック
+       ========================================== */
+    function initJoystick() {
+        const pad = document.getElementById('joystickPad');
+        const knob = document.getElementById('joystickKnob');
+        let isDragging = false;
+        let startY = 0;
+        let currentY = 0;
+        let actionTriggered = 'exec'; // デフォルトは実行
+
+        // マウスとタッチ両対応のpointerイベント
+        pad.addEventListener('pointerdown', (e) => {
+            isDragging = true;
+            startY = e.clientY;
+            knob.style.transition = 'none'; // ドラッグ中はアニメーションを切る
+            pad.setPointerCapture(e.pointerId); // カーソルが外れても追従する
+        });
+
+        pad.addEventListener('pointermove', (e) => {
+            if (!isDragging) return;
+            currentY = e.clientY - startY;
+            
+            // 可動域の制限（上下35pxまで）
+            if (currentY < -35) currentY = -35;
+            if (currentY > 35) currentY = 35;
+            
+            knob.style.transform = `translateY(${currentY}px)`;
+
+            // しきい値（25px）を超えたらモード切り替え、超えてなければ「実行」に戻る（キャンセル機能）
+            if (currentY <= -25) { 
+                knob.innerText = "ｺﾋﾟｰ"; actionTriggered = 'copy'; knob.style.background = '#FBE7C6'; 
+            } else if (currentY >= 25) { 
+                knob.innerText = "Git"; actionTriggered = 'git'; knob.style.background = '#A0E7E5'; 
+            } else { 
+                knob.innerText = "実行"; actionTriggered = 'exec'; knob.style.background = '#FFAEBC'; 
+            }
+        });
+
+        pad.addEventListener('pointerup', (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            
+            // つまみを中央に戻す
+            knob.style.transition = 'transform 0.2s, background 0.2s';
+            knob.style.transform = `translateY(0px)`;
+            
+            // 指を離したときのアクションを実行
+            if (actionTriggered === 'copy') {
+                copyCode();
+            } else if (actionTriggered === 'git') {
+                pushToGitHub();
+            } else if (actionTriggered === 'exec') {
+                runMultiAgent();
+            }
+
+            // 状態リセット
+            knob.innerText = "実行";
+            knob.style.background = '#FFAEBC';
+            actionTriggered = 'exec';
+        });
+    }
+
+    // --- その他基本ロジック（前回のまま） ---
     function openModal(id) { document.getElementById(id).style.display = 'flex'; }
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
     function saveSettings() {
@@ -204,15 +280,12 @@
         closeModal('modal-settings');
         alert("設定を保存しました");
     }
-
     function insertTeikei(num) {
         const val = localStorage.getItem('teikei'+num);
         if(!val) return;
         const ta = document.getElementById('userInput');
         ta.value = ta.value ? ta.value + '\n' + val : val;
     }
-
-    // 文脈と画面のリセット
     function resetApp() {
         latestGeneratedHTML = "";
         document.getElementById('output').value = "";
@@ -220,8 +293,8 @@
         document.getElementById('status-board').innerHTML = '<div id="status-pm" class="agent-status status-wait">親(PM): 待機中</div>';
         alert("文脈をリセットしました。新しいアプリを作れます。");
     }
-
-    // 全画面トグル
+    
+    // 全画面トグル関数
     function toggleFullscreen() {
         const container = document.getElementById('previewContainer');
         container.classList.toggle('fullscreen');
@@ -229,272 +302,33 @@
 
     function updateStatus(agentId, state, text) {
         let el = document.getElementById(agentId);
-        if (!el) {
-            el = document.createElement('div');
-            el.id = agentId;
-            document.getElementById('status-board').appendChild(el);
-        }
-        el.className = `agent-status status-${state}`;
-        el.innerText = text;
-        const board = document.getElementById('status-board');
-        board.scrollTop = board.scrollHeight;
+        if (!el) { el = document.createElement('div'); el.id = agentId; document.getElementById('status-board').appendChild(el); }
+        el.className = `agent-status status-${state}`; el.innerText = text;
+        const board = document.getElementById('status-board'); board.scrollTop = board.scrollHeight;
     }
 
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     async function callGemini(prompt, apiKey, temp = 0.0) {
         const res = await fetch(`${API_URL}?key=${apiKey}`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ 
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { temperature: temp }
-            })
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: temp } })
         });
         if (!res.ok) throw new Error(`${res.status}`);
-        const data = await res.json();
-        return data.candidates[0].content.parts[0].text.trim();
+        const data = await res.json(); return data.candidates[0].content.parts[0].text.trim();
     }
 
-    function extractHTML(text) {
-        const match = text.match(/```html\n([\s\S]*?)\n```/);
-        return match ? match[1] : text;
-    }
+    function extractHTML(text) { const match = text.match(/
+http://googleusercontent.com/immersive_entry_chip/0
 
-    function injectErrorTracker(htmlContent) {
-        const trackerScript = `
-            <script>
-                window.onerror = function(message, source, lineno, colno, error) {
-                    window.parent.postMessage({ type: 'AGENT_ERROR', msg: message + " at line " + lineno }, '*');
-                    return true;
-                };
-            <\/script>
-        `;
-        if (htmlContent.includes('<head>')) {
-            return htmlContent.replace('<head>', '<head>\n' + trackerScript);
-        } else {
-            return trackerScript + '\n' + htmlContent;
-        }
-    }
+### このUIの遊び方と操作感
+1. **全画面ボタン:**
+   「LIVE PREVIEW」画面の右下（一番親指が届きやすい場所）に「全画面 ⛶」ボタンを配置しました。生成したアプリを画面いっぱいに広げてテストできます。（戻る時も同じ場所をタップします）
+2. **アクション・ジョイスティック（スワイプUI）:**
+   右下の「実行」と書かれた丸いボタン（ノブ）に触れてみてください。
+   * **そのままタップ（またはクリック）:** 今まで通りプロンプトを「実行」します。
+   * **上にスワイプ（引っ張る）:** 上部の「ｺﾋﾟｰ」の文字まで引っ張って指を離すと、コードがコピーされます。
+   * **下にスワイプ（引っ張る）:** 下部の「Git」まで引っ張って指を離すと、GitHubへプッシュされます。
+   * **キャンセルしたい時:** 上や下に引っ張った状態でも、**指を離さずに真ん中に戻せば**、アクションはキャンセルされて「実行」待機状態に戻ります。誤爆の心配はありません。
 
-    function renderPreview(htmlString) {
-        const frame = document.getElementById('preview-frame');
-        latestGeneratedHTML = extractHTML(htmlString);
-        frame.srcdoc = injectErrorTracker(latestGeneratedHTML);
-    }
-
-    async function handleIframeError(event) {
-        if (event.data && event.data.type === 'AGENT_ERROR') {
-            if (isFixing) return;
-            isFixing = true;
-            const errorMsg = event.data.msg;
-            const key = localStorage.getItem('gemini_key');
-            updateStatus('status-fixer', 'run', `修正エージェント: エラー検知 自己修正中...`);
-            
-            const fixPrompt = `エラーを修正した完全なHTMLコードのみを出力してください。\nエラー内容: ${errorMsg}\n元のコード:\n\`\`\`html\n${latestGeneratedHTML}\n\`\`\`\n\n必ず \`\`\`html と \`\`\` で囲むこと。`;
-
-            try {
-                const fixedCode = await callGemini(fixPrompt, key, 0.0);
-                updateStatus('status-fixer', 'done', `修正エージェント: 完了。再描画します。`);
-                renderPreview(fixedCode);
-            } catch (e) {
-                updateStatus('status-fixer', 'err', `修正エージェント: 失敗 (${e.message})`);
-            } finally {
-                isFixing = false;
-            }
-        }
-    }
-
-    function copyCode() {
-        const textToCopy = latestGeneratedHTML || document.getElementById('output').value;
-        if (!textToCopy || textToCopy.trim() === "") {
-            alert('まだコピーするコードがありません。');
-            return;
-        }
-        navigator.clipboard.writeText(textToCopy.trim()).then(() => alert('コピー完了！')).catch(() => alert('コピー失敗'));
-    }
-
-    // GitHub Push 機能 (日本語エンコード対応)
-    async function pushToGitHub() {
-        const token = localStorage.getItem('gh_token');
-        const repo = localStorage.getItem('gh_repo');
-        const path = localStorage.getItem('gh_path');
-        const content = latestGeneratedHTML || document.getElementById('output').value;
-
-        if (!token || !repo || !path) {
-            alert("⚙️設定からGitHub Token, リポジトリ, パスを入力してください");
-            return;
-        }
-        if (!content || content.trim() === "") { alert("プッシュするコードがありません"); return; }
-
-        document.getElementById('gitBtn').innerText = "処理中";
-
-        try {
-            // 1. ファイルの存在確認(SHA取得)
-            let sha = "";
-            try {
-                const getRes = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
-                    headers: { 'Authorization': `token ${token}` }
-                });
-                if (getRes.ok) {
-                    const data = await getRes.json();
-                    sha = data.sha;
-                }
-            } catch (e) { console.log("New file"); }
-
-            // 2. Base64エンコード (日本語の文字化け防止)
-            const base64Content = btoa(unescape(encodeURIComponent(extractHTML(content))));
-
-            // 3. PUTリクエスト
-            const putRes = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    message: "Update from NEO AGENT STUDIO",
-                    content: base64Content,
-                    ...(sha ? { sha: sha } : {})
-                })
-            });
-
-            if (putRes.ok) {
-                alert(`🚀 成功！\n${repo} の ${path} にプッシュしました！`);
-            } else {
-                const errData = await putRes.json();
-                throw new Error(errData.message || "Push failed");
-            }
-        } catch (error) {
-            alert("エラー: " + error.message);
-        } finally {
-            document.getElementById('gitBtn').innerText = "Git";
-        }
-    }
-
-    async function runMultiAgent() {
-        const input = document.getElementById('userInput').value;
-        const key = localStorage.getItem('gemini_key');
-        if(!key) { alert('設定からAPIキーを入力してください'); return; }
-        if(!input) return;
-
-        const statusBoard = document.getElementById('status-board');
-        const startBtn = document.getElementById('startBtn');
-        const outputArea = document.getElementById('output');
-        
-        isFixing = false;
-        statusBoard.style.display = "block";
-        statusBoard.innerHTML = '<div id="status-pm" class="agent-status status-run">親(PM): チーム編成中...</div>';
-        startBtn.disabled = true;
-        startBtn.innerText = "処理中";
-
-        try {
-            const spawnTool = {
-                functionDeclarations: [{
-                    name: "spawn_agents",
-                    description: "チーム編成",
-                    parameters: {
-                        type: "OBJECT",
-                        properties: {
-                            agents: {
-                                type: "ARRAY",
-                                items: {
-                                    type: "OBJECT",
-                                    properties: {
-                                        role: { type: "STRING" },
-                                        task: { type: "STRING" },
-                                        is_html_output: { type: "BOOLEAN" }
-                                    }
-                                }
-                            }
-                        }, required: ["agents"]
-                    }
-                }]
-            };
-
-            // ★ 対話型アップデート：過去のコードがあればプロンプトに結合してコンテキストを維持
-            let contextText = "";
-            if (latestGeneratedHTML) {
-                contextText = `\n\n【重要：現在稼働中のコード】\n以下のコードをベースにし、ユーザーの要望を適用して修正・追加を行ってください。\n\`\`\`html\n${latestGeneratedHTML}\n\`\`\``;
-            }
-
-            const pmPrompt = `あなたは優秀なオーケストレーターです。'spawn_agents' を実行してください。\n【制約】タスク指示は極限まで短い英語。UI担当召喚時は必ずHTML/CSS/JSを1ファイルにまとめis_html_outputをtrueに。\n要望: ${input} ${contextText}`;
-            
-            const pmRes = await fetch(`${API_URL}?key=${key}`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ 
-                    contents: [{ parts: [{ text: pmPrompt }] }],
-                    tools: [spawnTool],
-                    toolConfig: { functionCallingConfig: { mode: "ANY" } }, 
-                    generationConfig: { temperature: 0.2 }
-                })
-            });
-            
-            if (!pmRes.ok) throw new Error(`API Error: ${pmRes.status}`);
-            const pmData = await pmRes.json();
-            const parts = pmData.candidates[0].content.parts;
-            const functionCall = parts.find(p => p.functionCall)?.functionCall;
-
-            if (!functionCall || functionCall.name !== "spawn_agents") throw new Error("PMがツールを使用しませんでした");
-
-            const agentTeam = functionCall.args.agents;
-            updateStatus('status-pm', 'done', `親(PM): 編成完了 (${agentTeam.length}名)`);
-
-            let finalHTML = "";
-            const childPromises = agentTeam.map(async (agent, index) => {
-                const childPrompt = `Role: ${agent.role}\nConstraint: English strictly. NO greetings. Provide raw artifact only. If writing HTML, enclose in \`\`\`html and \`\`\`.\nTask: ${agent.task}\n\n${contextText ? 'Base Code is provided in the task.' : ''}`;
-                
-                try {
-                    if (index > 0) {
-                        updateStatus(`status-child-${index}`, 'run', `子[${agent.role}]: 待機中...`);
-                        await sleep(index * 2000);
-                    }
-                    
-                    updateStatus(`status-child-${index}`, 'run', `子[${agent.role}]: 実行中...`);
-
-                    let result = null;
-                    let lastErrorMsg = "";
-                    for (let attempt = 1; attempt <= 2; attempt++) {
-                        try {
-                            result = await callGemini(childPrompt, key, 0.0);
-                            break;
-                        } catch (err) {
-                            lastErrorMsg = err.message;
-                            if (attempt < 2) {
-                                updateStatus(`status-child-${index}`, 'err', `子[${agent.role}]: 混雑(${lastErrorMsg})。再試行...`);
-                                await sleep(5000); 
-                            }
-                        }
-                    }
-
-                    if (!result) throw new Error(lastErrorMsg);
-                    updateStatus(`status-child-${index}`, 'done', `子[${agent.role}]: 完了`);
-                    
-                    if (agent.is_html_output || result.includes("```html")) {
-                        finalHTML = result;
-                    }
-                    return `### [担当: ${agent.role}]\n${result}\n\n`;
-                } catch (err) {
-                    updateStatus(`status-child-${index}`, 'err', `子[${agent.role}]: 失敗`);
-                    return "";
-                }
-            });
-
-            const results = await Promise.all(childPromises);
-            outputArea.value = "=== 8-BIT SWARM OUTPUT ===\n\n" + results.join("");
-
-            if (finalHTML) {
-                renderPreview(finalHTML);
-            }
-
-        } catch(e) {
-            updateStatus('status-pm', 'err', `親(PM): 停止 (${e.message})`);
-        } finally {
-            startBtn.disabled = false;
-            startBtn.innerText = "実行";
-        }
-    }
-</script>
-</body>
-</html>
+この「親指だけで複数のコマンドを使い分けられ、かつ誤操作を防ぐ」ジョイスティック型のUIは、狭いスマホ画面のツールとして一つの究極系です。指先での操作感、いかがでしょうか？
