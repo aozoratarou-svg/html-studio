@@ -8,18 +8,37 @@
     <style>
         * { box-sizing: border-box; }
         body { 
-            background: #B4F8C8; color: #000; font-family: 'Noto Sans JP', sans-serif; 
-            margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+            background: #B4F8C8; 
+            color: #000; 
+            font-family: 'Noto Sans JP', sans-serif; 
+            margin: 0; 
+            padding: 0;
+            height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden;
         }
 
         .neo-card {
-            background: #fff; border: 3px solid #000; box-shadow: 4px 4px 0px #000; border-radius: 8px;
+            background: #fff;
+            border: 3px solid #000;
+            box-shadow: 4px 4px 0px #000;
+            border-radius: 8px;
         }
 
         .neo-btn {
-            background: #FFAEBC; color: #000; font-weight: 900; border: 3px solid #000;
-            box-shadow: 4px 4px 0px #000; border-radius: 8px; cursor: pointer; transition: all 0.1s;
-            display: flex; align-items: center; justify-content: center; user-select: none;
+            background: #FFAEBC;
+            color: #000;
+            font-weight: 900;
+            border: 3px solid #000;
+            box-shadow: 4px 4px 0px #000;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
         }
         .neo-btn:active { transform: translate(4px, 4px); box-shadow: 0px 0px 0px #000; }
         
@@ -46,8 +65,7 @@
         .status-err { color: #e74c3c; font-weight: bold; }
 
         .preview-container {
-            flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #fff; 
-            position: relative; transition: all 0.2s;
+            flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #fff; position: relative; transition: all 0.2s;
         }
         .preview-header {
             background: #000; color: #fff; padding: 4px 10px; font-size: 0.8rem;
@@ -61,15 +79,6 @@
             z-index: 9999; border-radius: 0; border: none; box-shadow: none;
         }
 
-        /* 邪魔にならない極小の全画面ボタン */
-        .fullscreen-btn {
-            position: absolute; bottom: 8px; right: 8px; z-index: 10;
-            padding: 4px 8px; font-size: 1.2rem; line-height: 1; border-radius: 4px;
-            background: rgba(255, 255, 255, 0.9); color: #000; border: 2px solid #000;
-            box-shadow: 2px 2px 0px #000; cursor: pointer;
-        }
-        .fullscreen-btn:active { transform: translate(2px, 2px); box-shadow: 0px 0px 0px #000; }
-
         .bottom-control {
             background: #fff; border-top: 3px solid #000; padding: 10px; display: flex; flex-direction: column; gap: 10px; z-index: 5;
         }
@@ -78,36 +87,18 @@
         .btn-teikei { flex: 1; padding: 8px 0; font-size: 0.8rem; }
         .btn-reset { padding: 8px 10px; font-size: 0.8rem; flex-shrink: 0; }
 
-        .input-row { display: flex; gap: 8px; align-items: center; }
+        .input-row { display: flex; gap: 8px; }
         #userInput { 
             flex: 1; border: 3px solid #000; border-radius: 8px; padding: 10px; 
-            font-family: inherit; font-size: 1rem; resize: none; height: 96px;
+            font-family: inherit; font-size: 1rem; resize: none; height: 90px;
         }
         #userInput:focus { outline: none; background: #f0f0f0; }
         
-        /* ---------------------------------------------------
-           オシャレなセグメント（分割）モジュールボタン 
-        --------------------------------------------------- */
-        .action-module {
-            display: flex; flex-direction: column; width: 65px; height: 96px;
-            border: 3px solid #000; border-radius: 8px; box-shadow: 4px 4px 0px #000;
-            background: #000; gap: 3px; overflow: hidden; flex-shrink: 0;
-            transition: transform 0.1s, box-shadow 0.1s;
+        /* アクションボタン（実行・コピー・Git）のレイアウト */
+        .action-btns {
+            display: flex; flex-direction: column; gap: 5px; width: 65px; flex-shrink: 0;
         }
-        /* モジュール全体を押し込んだ時のエフェクト */
-        .action-module:active { transform: translate(4px, 4px); box-shadow: 0px 0px 0px #000; }
-        
-        .seg-btn {
-            border: none; font-family: inherit; font-weight: 900; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            width: 100%; transition: filter 0.1s;
-        }
-        .seg-btn:active { filter: brightness(0.85); }
-        
-        .seg-btn.copy { background: #FBE7C6; flex: 1; font-size: 0.7rem; color: #555; }
-        .seg-btn.exec { background: #FFAEBC; flex: 2.5; font-size: 1rem; color: #000; }
-        .seg-btn.git { background: #A0E7E5; flex: 1; font-size: 0.7rem; color: #555; }
-        /* --------------------------------------------------- */
+        .action-btns button { flex: 1; font-size: 0.85rem; padding: 0; }
 
         .modal-overlay { 
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
@@ -138,11 +129,9 @@
     <div class="neo-card preview-container" id="previewContainer">
         <div class="preview-header">
             <span>LIVE PREVIEW</span>
+            <button class="neo-btn btn-yellow" style="padding: 2px 8px; font-size: 0.75rem;" onclick="toggleFullscreen()">全画面切替</button>
         </div>
         <iframe id="preview-frame" sandbox="allow-scripts allow-same-origin"></iframe>
-        
-        <!-- 極小化された全画面トグルボタン -->
-        <button class="fullscreen-btn" onclick="toggleFullscreen()" title="全画面切替">⛶</button>
     </div>
     
     <textarea id="output"></textarea>
@@ -156,14 +145,11 @@
     </div>
     <div class="input-row">
         <textarea id="userInput" placeholder="要望を入力...（続けて入力で修正・追加）"></textarea>
-        
-        <!-- オシャレなセグメント（分割）アクションモジュール -->
-        <div class="action-module">
-            <button class="seg-btn copy" onclick="copyCode()">ｺﾋﾟｰ</button>
-            <button class="seg-btn exec" id="execBtn" onclick="runMultiAgent()">実行</button>
-            <button class="seg-btn git" onclick="pushToGitHub()">Git</button>
+        <div class="action-btns">
+            <button id="startBtn" class="neo-btn" style="height: 40px;">実行</button>
+            <button id="copyBtn" class="neo-btn btn-yellow" onclick="copyCode()">ｺﾋﾟｰ</button>
+            <button id="gitBtn" class="neo-btn btn-blue" onclick="pushToGitHub()">Git</button>
         </div>
-
     </div>
 </footer>
 
@@ -226,6 +212,7 @@
         ta.value = ta.value ? ta.value + '\n' + val : val;
     }
 
+    // 文脈と画面のリセット
     function resetApp() {
         latestGeneratedHTML = "";
         document.getElementById('output').value = "";
@@ -233,7 +220,8 @@
         document.getElementById('status-board').innerHTML = '<div id="status-pm" class="agent-status status-wait">親(PM): 待機中</div>';
         alert("文脈をリセットしました。新しいアプリを作れます。");
     }
-    
+
+    // 全画面トグル
     function toggleFullscreen() {
         const container = document.getElementById('previewContainer');
         container.classList.toggle('fullscreen');
@@ -241,20 +229,272 @@
 
     function updateStatus(agentId, state, text) {
         let el = document.getElementById(agentId);
-        if (!el) { el = document.createElement('div'); el.id = agentId; document.getElementById('status-board').appendChild(el); }
-        el.className = `agent-status status-${state}`; el.innerText = text;
-        const board = document.getElementById('status-board'); board.scrollTop = board.scrollHeight;
+        if (!el) {
+            el = document.createElement('div');
+            el.id = agentId;
+            document.getElementById('status-board').appendChild(el);
+        }
+        el.className = `agent-status status-${state}`;
+        el.innerText = text;
+        const board = document.getElementById('status-board');
+        board.scrollTop = board.scrollHeight;
     }
 
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     async function callGemini(prompt, apiKey, temp = 0.0) {
         const res = await fetch(`${API_URL}?key=${apiKey}`, {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: temp } })
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ 
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: { temperature: temp }
+            })
         });
         if (!res.ok) throw new Error(`${res.status}`);
-        const data = await res.json(); return data.candidates[0].content.parts[0].text.trim();
+        const data = await res.json();
+        return data.candidates[0].content.parts[0].text.trim();
     }
 
-    function extractHTML(text) { const match = text.match(/
+    function extractHTML(text) {
+        const match = text.match(/```html\n([\s\S]*?)\n```/);
+        return match ? match[1] : text;
+    }
+
+    function injectErrorTracker(htmlContent) {
+        const trackerScript = `
+            <script>
+                window.onerror = function(message, source, lineno, colno, error) {
+                    window.parent.postMessage({ type: 'AGENT_ERROR', msg: message + " at line " + lineno }, '*');
+                    return true;
+                };
+            <\/script>
+        `;
+        if (htmlContent.includes('<head>')) {
+            return htmlContent.replace('<head>', '<head>\n' + trackerScript);
+        } else {
+            return trackerScript + '\n' + htmlContent;
+        }
+    }
+
+    function renderPreview(htmlString) {
+        const frame = document.getElementById('preview-frame');
+        latestGeneratedHTML = extractHTML(htmlString);
+        frame.srcdoc = injectErrorTracker(latestGeneratedHTML);
+    }
+
+    async function handleIframeError(event) {
+        if (event.data && event.data.type === 'AGENT_ERROR') {
+            if (isFixing) return;
+            isFixing = true;
+            const errorMsg = event.data.msg;
+            const key = localStorage.getItem('gemini_key');
+            updateStatus('status-fixer', 'run', `修正エージェント: エラー検知 自己修正中...`);
+            
+            const fixPrompt = `エラーを修正した完全なHTMLコードのみを出力してください。\nエラー内容: ${errorMsg}\n元のコード:\n\`\`\`html\n${latestGeneratedHTML}\n\`\`\`\n\n必ず \`\`\`html と \`\`\` で囲むこと。`;
+
+            try {
+                const fixedCode = await callGemini(fixPrompt, key, 0.0);
+                updateStatus('status-fixer', 'done', `修正エージェント: 完了。再描画します。`);
+                renderPreview(fixedCode);
+            } catch (e) {
+                updateStatus('status-fixer', 'err', `修正エージェント: 失敗 (${e.message})`);
+            } finally {
+                isFixing = false;
+            }
+        }
+    }
+
+    function copyCode() {
+        const textToCopy = latestGeneratedHTML || document.getElementById('output').value;
+        if (!textToCopy || textToCopy.trim() === "") {
+            alert('まだコピーするコードがありません。');
+            return;
+        }
+        navigator.clipboard.writeText(textToCopy.trim()).then(() => alert('コピー完了！')).catch(() => alert('コピー失敗'));
+    }
+
+    // GitHub Push 機能 (日本語エンコード対応)
+    async function pushToGitHub() {
+        const token = localStorage.getItem('gh_token');
+        const repo = localStorage.getItem('gh_repo');
+        const path = localStorage.getItem('gh_path');
+        const content = latestGeneratedHTML || document.getElementById('output').value;
+
+        if (!token || !repo || !path) {
+            alert("⚙️設定からGitHub Token, リポジトリ, パスを入力してください");
+            return;
+        }
+        if (!content || content.trim() === "") { alert("プッシュするコードがありません"); return; }
+
+        document.getElementById('gitBtn').innerText = "処理中";
+
+        try {
+            // 1. ファイルの存在確認(SHA取得)
+            let sha = "";
+            try {
+                const getRes = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
+                    headers: { 'Authorization': `token ${token}` }
+                });
+                if (getRes.ok) {
+                    const data = await getRes.json();
+                    sha = data.sha;
+                }
+            } catch (e) { console.log("New file"); }
+
+            // 2. Base64エンコード (日本語の文字化け防止)
+            const base64Content = btoa(unescape(encodeURIComponent(extractHTML(content))));
+
+            // 3. PUTリクエスト
+            const putRes = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: "Update from NEO AGENT STUDIO",
+                    content: base64Content,
+                    ...(sha ? { sha: sha } : {})
+                })
+            });
+
+            if (putRes.ok) {
+                alert(`🚀 成功！\n${repo} の ${path} にプッシュしました！`);
+            } else {
+                const errData = await putRes.json();
+                throw new Error(errData.message || "Push failed");
+            }
+        } catch (error) {
+            alert("エラー: " + error.message);
+        } finally {
+            document.getElementById('gitBtn').innerText = "Git";
+        }
+    }
+
+    async function runMultiAgent() {
+        const input = document.getElementById('userInput').value;
+        const key = localStorage.getItem('gemini_key');
+        if(!key) { alert('設定からAPIキーを入力してください'); return; }
+        if(!input) return;
+
+        const statusBoard = document.getElementById('status-board');
+        const startBtn = document.getElementById('startBtn');
+        const outputArea = document.getElementById('output');
+        
+        isFixing = false;
+        statusBoard.style.display = "block";
+        statusBoard.innerHTML = '<div id="status-pm" class="agent-status status-run">親(PM): チーム編成中...</div>';
+        startBtn.disabled = true;
+        startBtn.innerText = "処理中";
+
+        try {
+            const spawnTool = {
+                functionDeclarations: [{
+                    name: "spawn_agents",
+                    description: "チーム編成",
+                    parameters: {
+                        type: "OBJECT",
+                        properties: {
+                            agents: {
+                                type: "ARRAY",
+                                items: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        role: { type: "STRING" },
+                                        task: { type: "STRING" },
+                                        is_html_output: { type: "BOOLEAN" }
+                                    }
+                                }
+                            }
+                        }, required: ["agents"]
+                    }
+                }]
+            };
+
+            // ★ 対話型アップデート：過去のコードがあればプロンプトに結合してコンテキストを維持
+            let contextText = "";
+            if (latestGeneratedHTML) {
+                contextText = `\n\n【重要：現在稼働中のコード】\n以下のコードをベースにし、ユーザーの要望を適用して修正・追加を行ってください。\n\`\`\`html\n${latestGeneratedHTML}\n\`\`\``;
+            }
+
+            const pmPrompt = `あなたは優秀なオーケストレーターです。'spawn_agents' を実行してください。\n【制約】タスク指示は極限まで短い英語。UI担当召喚時は必ずHTML/CSS/JSを1ファイルにまとめis_html_outputをtrueに。\n要望: ${input} ${contextText}`;
+            
+            const pmRes = await fetch(`${API_URL}?key=${key}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ 
+                    contents: [{ parts: [{ text: pmPrompt }] }],
+                    tools: [spawnTool],
+                    toolConfig: { functionCallingConfig: { mode: "ANY" } }, 
+                    generationConfig: { temperature: 0.2 }
+                })
+            });
+            
+            if (!pmRes.ok) throw new Error(`API Error: ${pmRes.status}`);
+            const pmData = await pmRes.json();
+            const parts = pmData.candidates[0].content.parts;
+            const functionCall = parts.find(p => p.functionCall)?.functionCall;
+
+            if (!functionCall || functionCall.name !== "spawn_agents") throw new Error("PMがツールを使用しませんでした");
+
+            const agentTeam = functionCall.args.agents;
+            updateStatus('status-pm', 'done', `親(PM): 編成完了 (${agentTeam.length}名)`);
+
+            let finalHTML = "";
+            const childPromises = agentTeam.map(async (agent, index) => {
+                const childPrompt = `Role: ${agent.role}\nConstraint: English strictly. NO greetings. Provide raw artifact only. If writing HTML, enclose in \`\`\`html and \`\`\`.\nTask: ${agent.task}\n\n${contextText ? 'Base Code is provided in the task.' : ''}`;
+                
+                try {
+                    if (index > 0) {
+                        updateStatus(`status-child-${index}`, 'run', `子[${agent.role}]: 待機中...`);
+                        await sleep(index * 2000);
+                    }
+                    
+                    updateStatus(`status-child-${index}`, 'run', `子[${agent.role}]: 実行中...`);
+
+                    let result = null;
+                    let lastErrorMsg = "";
+                    for (let attempt = 1; attempt <= 2; attempt++) {
+                        try {
+                            result = await callGemini(childPrompt, key, 0.0);
+                            break;
+                        } catch (err) {
+                            lastErrorMsg = err.message;
+                            if (attempt < 2) {
+                                updateStatus(`status-child-${index}`, 'err', `子[${agent.role}]: 混雑(${lastErrorMsg})。再試行...`);
+                                await sleep(5000); 
+                            }
+                        }
+                    }
+
+                    if (!result) throw new Error(lastErrorMsg);
+                    updateStatus(`status-child-${index}`, 'done', `子[${agent.role}]: 完了`);
+                    
+                    if (agent.is_html_output || result.includes("```html")) {
+                        finalHTML = result;
+                    }
+                    return `### [担当: ${agent.role}]\n${result}\n\n`;
+                } catch (err) {
+                    updateStatus(`status-child-${index}`, 'err', `子[${agent.role}]: 失敗`);
+                    return "";
+                }
+            });
+
+            const results = await Promise.all(childPromises);
+            outputArea.value = "=== 8-BIT SWARM OUTPUT ===\n\n" + results.join("");
+
+            if (finalHTML) {
+                renderPreview(finalHTML);
+            }
+
+        } catch(e) {
+            updateStatus('status-pm', 'err', `親(PM): 停止 (${e.message})`);
+        } finally {
+            startBtn.disabled = false;
+            startBtn.innerText = "実行";
+        }
+    }
+</script>
+</body>
+</html>
