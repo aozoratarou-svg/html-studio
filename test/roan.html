@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modern Financial Life-Plan Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root {
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --accent-primary: #3b82f6;
+      --accent-primary-hover: #2563eb;
+      --accent-secondary: #10b981;
+      --border-color: #e2e8f0;
+      --border-radius: 16px;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+      --transition: all 0.2s ease-in-out;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      line-height: 1.6;
+      padding: 2rem 1rem;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    header {
+      margin-bottom: 2.5rem;
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.025em;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    /* Grid Layout */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (min-width: 992px) {
+      .dashboard-grid {
+        grid-template-columns: 350px 1fr;
+      }
+    }
+
+    /* Cards */
+    .card {
+      background-color: var(--card-bg);
+      border-radius: var(--border-radius);
+      padding: 1.75rem;
+      box-shadow: var(--shadow-md);
+      border: 1px solid rgba(255,255,255,0.8);
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .card-title::before {
+      content: "";
+      display: block;
+      width: 4px;
+      height: 1.1rem;
+      background-color: var(--accent-primary);
+      border-radius: 2px;
+    }
+
+    /* Form Controls */
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .form-row .form-group {
+      margin-bottom: 0;
+    }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      font-family: 'Inter', sans-serif;
+      color: var(--text-main);
+      background-color: #f1f5f9;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      transition: var(--transition);
+      outline: none;
+    }
+
+    input[type="number"]:hover {
+      background-color: #e2e8f0;
+    }
+
+    input[type="number"]:focus {
+      background-color: #ffffff;
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+
+    /* Summary Dashboard */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .summary-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .summary-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.25rem;
+    }
+
+    .summary-value {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--accent-primary);
+    }
+    
+    .summary-value.highlight {
+      color: var(--accent-secondary);
+    }
+
+    /* Chart Container */
+    .chart-container {
+      position: relative;
+      height: 450px;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>Life-Plan Visualizer</h1>
+      <p>教育費のピークと住宅ローン残高の交差点をリアルタイムにシミュレーション</p>
+    </header>
+
+    <main class="dashboard-grid">
+      
+      <div class="card">
+        <h2 class="card-title">シミュレーション条件</h2>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="borrower-age">現在のご年齢</label>
+            <input type="number" id="borrower-age" value="51" min="20" oninput="runSimulation()">
+          </div>
+          <div class="form-group">
+            <label for="child-age">お子様の年齢</label>
+            <input type="number" id="child-age" value="11" min="0" oninput="runSimulation()">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="mortgage-principal">住宅ローン借入額 (円)</label>
+          <input type="number" id="mortgage-principal" value="25000000" step="1000000" oninput="runSimulation()">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="interest-rate">金利 (%)</label>
+            <input type="number" id="interest-rate" value="0.45" step="0.05" oninput="runSimulation()">
+          </div>
+          <div class="form-group">
+            <label for="loan-term">借入期間 (年)</label>
+            <input type="number" id="loan-term" value="20" min="5" max="35" oninput="runSimulation()">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="prepay-age">繰上返済 年齢</label>
+            <input type="number" id="prepay-age" value="61" min="50" oninput="runSimulation()">
+          </div>
+          <div class="form-group">
+            <label for="prepay-amount">繰上額 (円)</label>
+            <input type="number" id="prepay-amount" value="5000000" step="1000000" oninput="runSimulation()">
+          </div>
+        </div>
+
+        <div class="summary-grid">
+          <div class="summary-item">
+            <span class="summary-label">月々のお支払い</span>
+            <span id="out-monthly" class="summary-value">¥0</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">総支払利息</span>
+            <span id="out-interest" class="summary-value">¥0</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">完済予定年齢</span>
+            <span id="out-payoff-age" class="summary-value highlight">0歳</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">キャッシュフロー・プロジェクション</h2>
+        <div class="chart-container">
+          <canvas id="financialChart"></canvas>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    let myChart = null;
+
+    // 一般的な教育費用の目安 (単位: 円)
+    const baseEducationCosts = {
+      0: 0, 1: 0, 2: 0,
+      3: 200000, 4: 200000, 5: 200000, // 幼稚園
+      6: 350000, 7: 350000, 8: 350000, 9: 350000, 10: 350000, 11: 350000, // 小学校
+      12: 450000, 13: 450000, 14: 450000, // 中学校
+      15: 500000, 16: 500000, 17: 500000, // 高校
+      18: 2000000, // 大学入学時費用等
+      19: 1000000, 20: 1000000, 21: 1000000, 22: 1000000 // 大学在学
+    };
+
+    // 月々の返済額計算
+    function calcMonthlyPayment(principal, annualRate, months) {
+      if (annualRate === 0) return principal / months;
+      const r = annualRate / 12;
+      return (principal * r * Math.pow(1 + r, months)) / (Math.pow(1 + r, months) - 1);
+    }
+
+    function runSimulation() {
+      // フォーム値の取得
+      const bAge = parseFloat(document.getElementById('borrower-age').value) || 0;
+      const cAge = parseInt(document.getElementById('child-age').value) || 0;
+      const principal = parseFloat(document.getElementById('mortgage-principal').value) || 0;
+      const rate = parseFloat(document.getElementById('interest-rate').value) / 100 || 0;
+      const termYears = parseInt(document.getElementById('loan-term').value) || 0;
+      const prepayAge = parseFloat(document.getElementById('prepay-age').value) || 0;
+      const prepayAmount = parseFloat(document.getElementById('prepay-amount').value) || 0;
+
+      const totalMonths = termYears * 12;
+      let balance = principal;
+      let scheduledPayment = calcMonthlyPayment(principal, rate, totalMonths);
+      const initialPayment = scheduledPayment;
+      
+      let totalInterest = 0;
+      let prepayMonthIdx = Math.round((prepayAge - bAge) * 12);
+      
+      let yearlyData = {};
+
+      // ローン返済シミュレーション
+      for (let m = 1; m <= totalMonths; m++) {
+        if (balance <= 0) break;
+
+        const currentAge = bAge + (m / 12);
+        const yearInt = Math.floor(currentAge);
+        
+        let interest = balance * (rate / 12);
+        let principalPaid = scheduledPayment - interest;
+        
+        if (principalPaid > balance) {
+          principalPaid = balance;
+          scheduledPayment = principalPaid + interest;
+        }
+
+        balance -= principalPaid;
+        totalInterest += interest;
+
+        // 繰上返済の適用（期間短縮型を想定）
+        if (m === prepayMonthIdx && prepayAmount > 0) {
+          let applied = Math.min(prepayAmount, balance);
+          balance -= applied;
+        }
+
+        if (!yearlyData[yearInt]) yearlyData[yearInt] = { balance: 0, age: yearInt };
+        yearlyData[yearInt].balance = balance; // 年末の残高を保持
+      }
+
+      const payoffAge = bAge + (Object.keys(yearlyData).length / 12);
+
+      // UIサマリーの更新
+      document.getElementById('out-monthly').innerText = `¥${Math.round(initialPayment).toLocaleString()}`;
+      document.getElementById('out-interest').innerText = `¥${Math.round(totalInterest).toLocaleString()}`;
+      document.getElementById('out-payoff-age').innerText = `${payoffAge.toFixed(1)}歳`;
+
+      // グラフ用データの構築
+      let chartLabels = [];
+      let mortgageData = [];
+      let eduData = [];
+
+      for (let i = 0; i <= termYears; i++) {
+        let yearAge = Math.floor(bAge) + i;
+        chartLabels.push(`${yearAge}歳`);
+        
+        let bal = yearlyData[yearAge] ? yearlyData[yearAge].balance : 0;
+        mortgageData.push(bal);
+
+        let currentChildAge = cAge + i;
+        let eduCost = baseEducationCosts[currentChildAge] || 0;
+        eduData.push(eduCost);
+      }
+
+      drawChart(chartLabels, mortgageData, eduData);
+    }
+
+    function drawChart(labels, mortgageData, eduData) {
+      const ctx = document.getElementById('financialChart').getContext('2d');
+      
+      if (myChart) {
+        myChart.destroy();
+      }
+
+      Chart.defaults.font.family = "'Inter', 'Noto Sans JP', sans-serif";
+      Chart.defaults.color = '#64748b';
+
+      myChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'ローン残高 (円)',
+              data: mortgageData,
+              borderColor: '#3b82f6',
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              borderWidth: 3,
+              pointRadius: 0,
+              pointHoverRadius: 6,
+              fill: true,
+              yAxisID: 'yMortgage',
+              tension: 0.4 // 滑らかな曲線
+            },
+            {
+              type: 'bar',
+              label: '年間教育費 (円)',
+              data: eduData,
+              backgroundColor: 'rgba(16, 185, 129, 0.85)',
+              borderRadius: 6,
+              yAxisID: 'yEducation',
+              barPercentage: 0.6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { 
+            mode: 'index', 
+            intersect: false 
+          },
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                usePointStyle: true,
+                boxWidth: 8,
+                padding: 20,
+                font: { size: 13, weight: '500' }
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.9)',
+              padding: 12,
+              titleFont: { size: 14, weight: '600' },
+              bodyFont: { size: 13 },
+              callbacks: {
+                label: function(context) {
+                  let label = context.dataset.label || '';
+                  if (label) label += ': ';
+                  if (context.parsed.y !== null) {
+                    label += '¥' + context.parsed.y.toLocaleString();
+                  }
+                  return label;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { font: { size: 12 } }
+            },
+            yMortgage: {
+              type: 'linear',
+              position: 'left',
+              title: { 
+                display: true, 
+                text: '住宅ローン残高',
+                font: { weight: '600' },
+                color: '#3b82f6'
+              },
+              grid: { color: '#f1f5f9' },
+              ticks: {
+                callback: function(value) {
+                  return value >= 10000 ? (value / 10000).toLocaleString() + '万' : value;
+                }
+              }
+            },
+            yEducation: {
+              type: 'linear',
+              position: 'right',
+              title: { 
+                display: true, 
+                text: '教育費',
+                font: { weight: '600' },
+                color: '#10b981'
+              },
+              grid: { drawOnChartArea: false }, // グリッド線の重複を防ぐ
+              ticks: {
+                callback: function(value) {
+                  return value >= 10000 ? (value / 10000).toLocaleString() + '万' : value;
+                }
+              },
+              min: 0,
+              max: 3000000
+            }
+          }
+        }
+      });
+    }
+
+    // 初回ロード時に実行
+    window.onload = runSimulation;
+  </script>
+</body>
+</html>
