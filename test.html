@@ -41,7 +41,6 @@
             letter-spacing: 2px;
         }
 
-        /* 👑 タブメニュー（スクショ通りの4分割構成） */
         .tabs {
             display: flex;
             gap: 6px;
@@ -66,7 +65,6 @@
             color: var(--bg-color);
         }
 
-        /* パネルベース */
         .panel {
             display: none;
             border: var(--border-style);
@@ -83,11 +81,20 @@
             flex-direction: column;
         }
 
-        /* 👑 全画面表示タブが選択された時、またはFullscreen時の挙動 */
-        .panel:fullscreen {
+        /* 👑 iPhone(iOS)対応：CSSによる超強力な擬似フルスクリーンモード */
+        .panel.ios-fullscreen {
+            display: flex !important;
+            flex-direction: column !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
             width: 100vw !important;
             height: 100vh !important;
-            padding: max(15px, env(safe-area-inset-top)) 15px max(15px, env(safe-area-inset-bottom)) 15px;
+            z-index: 99999 !important;
+            margin: 0 !important;
+            border: none !important;
+            padding: max(10px, env(safe-area-inset-top)) 12px max(10px, env(safe-area-inset-bottom)) 12px !important;
+            background-color: var(--bg-color) !important;
         }
 
         .editor-container {
@@ -102,7 +109,7 @@
             width: 100%;
             flex-grow: 1;
             background-color: var(--bg-color);
-            color: #888888; /* スクショのプレースホルダー色を意識 */
+            color: #888888;
             border: none;
             font-family: 'DotGothic16', monospace;
             font-size: 1rem;
@@ -112,7 +119,7 @@
         }
 
         textarea:focus {
-            color: var(--code-color); /* 入力時はクッキリ緑色に */
+            color: var(--code-color);
         }
 
         iframe {
@@ -122,7 +129,6 @@
             border: none;
         }
 
-        /* 👑 エディタ右下のクリアボタン配置 */
         .editor-toolbar-bottom {
             position: absolute;
             right: 4px;
@@ -143,7 +149,16 @@
             background-color: #666;
         }
 
-        /* 設定画面用スタイル */
+        /* 全画面プレビュー時のみ最上部に表示する「もどる」ツールバー */
+        .fullscreen-toolbar {
+            display: none;
+            justify-content: flex-start;
+            margin-bottom: 8px;
+        }
+        .panel.ios-fullscreen .fullscreen-toolbar {
+            display: flex;
+        }
+
         .config-item {
             margin-bottom: 10px;
         }
@@ -163,7 +178,6 @@
             border-radius: 0;
         }
 
-        /* アクションエリア（スクショ完全準拠レイアウト） */
         .actions {
             display: flex;
             flex-direction: column;
@@ -221,7 +235,6 @@
             border-radius: 0;
         }
 
-        /* 👑 ファイルセレクト＆更新ボタン（丸みなしソリッド） */
         .file-select {
             flex-grow: 1;
             padding: 8px 6px;
@@ -260,7 +273,7 @@
     <h1>HTML STUDIO</h1>
 
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('edit')">🔨つくくる</button>
+        <button id="tab-edit-btn" class="tab-btn active" onclick="switchTab('edit')">🔨つくくる</button>
         <button class="tab-btn" onclick="switchTab('preview-normal')">👁みる</button>
         <button class="tab-btn" onclick="switchTab('preview-full')">🖥️ みる</button>
         <button class="tab-btn" onclick="switchTab('config')">⚙️せってい</button>
@@ -280,6 +293,9 @@
     </div>
 
     <div id="panel-preview-full" class="panel">
+        <div class="fullscreen-toolbar">
+            <button class="tool-btn" style="background-color: var(--accent-red);" onclick="exitIosFullscreen()">❌ もどる</button>
+        </div>
         <iframe id="preview-frame-full"></iframe>
     </div>
 
@@ -302,7 +318,7 @@
     <div class="actions">
         <div class="action-row">
             <button class="action-btn save-btn" onclick="saveToGitHub('test.html')">💾 TESTセーブ</button>
-            <button class="action-btn link-btn" onclick="openPage('test.html')">🌍 ひらく</button>
+            <button class="action-btn link-btn" onclick="openPage('test.html', true)">🌍 ひらく</button>
         </div>
 
         <div>
@@ -312,11 +328,11 @@
 
         <div class="action-row">
             <button class="action-btn save-btn" onclick="saveCustom()">💾 セーブ</button>
-            <button class="action-btn link-btn" onclick="openCustom()">🌍 ひらく</button>
+            <button class="action-btn link-btn" onclick="openPageCustom()">🌍 ひらく</button>
         </div>
 
         <div class="action-row">
-            <select id="file-select-box" class="file-select" onchange="if(this.value) openPage(this.value)">
+            <select id="file-select-box" class="file-select" onchange="if(this.value) openPage(this.value, false)">
                 <option value="">▼ ページをえらんでひらく</option>
             </select>
             <button class="sync-btn" onclick="fetchGitHubFiles()">🔄</button>
@@ -330,10 +346,6 @@
             document.getElementById('gh-repo').value = localStorage.getItem('ghRepo') || '';
             document.getElementById('code-editor').value = localStorage.getItem('savedCode') || '';
             document.getElementById('custom-filename').value = localStorage.getItem('lastCustomFile') || '';
-            
-            // ページを開いた時に、自動で全画面モードの解除監視を設定
-            document.addEventListener('fullscreenchange', checkFullscreenExit);
-            document.addEventListener('webkitfullscreenchange', checkFullscreenExit);
         });
 
         document.getElementById('gh-token').addEventListener('input', (e) => localStorage.setItem('ghToken', e.target.value));
@@ -349,10 +361,12 @@
             }
         }
 
-        // タブ切り替えと全画面APIのスマートな連動
         function switchTab(tabName) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(panel => {
+                panel.classList.remove('active');
+                panel.classList.remove('ios-fullscreen'); // フルスクリーン状態もリセット
+            });
             
             const code = document.getElementById('code-editor').value;
 
@@ -364,31 +378,21 @@
                 document.getElementById('panel-preview-normal').classList.add('active');
                 document.getElementById('preview-frame-normal').srcdoc = code;
             } else if (tabName === 'preview-full') {
-                // 👑 「🖥️ みる」タブを押した瞬間に、パネルごとブラウザ標準全画面を起動
                 document.querySelectorAll('.tab-btn')[2].classList.add('active');
                 const fullPanel = document.getElementById('panel-preview-full');
-                fullPanel.classList.add('active');
+                
+                // 👑 iPhone用に最前面固定の全画面クラスを付与
+                fullPanel.classList.add('ios-fullscreen');
                 document.getElementById('preview-frame-full').srcdoc = code;
-
-                if (fullPanel.requestFullscreen) {
-                    fullPanel.requestFullscreen();
-                } else if (fullPanel.webkitRequestFullscreen) {
-                    fullPanel.webkitRequestFullscreen();
-                }
             } else if (tabName === 'config') {
                 document.querySelectorAll('.tab-btn')[3].classList.add('active');
                 document.getElementById('panel-config').classList.add('active');
             }
         }
 
-        // 全画面がブラウザ側の操作（戻る、Escなど）で終了されたら、タブを自動で「🔨つくる」に戻す
-        function checkFullscreenExit() {
-            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-                // プレビュー全画面パネルがアクティブだった場合は、つくるタブへ自動復帰
-                if (document.getElementById('panel-preview-full').classList.contains('active')) {
-                    switchTab('edit');
-                }
-            }
+        // 全画面モードから安全にエディタへ抜ける関数
+        function exitIosFullscreen() {
+            switchTab('edit');
         }
 
         async function fetchGitHubFiles() {
@@ -437,13 +441,13 @@
             }
         }
 
-        function openCustom() {
+        function openPageCustom() {
             let filename = document.getElementById('custom-filename').value.trim();
             if(!filename) {
                 alert('【エラー】\nファイルめいを にゅうりょく してね！');
                 return;
             }
-            openPage(filename);
+            openPage(filename, true); // 明示的にタップした場合は別窓を試みる
         }
 
         function saveCustom() {
@@ -455,7 +459,8 @@
             saveToGitHub(filename);
         }
 
-        function openPage(filename) {
+        // 👑 iPhoneのポップアップブロック対策を搭載した遷移関数
+        function openPage(filename, allowBlank) {
             const owner = document.getElementById('gh-owner').value;
             const repo = document.getElementById('gh-repo').value;
             
@@ -465,7 +470,15 @@
             }
 
             const url = `https://${owner}.github.io/${repo}/${filename}`;
-            window.open(url, '_blank');
+            
+            // リスト選択（allowBlank=false）の場合は、ブロックを100%回避するため現在のタブで開く
+            if (!allowBlank) {
+                window.location.href = url;
+            } else {
+                // 直接のボタンタップ時は別窓を開く
+                window.open(url, '_blank');
+            }
+            
             document.getElementById('file-select-box').value = "";
         }
 
