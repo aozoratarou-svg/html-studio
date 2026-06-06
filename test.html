@@ -77,6 +77,7 @@
             flex-direction: column;
         }
 
+        /* 👑 全画面化（Fullscreen）された時の挙動をパネル全体に変更 */
         .panel:fullscreen {
             width: 100vw !important;
             height: 100vh !important;
@@ -148,7 +149,7 @@
         .actions {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 8px;
         }
         
         .action-row {
@@ -162,17 +163,17 @@
             color: var(--text-color);
             border: var(--border-style);
             font-family: 'DotGothic16', sans-serif;
-            padding: 8px 2px;
-            font-size: 0.85rem;
+            padding: 8px 4px;
+            font-size: 0.95rem;
             cursor: pointer;
             box-shadow: 2px 2px 0px #888;
-            flex: 1;
-            text-align: center;
+            flex: 2;
             white-space: nowrap;
         }
 
         .action-btn.link-btn {
             background-color: var(--link-color);
+            flex: 1;
         }
 
         .action-btn:active {
@@ -180,15 +181,10 @@
             transform: translate(1px, 1px);
         }
 
-        .custom-file-input {
-            width: 100%;
-            padding: 6px;
-            background-color: #222;
-            color: #fff;
-            border: 2px solid #fff;
-            font-family: 'DotGothic16', sans-serif;
-            box-sizing: border-box;
-            font-size: 0.9rem;
+        .system-msg {
+            color: yellow;
+            font-size: 0.75rem;
+            margin: 5px 0 0 0;
         }
 
         .section-label {
@@ -197,6 +193,7 @@
             white-space: nowrap;
         }
 
+        /* 👑 高さを節約するためセレクトボックス（ドロップダウン）に一新 */
         .file-select {
             flex-grow: 1;
             padding: 6px;
@@ -209,11 +206,6 @@
             box-sizing: border-box;
         }
 
-        .system-msg {
-            color: yellow;
-            font-size: 0.75rem;
-            margin: 5px 0 0 0;
-        }
     </style>
 </head>
 <body>
@@ -258,19 +250,20 @@
 
     <div class="actions">
         <div class="action-row">
-            <span class="section-label" style="width: 50px;">なまえ:</span>
-            <input type="text" id="custom-filename" class="custom-file-input" placeholder="例: tool.html または test/app.html">
+            <span class="section-label" style="width: 55px;">[TEST]</span>
+            <button class="action-btn" onclick="saveToGitHub('test.html')">💾 セーブ</button>
+            <button class="action-btn link-btn" onclick="openPage('test.html')">🌍 ひらく</button>
         </div>
 
         <div class="action-row">
-            <button class="action-btn" onclick="saveToGitHub('test.html')">💾 Tセーブ</button>
-            <button class="action-btn link-btn" onclick="openPage('test.html')">🌍 Tひらく</button>
-            <button class="action-btn" onclick="saveCustom()">💾 本セーブ</button>
-            <button class="action-btn link-btn" onclick="openCustom()">🌍 本ひらく</button>
+            <span class="section-label" style="width: 55px;">[ほんば]</span>
+            <input type="text" id="custom-filename" class="custom-file-input" placeholder="例: app1.html" style="flex: 2; margin-bottom: 0;">
+            <button class="action-btn" style="flex: 1.5; padding: 8px 2px; font-size:0.85rem;" onclick="saveCustom()">💾 ｾｰﾌﾞ</button>
+            <button class="action-btn link-btn" style="flex: 1; padding: 8px 2px; font-size:0.85rem;" onclick="openCustom()">🌍 📂</button>
         </div>
 
         <div class="action-row">
-            <button class="tool-btn" style="padding: 6px 10px; font-size: 0.85rem;" onclick="fetchGitHubFiles()">🔄</button>
+            <button class="tool-btn" style="padding: 6px; font-size: 0.8rem;" onclick="fetchGitHubFiles()">🔄</button>
             <select id="file-select-box" class="file-select" onchange="if(this.value) openPage(this.value)">
                 <option value="">▼ ページをえらんでひらく</option>
             </select>
@@ -318,13 +311,14 @@
             }
         }
 
+        // 🖥️ 全画面モード（パネル全体を対象にするデバッグ対応版）
         function toggleFullscreen() {
             const previewPanel = document.getElementById('panel-preview');
             
             if (!document.fullscreenElement && !document.webkitFullscreenElement) {
                 if (previewPanel.requestFullscreen) {
                     previewPanel.requestFullscreen();
-                } else if (previewPanel.webkitRequestFullscreen) {
+                } else if (previewPanel.webkitRequestFullscreen) { /* iOS / Safari 対策 */
                     previewPanel.webkitRequestFullscreen();
                 }
             } else {
@@ -348,6 +342,7 @@
             }
         }
 
+        // 👑 一覧表をプルダウンメニューにマッピング
         async function fetchGitHubFiles() {
             const token = document.getElementById('gh-token').value;
             const owner = document.getElementById('gh-owner').value;
@@ -369,6 +364,7 @@
             try {
                 let files = [];
 
+                // 1. ルート階層
                 const rootRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/`, { headers });
                 if (rootRes.ok) {
                     const rootData = await rootRes.json();
@@ -379,6 +375,7 @@
                     });
                 }
 
+                // 2. test/ 階層
                 const testRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/test`, { headers });
                 if (testRes.ok) {
                     const testData = await testRes.json();
@@ -438,6 +435,7 @@
             const url = `https://${owner}.github.io/${repo}/${filename}`;
             window.open(url, '_blank');
             
+            // 開いた後にドロップダウンの選択をリセットする
             document.getElementById('file-select-box').value = "";
         }
 
