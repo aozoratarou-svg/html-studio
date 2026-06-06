@@ -15,9 +15,10 @@
         :root {
             --bg-color: #000000;
             --text-color: #ffffff;
-            --accent-color: #e52521;
-            --link-color: #0055aa;
+            --accent-red: #e52521;
+            --accent-blue: #0055aa;
             --code-color: #33ff33;
+            --btn-gray: #444444;
             --border-style: 4px solid #ffffff;
         }
 
@@ -26,23 +27,25 @@
             color: var(--text-color);
             font-family: 'DotGothic16', sans-serif;
             margin: 0;
-            padding: max(5px, env(safe-area-inset-top)) 8px max(5px, env(safe-area-inset-bottom)) 8px;
+            padding: max(10px, env(safe-area-inset-top)) 12px max(10px, env(safe-area-inset-bottom)) 12px;
             box-sizing: border-box;
             overscroll-behavior-y: none;
         }
 
         h1 {
             text-align: center;
-            font-size: 1.2rem;
-            color: var(--accent-color);
-            text-shadow: 1px 1px 0 #fff;
-            margin: 5px 0 10px 0;
+            font-size: 1.6rem;
+            color: var(--text-color);
+            text-shadow: 2px 2px 0 var(--accent-red);
+            margin: 5px 0 15px 0;
+            letter-spacing: 2px;
         }
 
+        /* 👑 タブメニュー（スクショ通りの4分割構成） */
         .tabs {
             display: flex;
-            gap: 4px;
-            margin-bottom: 8px;
+            gap: 6px;
+            margin-bottom: 12px;
         }
 
         .tab-btn {
@@ -51,10 +54,11 @@
             color: var(--text-color);
             border: var(--border-style);
             font-family: 'DotGothic16', sans-serif;
-            padding: 6px 2px;
-            font-size: 0.9rem;
+            padding: 8px 0;
+            font-size: 0.95rem;
             cursor: pointer;
             box-shadow: 2px 2px 0px #888;
+            white-space: nowrap;
         }
 
         .tab-btn.active {
@@ -62,14 +66,16 @@
             color: var(--bg-color);
         }
 
+        /* パネルベース */
         .panel {
             display: none;
             border: var(--border-style);
-            padding: 6px;
-            margin-bottom: 10px;
-            height: 42vh;
+            padding: 8px;
+            margin-bottom: 12px;
+            height: 45vh;
             box-sizing: border-box;
             background-color: var(--bg-color);
+            position: relative;
         }
 
         .panel.active {
@@ -77,45 +83,36 @@
             flex-direction: column;
         }
 
-        /* 👑 全画面化（Fullscreen）された時の挙動をパネル全体に変更 */
+        /* 👑 全画面表示タブが選択された時、またはFullscreen時の挙動 */
         .panel:fullscreen {
             width: 100vw !important;
             height: 100vh !important;
-            padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom)) 10px;
-            background-color: var(--bg-color);
+            padding: max(15px, env(safe-area-inset-top)) 15px max(15px, env(safe-area-inset-bottom)) 15px;
         }
 
-        .editor-toolbar {
+        .editor-container {
+            width: 100%;
+            flex-grow: 1;
+            position: relative;
             display: flex;
-            justify-content: flex-end;
-            margin-bottom: 6px;
-        }
-
-        .tool-btn {
-            background-color: #444;
-            color: var(--text-color);
-            border: 2px solid #fff;
-            font-family: 'DotGothic16', sans-serif;
-            padding: 4px 8px;
-            cursor: pointer;
-            font-size: 0.8rem;
-        }
-
-        .tool-btn:active {
-            background-color: #666;
+            flex-direction: column;
         }
 
         textarea {
             width: 100%;
             flex-grow: 1;
             background-color: var(--bg-color);
-            color: var(--code-color);
+            color: #888888; /* スクショのプレースホルダー色を意識 */
             border: none;
             font-family: 'DotGothic16', monospace;
-            font-size: 0.95rem;
+            font-size: 1rem;
             resize: none;
             outline: none;
             box-sizing: border-box;
+        }
+
+        textarea:focus {
+            color: var(--code-color); /* 入力時はクッキリ緑色に */
         }
 
         iframe {
@@ -125,16 +122,36 @@
             border: none;
         }
 
-        .config-item {
-            margin-bottom: 8px;
-        }
-        
-        .config-item label {
-            display: block;
-            font-size: 0.8rem;
-            margin-bottom: 2px;
+        /* 👑 エディタ右下のクリアボタン配置 */
+        .editor-toolbar-bottom {
+            position: absolute;
+            right: 4px;
+            bottom: 4px;
         }
 
+        .tool-btn {
+            background-color: var(--btn-gray);
+            color: var(--text-color);
+            border: 2px solid #fff;
+            font-family: 'DotGothic16', sans-serif;
+            padding: 4px 10px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .tool-btn:active {
+            background-color: #666;
+        }
+
+        /* 設定画面用スタイル */
+        .config-item {
+            margin-bottom: 10px;
+        }
+        .config-item label {
+            display: block;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+        }
         .config-item input {
             width: 100%;
             padding: 6px;
@@ -143,36 +160,41 @@
             border: 2px solid #fff;
             font-family: 'DotGothic16', sans-serif;
             box-sizing: border-box;
-            font-size: 0.9rem;
+            border-radius: 0;
         }
 
+        /* アクションエリア（スクショ完全準拠レイアウト） */
         .actions {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
         }
         
         .action-row {
             display: flex;
-            gap: 4px;
+            gap: 8px;
             align-items: center;
         }
 
         .action-btn {
-            background-color: var(--accent-color);
             color: var(--text-color);
             border: var(--border-style);
             font-family: 'DotGothic16', sans-serif;
-            padding: 8px 4px;
-            font-size: 0.95rem;
+            padding: 10px 0;
+            font-size: 1.1rem;
             cursor: pointer;
             box-shadow: 2px 2px 0px #888;
-            flex: 2;
+            text-align: center;
             white-space: nowrap;
         }
 
+        .action-btn.save-btn {
+            background-color: var(--accent-red);
+            flex: 1.8;
+        }
+
         .action-btn.link-btn {
-            background-color: var(--link-color);
+            background-color: var(--accent-blue);
             flex: 1;
         }
 
@@ -181,31 +203,56 @@
             transform: translate(1px, 1px);
         }
 
+        .section-label {
+            font-size: 0.9rem;
+            color: var(--text-color);
+            margin: 2px 0;
+        }
+
+        .custom-file-input {
+            width: 100%;
+            padding: 8px;
+            background-color: #222;
+            color: #fff;
+            border: 2px solid #fff;
+            font-family: 'DotGothic16', sans-serif;
+            box-sizing: border-box;
+            font-size: 0.9rem;
+            border-radius: 0;
+        }
+
+        /* 👑 ファイルセレクト＆更新ボタン（丸みなしソリッド） */
+        .file-select {
+            flex-grow: 1;
+            padding: 8px 6px;
+            background-color: var(--bg-color);
+            color: #33ff33;
+            border: 2px solid #fff;
+            font-family: 'DotGothic16', sans-serif;
+            font-size: 0.9rem;
+            outline: none;
+            box-sizing: border-box;
+            border-radius: 0;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .sync-btn {
+            background-color: #335577;
+            color: var(--text-color);
+            border: 2px solid #fff;
+            font-family: 'DotGothic16', sans-serif;
+            padding: 7px 10px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            border-radius: 0;
+        }
+
         .system-msg {
             color: yellow;
             font-size: 0.75rem;
             margin: 5px 0 0 0;
         }
-
-        .section-label {
-            font-size: 0.8rem;
-            color: #aaa;
-            white-space: nowrap;
-        }
-
-        /* 👑 高さを節約するためセレクトボックス（ドロップダウン）に一新 */
-        .file-select {
-            flex-grow: 1;
-            padding: 6px;
-            background-color: #222;
-            color: var(--code-color);
-            border: 2px solid #fff;
-            font-family: 'DotGothic16', sans-serif;
-            font-size: 0.85rem;
-            outline: none;
-            box-sizing: border-box;
-        }
-
     </style>
 </head>
 <body>
@@ -213,23 +260,27 @@
     <h1>HTML STUDIO</h1>
 
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('edit')">🔨つくる</button>
-        <button class="tab-btn" onclick="switchTab('preview')">👁みる</button>
+        <button class="tab-btn active" onclick="switchTab('edit')">🔨つくくる</button>
+        <button class="tab-btn" onclick="switchTab('preview-normal')">👁みる</button>
+        <button class="tab-btn" onclick="switchTab('preview-full')">🖥️ みる</button>
         <button class="tab-btn" onclick="switchTab('config')">⚙️せってい</button>
     </div>
 
     <div id="panel-edit" class="panel active">
-        <div class="editor-toolbar">
-            <button class="tool-btn" onclick="clearEditor()">🗑️ クリア</button>
+        <div class="editor-container">
+            <textarea id="code-editor" placeholder="ここに HTML を にゅうりょく してね！"></textarea>
+            <div class="editor-toolbar-bottom">
+                <button class="tool-btn" onclick="clearEditor()">🗑️ クリア</button>
+            </div>
         </div>
-        <textarea id="code-editor" placeholder="ここに HTML を にゅうりょく してね！"></textarea>
     </div>
 
-    <div id="panel-preview" class="panel">
-        <div class="editor-toolbar">
-            <button id="fullscreen-btn" class="tool-btn" onclick="toggleFullscreen()">🖥️ ぜんがめん</button>
-        </div>
-        <iframe id="preview-frame"></iframe>
+    <div id="panel-preview-normal" class="panel">
+        <iframe id="preview-frame-normal"></iframe>
+    </div>
+
+    <div id="panel-preview-full" class="panel">
+        <iframe id="preview-frame-full"></iframe>
     </div>
 
     <div id="panel-config" class="panel" style="overflow-y: auto;">
@@ -250,23 +301,25 @@
 
     <div class="actions">
         <div class="action-row">
-            <span class="section-label" style="width: 55px;">[TEST]</span>
-            <button class="action-btn" onclick="saveToGitHub('test.html')">💾 セーブ</button>
+            <button class="action-btn save-btn" onclick="saveToGitHub('test.html')">💾 TESTセーブ</button>
             <button class="action-btn link-btn" onclick="openPage('test.html')">🌍 ひらく</button>
         </div>
 
-        <div class="action-row">
-            <span class="section-label" style="width: 55px;">[ほんば]</span>
-            <input type="text" id="custom-filename" class="custom-file-input" placeholder="例: app1.html" style="flex: 2; margin-bottom: 0;">
-            <button class="action-btn" style="flex: 1.5; padding: 8px 2px; font-size:0.85rem;" onclick="saveCustom()">💾 ｾｰﾌﾞ</button>
-            <button class="action-btn link-btn" style="flex: 1; padding: 8px 2px; font-size:0.85rem;" onclick="openCustom()">🌍 📂</button>
+        <div>
+            <div class="section-label">▼ ほんばん用 (なまえをきめる)</div>
+            <input type="text" id="custom-filename" class="custom-file-input" placeholder="例: app1.html または tool/index.html">
         </div>
 
         <div class="action-row">
-            <button class="tool-btn" style="padding: 6px; font-size: 0.8rem;" onclick="fetchGitHubFiles()">🔄</button>
+            <button class="action-btn save-btn" onclick="saveCustom()">💾 セーブ</button>
+            <button class="action-btn link-btn" onclick="openCustom()">🌍 ひらく</button>
+        </div>
+
+        <div class="action-row">
             <select id="file-select-box" class="file-select" onchange="if(this.value) openPage(this.value)">
                 <option value="">▼ ページをえらんでひらく</option>
             </select>
+            <button class="sync-btn" onclick="fetchGitHubFiles()">🔄</button>
         </div>
     </div>
 
@@ -277,6 +330,10 @@
             document.getElementById('gh-repo').value = localStorage.getItem('ghRepo') || '';
             document.getElementById('code-editor').value = localStorage.getItem('savedCode') || '';
             document.getElementById('custom-filename').value = localStorage.getItem('lastCustomFile') || '';
+            
+            // ページを開いた時に、自動で全画面モードの解除監視を設定
+            document.addEventListener('fullscreenchange', checkFullscreenExit);
+            document.addEventListener('webkitfullscreenchange', checkFullscreenExit);
         });
 
         document.getElementById('gh-token').addEventListener('input', (e) => localStorage.setItem('ghToken', e.target.value));
@@ -292,57 +349,48 @@
             }
         }
 
+        // タブ切り替えと全画面APIのスマートな連動
         function switchTab(tabName) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
             
+            const code = document.getElementById('code-editor').value;
+
             if (tabName === 'edit') {
                 document.querySelectorAll('.tab-btn')[0].classList.add('active');
                 document.getElementById('panel-edit').classList.add('active');
-            } else if (tabName === 'preview') {
+            } else if (tabName === 'preview-normal') {
                 document.querySelectorAll('.tab-btn')[1].classList.add('active');
-                document.getElementById('panel-preview').classList.add('active');
-                
-                const code = document.getElementById('code-editor').value;
-                document.getElementById('preview-frame').srcdoc = code;
-            } else if (tabName === 'config') {
+                document.getElementById('panel-preview-normal').classList.add('active');
+                document.getElementById('preview-frame-normal').srcdoc = code;
+            } else if (tabName === 'preview-full') {
+                // 👑 「🖥️ みる」タブを押した瞬間に、パネルごとブラウザ標準全画面を起動
                 document.querySelectorAll('.tab-btn')[2].classList.add('active');
+                const fullPanel = document.getElementById('panel-preview-full');
+                fullPanel.classList.add('active');
+                document.getElementById('preview-frame-full').srcdoc = code;
+
+                if (fullPanel.requestFullscreen) {
+                    fullPanel.requestFullscreen();
+                } else if (fullPanel.webkitRequestFullscreen) {
+                    fullPanel.webkitRequestFullscreen();
+                }
+            } else if (tabName === 'config') {
+                document.querySelectorAll('.tab-btn')[3].classList.add('active');
                 document.getElementById('panel-config').classList.add('active');
             }
         }
 
-        // 🖥️ 全画面モード（パネル全体を対象にするデバッグ対応版）
-        function toggleFullscreen() {
-            const previewPanel = document.getElementById('panel-preview');
-            
+        // 全画面がブラウザ側の操作（戻る、Escなど）で終了されたら、タブを自動で「🔨つくる」に戻す
+        function checkFullscreenExit() {
             if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-                if (previewPanel.requestFullscreen) {
-                    previewPanel.requestFullscreen();
-                } else if (previewPanel.webkitRequestFullscreen) { /* iOS / Safari 対策 */
-                    previewPanel.webkitRequestFullscreen();
-                }
-            } else {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                } else if (document.webkitExitFullscreen) {
-                    document.webkitExitFullscreen();
+                // プレビュー全画面パネルがアクティブだった場合は、つくるタブへ自動復帰
+                if (document.getElementById('panel-preview-full').classList.contains('active')) {
+                    switchTab('edit');
                 }
             }
         }
 
-        document.addEventListener('fullscreenchange', updateFullscreenButton);
-        document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
-
-        function updateFullscreenButton() {
-            const btn = document.getElementById('fullscreen-btn');
-            if (document.fullscreenElement || document.webkitFullscreenElement) {
-                btn.innerHTML = '❌ もどる';
-            } else {
-                btn.innerHTML = '🖥️ ぜんがめん';
-            }
-        }
-
-        // 👑 一覧表をプルダウンメニューにマッピング
         async function fetchGitHubFiles() {
             const token = document.getElementById('gh-token').value;
             const owner = document.getElementById('gh-owner').value;
@@ -355,35 +403,20 @@
             }
 
             selectBox.innerHTML = '<option value="">取得中...</option>';
-
-            const headers = {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/vnd.github.v3+json'
-            };
+            const headers = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' };
 
             try {
                 let files = [];
-
-                // 1. ルート階層
                 const rootRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/`, { headers });
                 if (rootRes.ok) {
                     const rootData = await rootRes.json();
-                    rootData.forEach(item => {
-                        if (item.type === 'file' && item.name.endsWith('.html')) {
-                            files.push(item.path);
-                        }
-                    });
+                    rootData.forEach(item => { if (item.type === 'file' && item.name.endsWith('.html')) files.push(item.path); });
                 }
 
-                // 2. test/ 階層
                 const testRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/test`, { headers });
                 if (testRes.ok) {
                     const testData = await testRes.json();
-                    testData.forEach(item => {
-                        if (item.type === 'file' && item.name.endsWith('.html')) {
-                            files.push(item.path);
-                        }
-                    });
+                    testData.forEach(item => { if (item.type === 'file' && item.name.endsWith('.html')) files.push(item.path); });
                 }
 
                 selectBox.innerHTML = '<option value="">▼ ページをえらんでひらく</option>';
@@ -398,7 +431,6 @@
                     opt.textContent = `📄 ${path}`;
                     selectBox.appendChild(opt);
                 });
-
             } catch (error) {
                 selectBox.innerHTML = '<option value="">取得失敗</option>';
                 alert(`【エラー】リストの取得に失敗しました。\n${error}`);
@@ -434,8 +466,6 @@
 
             const url = `https://${owner}.github.io/${repo}/${filename}`;
             window.open(url, '_blank');
-            
-            // 開いた後にドロップダウンの選択をリセットする
             document.getElementById('file-select-box').value = "";
         }
 
@@ -451,44 +481,28 @@
             }
 
             const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filename}`;
-            
             const bytes = new TextEncoder().encode(content);
             const encodedContent = btoa(String.fromCharCode(...bytes));
 
             try {
                 let sha = null;
-                const getRes = await fetch(apiUrl, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
-                });
-
+                const getRes = await fetch(apiUrl, { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' } });
                 if (getRes.ok) {
                     const data = await getRes.json();
                     sha = data.sha;
                 }
 
-                const body = {
-                    message: `📝 ${filename} を更新 (via 8-BIT STUDIO)`,
-                    content: encodedContent
-                };
-                if (sha) {
-                    body.sha = sha;
-                }
+                const body = { message: `📝 ${filename} を更新 (via 8-BIT STUDIO)`, content: encodedContent };
+                if (sha) body.sha = sha;
 
                 const putRes = await fetch(apiUrl, {
                     method: 'PUT',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/vnd.github.v3+json',
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
                     body: JSON.stringify(body)
                 });
 
                 if (putRes.ok) {
-                    alert(`【せいこう！】\n${filename} に セーブ しました。\nすこし まってから「🌍 ひらく」ボタンを おしてね！`);
+                    alert(`【せいこう！】\n${filename} に セーブ しました。`);
                     fetchGitHubFiles();
                 } else {
                     const errData = await putRes.json();
