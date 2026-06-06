@@ -2,80 +2,383 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mistral AI API テスト</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="HTML STUDIO">
+    
+    <title>8-BIT HTML STUDIO</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
     <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; background-color: #f9f9f9; }
-        .box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        input, textarea, button { width: 100%; padding: 10px; margin-top: 8px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        button { background-color: #ff5c35; color: white; border: none; font-weight: bold; cursor: pointer; }
-        button:disabled { background-color: #ccc; }
-        #output { background: #f3f3f3; padding: 15px; border-radius: 4px; min-height: 50px; white-space: pre-wrap; font-size: 14px; line-height: 1.5; }
+        :root {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --accent-color: #e52521;
+            --link-color: #0055aa;
+            --code-color: #33ff33;
+            --border-style: 4px solid #ffffff;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'DotGothic16', sans-serif;
+            margin: 0;
+            /* iPhoneのノッチやホームインジケータの余白を自動確保 */
+            padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom)) 10px;
+            box-sizing: border-box;
+            overscroll-behavior-y: none;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.5rem;
+            color: var(--accent-color);
+            text-shadow: 2px 2px 0 #fff;
+            margin-bottom: 20px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border: var(--border-style);
+            font-family: 'DotGothic16', sans-serif;
+            padding: 10px 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 2px 2px 0px #888;
+        }
+
+        .tab-btn.active {
+            background-color: var(--text-color);
+            color: var(--bg-color);
+        }
+
+        /* 初期状態はすべてのパネルを非表示に */
+        .panel {
+            display: none;
+            border: var(--border-style);
+            padding: 10px;
+            margin-bottom: 15px;
+            height: 40vh;
+            box-sizing: border-box;
+        }
+
+        /* activeクラスがついたパネルだけを表示（縦並びのFlexboxに統一） */
+        .panel.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 設定パネルは項目が多くなってもスクロールできるようにする */
+        #panel-config.active {
+            overflow-y: auto;
+        }
+
+        .editor-toolbar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 10px;
+        }
+
+        .tool-btn {
+            background-color: #444;
+            color: var(--text-color);
+            border: 2px solid #fff;
+            font-family: 'DotGothic16', sans-serif;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .tool-btn:active {
+            background-color: #666;
+        }
+
+        textarea {
+            width: 100%;
+            flex-grow: 1;
+            background-color: var(--bg-color);
+            color: var(--code-color);
+            border: none;
+            font-family: 'DotGothic16', monospace;
+            font-size: 1rem;
+            resize: none;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            background-color: #fff;
+            border: none;
+        }
+
+        .config-item {
+            margin-bottom: 15px;
+        }
+        
+        .config-item label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .config-item input, .custom-file-input {
+            width: 100%;
+            padding: 8px;
+            background-color: #222;
+            color: #fff;
+            border: 2px solid #fff;
+            font-family: 'DotGothic16', sans-serif;
+            box-sizing: border-box;
+        }
+
+        .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .action-row {
+            display: flex;
+            gap: 5px;
+            align-items: stretch;
+        }
+
+        .action-btn {
+            background-color: var(--accent-color);
+            color: var(--text-color);
+            border: var(--border-style);
+            font-family: 'DotGothic16', sans-serif;
+            padding: 10px 5px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            box-shadow: 4px 4px 0px #888;
+            flex: 2;
+        }
+
+        .action-btn.link-btn {
+            background-color: var(--link-color);
+            flex: 1;
+        }
+
+        .action-btn:active {
+            box-shadow: inset 4px 4px 0px #888;
+            transform: translate(2px, 2px);
+        }
+
+        .system-msg {
+            color: yellow;
+            font-size: 0.8rem;
+            margin-top: 10px;
+        }
+
+        .section-label {
+            font-size: 0.9rem;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+
     </style>
 </head>
 <body>
 
-<div class="box">
-    <h2>Mistral AI テスト</h2>
-    
-    <label for="apiKey">① APIキーを入力:</label>
-    <input type="password" id="apiKey" placeholder="sk-..." value="">
+    <h1>HTML STUDIO</h1>
 
-    <label for="prompt">② AIへの質問:</label>
-    <textarea id="prompt" rows="3" placeholder="こんにちは！自己紹介をして。"></textarea>
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('edit')">🔨つくる</button>
+        <button class="tab-btn" onclick="switchTab('preview')">👁みる</button>
+        <button class="tab-btn" onclick="switchTab('config')">⚙️せってい</button>
+    </div>
 
-    <button id="sendBtn" onclick="callMistral()">送信する</button>
+    <div id="panel-edit" class="panel active">
+        <div class="editor-toolbar">
+            <button class="tool-btn" onclick="clearEditor()">🗑️ クリア</button>
+        </div>
+        <textarea id="code-editor" placeholder="ここに HTML を にゅうりょく してね！"></textarea>
+    </div>
 
-    <h3>🤖 AIからの返答:</h3>
-    <div id="output">ここに結果が表示されます</div>
-</div>
+    <div id="panel-preview" class="panel">
+        <iframe id="preview-frame"></iframe>
+    </div>
 
-<script>
-async function callMistral() {
-    const apiKey = document.getElementById('apiKey').value.trim();
-    const prompt = document.getElementById('prompt').value.trim();
-    const outputDiv = document.getElementById('output');
-    const btn = document.getElementById('sendBtn');
+    <div id="panel-config" class="panel">
+        <div class="config-item">
+            <label>GITHUB トークン (PAT)</label>
+            <input type="password" id="gh-token" placeholder="ghp_xxxxxxxx...">
+        </div>
+        <div class="config-item">
+            <label>ユーザー名 (Owner)</label>
+            <input type="text" id="gh-owner" placeholder="例: octocat">
+        </div>
+        <div class="config-item">
+            <label>リポジトリ名 (Repo)</label>
+            <input type="text" id="gh-repo" placeholder="例: my-website">
+        </div>
+        <p class="system-msg">※にゅうりょくした じょうほうは ブラウザに ほぞん されます。</p>
+    </div>
 
-    if (!apiKey) { alert('APIキーを入力してください'); return; }
-    if (!prompt) { alert('質問を入力してください'); return; }
+    <div class="actions">
+        <div class="action-row">
+            <button class="action-btn" onclick="saveToGitHub('test.html')">💾 TESTセーブ</button>
+            <button class="action-btn link-btn" onclick="openPage('test.html')">🌍 ひらく</button>
+        </div>
 
-    // 画面の表示を「送信中」にする
-    btn.disabled = true;
-    btn.innerText = '考え中...';
-    outputDiv.innerText = 'リクエスト送信中...';
+        <div>
+            <div class="section-label">▼ ほんばん用 (なまえをきめる)</div>
+            <input type="text" id="custom-filename" class="custom-file-input" placeholder="例: app1.html または tool/index.html" style="margin-bottom: 5px;">
+            <div class="action-row">
+                <button class="action-btn" onclick="saveCustom()">💾 セーブ</button>
+                <button class="action-btn link-btn" onclick="openCustom()">🌍 ひらく</button>
+            </div>
+        </div>
+    </div>
 
-    try {
-        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: 'mistral-small-latest', // 無料枠でサクサク動くモデル
-                messages: [{ role: 'user', content: prompt }]
-            })
+    <script>
+        // 初期読み込みとイベントリスナーの設定
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('gh-token').value = localStorage.getItem('ghToken') || '';
+            document.getElementById('gh-owner').value = localStorage.getItem('ghOwner') || '';
+            document.getElementById('gh-repo').value = localStorage.getItem('ghRepo') || '';
+            document.getElementById('code-editor').value = localStorage.getItem('savedCode') || '';
+            document.getElementById('custom-filename').value = localStorage.getItem('lastCustomFile') || '';
         });
 
-        const data = await response.json();
+        document.getElementById('gh-token').addEventListener('input', (e) => localStorage.setItem('ghToken', e.target.value));
+        document.getElementById('gh-owner').addEventListener('input', (e) => localStorage.setItem('ghOwner', e.target.value));
+        document.getElementById('gh-repo').addEventListener('input', (e) => localStorage.setItem('ghRepo', e.target.value));
+        document.getElementById('code-editor').addEventListener('input', (e) => localStorage.setItem('savedCode', e.target.value));
+        document.getElementById('custom-filename').addEventListener('input', (e) => localStorage.setItem('lastCustomFile', e.target.value));
 
-        if (response.ok) {
-            // AIの返答テキストを画面に表示
-            outputDiv.innerText = data.choices[0].message.content;
-        } else {
-            // エラーが発生した場合
-            outputDiv.innerText = `エラーが発生しました:\n${JSON.stringify(data, null, 2)}`;
+        function clearEditor() {
+            if(confirm('かきかけの コードを ぜんぶ けしますか？')) {
+                document.getElementById('code-editor').value = '';
+                localStorage.setItem('savedCode', '');
+            }
         }
-    } catch (error) {
-        outputDiv.innerText = `通信エラー: ${error.message}`;
-    } finally {
-        // ボタンを元に戻す
-        btn.disabled = false;
-        btn.innerText = '送信する';
-    }
-}
-</script>
 
+        // JS側でインラインスタイルを触らず、クラスの着脱のみで綺麗に切り替える方式に修正
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
+            
+            if (tabName === 'edit') {
+                document.querySelectorAll('.tab-btn')[0].classList.add('active');
+                document.getElementById('panel-edit').classList.add('active');
+            } else if (tabName === 'preview') {
+                document.querySelectorAll('.tab-btn')[1].classList.add('active');
+                document.getElementById('panel-preview').classList.add('active');
+                
+                const code = document.getElementById('code-editor').value;
+                document.getElementById('preview-frame').srcdoc = code;
+            } else if (tabName === 'config') {
+                document.querySelectorAll('.tab-btn')[2].classList.add('active');
+                document.getElementById('panel-config').classList.add('active');
+            }
+        }
+
+        function openCustom() {
+            let filename = document.getElementById('custom-filename').value.trim();
+            if(!filename) {
+                alert('【エラー】\nファイルめいを にゅうりょく してね！');
+                return;
+            }
+            openPage(filename);
+        }
+
+        function saveCustom() {
+            let filename = document.getElementById('custom-filename').value.trim();
+            if(!filename) {
+                alert('【エラー】\nファイルめいを にゅうりょく してね！');
+                return;
+            }
+            saveToGitHub(filename);
+        }
+
+        function openPage(filename) {
+            const owner = document.getElementById('gh-owner').value;
+            const repo = document.getElementById('gh-repo').value;
+            
+            if(!owner || !repo) {
+                alert('【エラー】\n「⚙️せってい」で ユーザー名と リポジトリ名を いれてね！');
+                return;
+            }
+
+            const url = `https://${owner}.github.io/${repo}/${filename}`;
+            window.open(url, '_blank');
+        }
+
+        async function saveToGitHub(filename) {
+            const token = document.getElementById('gh-token').value;
+            const owner = document.getElementById('gh-owner').value;
+            const repo = document.getElementById('gh-repo').value;
+            const content = document.getElementById('code-editor').value;
+
+            if(!token || !owner || !repo) {
+                alert('【エラー】\n「⚙️せってい」から GitHubの じょうほうを にゅうりょく してね！');
+                return;
+            }
+
+            const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filename}`;
+            
+            // 安全かつモダンなBase64エンコード（TextEncoderを使用）
+            const bytes = new TextEncoder().encode(content);
+            const encodedContent = btoa(String.fromCharCode(...bytes));
+
+            try {
+                let sha = null;
+                const getRes = await fetch(apiUrl, {
+                    headers: {
+                        // Bearer認証ヘッダーに最適化
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+
+                if (getRes.ok) {
+                    const data = await getRes.json();
+                    sha = data.sha;
+                }
+
+                const body = {
+                    message: `📝 ${filename} を更新 (via 8-BIT STUDIO)`,
+                    content: encodedContent
+                };
+                if (sha) {
+                    body.sha = sha;
+                }
+
+                const putRes = await fetch(apiUrl, {
+                    method: 'PUT',
+                    headers: {
+                        // Bearer認証ヘッダーに最適化
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                if (putRes.ok) {
+                    alert(`【せいこう！】\n${filename} に セーブ しました。\nすこし まってから「🌍 ひらく」ボタンを おしてね！`);
+                } else {
+                    const errData = await putRes.json();
+                    alert(`【エラー！】\nセーブに しっぱい しました。\nりゆう: ${errData.message}`);
+                }
+            } catch (error) {
+                alert(`【つうしんエラー！】\nネットワークを かくにん してね。\n${error}`);
+            }
+        }
+    </script>
 </body>
 </html>
