@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ancient Egypt: 8-Bit Odyssey</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Press Start 2P -->
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    /* Strict Retro Constraints */
+    * {
+      border-radius: 0px !important;
+      font-family: 'Press Start 2P', 'Courier New', Courier, monospace;
+      image-rendering: pixelated;
+    }
+
+    body {
+      background-color: #0c0806;
+      color: #f4e3b1;
+      overflow-x: hidden;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 12px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #1a1110;
+      border-left: 4px solid #ffd700;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #ffd700;
+      border: 4px solid #1a1110;
+    }
+
+    /* CRT Scanline & Flicker Effects */
+    .crt::after {
+      content: " ";
+      display: block;
+      position: fixed;
+      top: 0; left: 0; bottom: 0; right: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%), 
+                  linear-gradient(90deg, rgba(255, 0, 0, 0.05), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.05));
+      z-index: 9999;
+      background-size: 100% 4px, 6px 100%;
+      pointer-events: none;
+    }
+
+    @keyframes flicker {
+      0% { opacity: 0.98; }
+      50% { opacity: 1; }
+      100% { opacity: 0.99; }
+    }
+    .crt-flicker {
+      animation: flicker 0.15s infinite;
+    }
+
+    /* Retro Borders */
+    .border-retro-gold {
+      border: 6px solid #ffd700;
+      box-shadow: 6px 6px 0px #000;
+    }
+    .border-retro-dark {
+      border: 6px solid #4a3b32;
+      box-shadow: 6px 6px 0px #000;
+    }
+    .border-retro-active {
+      border: 6px solid #39ff14;
+      box-shadow: 6px 6px 0px #000;
+    }
+
+    /* Retro Buttons */
+    .btn-retro {
+      background-color: #ffd700;
+      color: #000;
+      border: 4px solid #000;
+      box-shadow: 4px 4px 0px #4a3b32;
+      transition: transform 0.05s, box-shadow 0.05s;
+    }
+    .btn-retro:active {
+      transform: translate(4px, 4px);
+      box-shadow: 0px 0px 0px #000;
+    }
+    .btn-retro:disabled {
+      background-color: #4a3b32;
+      color: #888;
+      box-shadow: 2px 2px 0px #000;
+      cursor: not-allowed;
+    }
+
+    /* Text Blinking */
+    @keyframes blink {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+    .blink {
+      animation: blink 1s infinite;
+    }
+
+    /* Pixel Art Rendering */
+    .pixelated {
+      image-rendering: pixelated;
+    }
+  </style>
+</head>
+<body class="crt crt-flicker min-h-screen p-4 md:p-8 flex flex-col items-center justify-center">
+
+  <!-- START SCREEN OVERLAY -->
+  <div id="start-screen" class="fixed inset-0 bg-[#0c0806] z-50 flex flex-col items-center justify-center p-4 border-8 border-[#ffd700]">
+    <div class="text-center max-w-2xl">
+      <div class="text-red-600 text-2xl md:text-4xl mb-4 font-bold tracking-widest">▲ ANCIENT EGYPT ▲</div>
+      <h1 class="text-yellow-400 text-3xl md:text-5xl mb-8 font-bold tracking-wider leading-tight">8-BIT ODYSSEY</h1>
+      
+      <!-- Pixel Art Pyramid -->
+      <div class="w-48 h-32 mx-auto mb-8 flex flex-col items-center justify-end">
+        <div class="w-4 h-4 bg-yellow-500"></div>
+        <div class="w-12 h-4 bg-yellow-500 flex justify-between"><div class="w-4 h-4 bg-yellow-600"></div><div class="w-4 h-4 bg-yellow-400"></div></div>
+        <div class="w-20 h-4 bg-yellow-500 flex justify-between"><div class="w-4 h-4 bg-yellow-600"></div><div class="w-8 h-4 bg-yellow-400"></div></div>
+        <div class="w-28 h-4 bg-yellow-500 flex justify-between"><div class="w-8 h-4 bg-yellow-600"></div><div class="w-12 h-4 bg-yellow-400"></div></div>
+        <div class="w-36 h-4 bg-yellow-500 flex justify-between"><div class="w-12 h-4 bg-yellow-600"></div><div class="w-16 h-4 bg-yellow-400"></div></div>
+      </div>
+
+      <p class="text-stone-400 text-xs md:text-sm mb-12 leading-relaxed">EXPLORE THE DEITIES & PHARAOHS. COLLECT SACRED ARTIFACTS. SOLVE THE SPHINX'S RIDDLE.</p>
+      
+      <button onclick="startGame()" class="btn-retro px-8 py-4 text-lg md:text-xl font-bold animate-pulse">
+        PRESS START
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN GAME INTERFACE -->
+  <div id="game-container" class="w-full max-w-6xl hidden flex flex-col gap-6">
+    
+    <!-- HEADER BAR -->
+    <header class="border-retro-gold bg-[#1a1110] p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+      <div>
+        <h1 class="text-yellow-400 text-lg md:text-2xl font-bold">EGYPTIAN ODYSSEY</h1>
+        <p class="text-stone-400 text-[10px] md:text-xs mt-1">INTERACTIVE EXHIBITION GUIDE v1.0</p>
+      </div>
+      <div class="flex items-center gap-4">
+        <div class="bg-black px-4 py-2 border-2 border-[#4a3b32] text-xs">
+          SCORE: <span id="score-display" class="text-green-400">0000</span>
+        </div>
+        <button onclick="toggleMute()" id="mute-btn" class="btn-retro px-3 py-1 text-xs">
+          SOUND: ON
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN CONTENT GRID -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <!-- LEFT COLUMN: CHARACTER SELECT (4 COLS) -->
+      <div class="lg:col-span-4 flex flex-col gap-4">
+        <div class="border-retro-gold bg-[#1a1110] p-4 flex-1">
+          <h2 class="text-red-500 text-xs md:text-sm mb-4 border-b-4 border-[#4a3b32] pb-2">SELECT CHARACTER</h2>
+          <div id="character-list" class="flex flex-col gap-3">
+            <!-- Dynamic Character Buttons -->
+          </div>
+        </div>
+      </div>
+
+      <!-- CENTER COLUMN: PROFILE VIEW (5 COLS) -->
+      <div class="lg:col-span-5 flex flex-col gap-4">
+        <div class="border-retro-gold bg-[#1a1110] p-6 flex-1 flex flex-col justify-between">
+          <div>
+            <div class="flex items-start gap-4 mb-6">
+              <!-- Large Avatar Container -->
+              <div id="profile-avatar" class="w-24 h-24 bg-black border-4 border-[#ffd700] flex items-center justify-center p-1">
+                <!-- Dynamic SVG -->
+              </div>
+              <div>
+                <h2 id="profile-name" class="text-yellow-400 text-lg md:text-xl font-bold">---</h2>
+                <p id="profile-title" class="text-stone-400 text-xs mt-1">---</p>
+                <div id="profile-type" class="inline-block bg-red-950 text-red-400 border border-red-800 px-2 py-1 text-[8px] mt-2">---</div>
+              </div>
+            </div>
+
+            <!-- Stats Section -->
+            <div class="space-y-3 mb-6">
+              <h3 class="text-stone-400 text-xs border-b-2 border-[#4a3b32] pb-1">ATTRIBUTES</h3>
+              <div>
+                <div class="flex justify-between text-[10px] mb-1">
+                  <span>POWER</span>
+                  <span id="stat-power-val" class="text-yellow-400">0/100</span>
+                </div>
+                <div class="w-full bg-black h-4 border-2 border-[#4a3b32] p-0.5">
+                  <div id="stat-power-bar" class="bg-red-600 h-full" style="width: 0%"></div>
+                </div>
+              </div>
+              <div>
+                <div class="flex justify-between text-[10px] mb-1">
+                  <span>WISDOM</span>
+                  <span id="stat-wisdom-val" class="text-yellow-400">0/100</span>
+                </div>
+                <div class="w-full bg-black h-4 border-2 border-[#4a3b32] p-0.5">
+                  <div id="stat-wisdom-bar" class="bg-blue-600 h-full" style="width: 0%"></div>
+                </div>
+              </div>
+              <div>
+                <div class="flex justify-between text-[10px] mb-1">
+                  <span>LEGACY</span>
+                  <span id="stat-legacy-val" class="text-yellow-400">0/100</span>
+                </div>
+                <div class="w-full bg-black h-4 border-2 border-[#4a3b32] p-0.5">
+                  <div id="stat-legacy-bar" class="bg-yellow-500 h-full" style="width: 0%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="grid grid-cols-2 gap-3 mt-4">
+            <button onclick="triggerAction('myth')" id="btn-myth" class="btn-retro py-3 text-xs font-bold">
+              HEAR MYTH
+            </button>
+            <button onclick="triggerAction('artifact')" id="btn-artifact" class="btn-retro py-3 text-xs font-bold">
+              CLAIM ITEM
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: INVENTORY & QUESTS (3 COLS) -->
+      <div class="lg:col-span-3 flex flex-col gap-4">
+        <!-- Inventory -->
+        <div class="border-retro-gold bg-[#1a1110] p-4">
+          <h2 class="text-red-500 text-xs md:text-sm mb-4 border-b-4 border-[#4a3b32] pb-2">ARTIFACTS</h2>
+          <div class="grid grid-cols-3 gap-2" id="inventory-grid">
+            <!-- 6 Inventory Slots -->
+            <div class="aspect-square bg-black border-2 border-[#4a3b32] flex items-center justify-center text-stone-600 text-xs cursor-help" title="Empty Slot" onclick="showArtifactInfo(0)">[?]</div>
+            <div class="aspect-square bg-black border-2 border-[#4a3b32] flex items-center justify-center text-stone-600 text-xs cursor-help" title="Empty Slot" onclick="showArtifactInfo(1)">[?]</div>
+            <div class="aspect-square bg-black border-2 border-[#4a3b32] flex items-center justify-center text-stone-600 text-xs cursor-help" title="Empty Slot" onclick="showArtifactInfo(2)">[?]</div>
+            <div class="aspect-square bg-black border-2 border-[#4a3b32] flex items-center justify-center text-stone-600 text-xs cursor-help" title="Empty Slot" onclick="showArtifactInfo(3)">[?]</div>
+            <div class="aspect-square bg-black border-2 border-[#4a3b32] flex items-center justify-center text-stone-600 text-xs cursor-help" title="Empty Slot" onclick="showArtifactInfo(4)">[?]</div>
+            <div class="aspect-square bg-black border-2 border-[#4a3b32] flex items-center justify-center text-stone-600 text-xs cursor-help" title="Empty Slot" onclick="showArtifactInfo(5)">[?]</div>
+          </div>
+        </div>
+
+        <!-- Sphinx Challenge Trigger -->
+        <div class="border-retro-gold bg-[#1a1110] p-4 flex-1 flex flex-col justify-between">
+          <div>
+            <h2 class="text-yellow-400 text-xs md:text-sm mb-2">SPHINX'S GATE</h2>
+            <p class="text-stone-400 text-[10px] leading-relaxed mb-4">Solve the ancient riddle to unlock the ultimate treasure of the Nile.</p>
+          </div>
+          <button onclick="startSphinxRiddle()" id="btn-sphinx" class="btn-retro w-full py-3 text-xs font-bold bg-red-600 text-white border-red-950">
+            CHALLENGE SPHINX
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- BOTTOM PANEL: DIALOGUE BOX -->
+    <div class="border-retro-gold bg-black p-4 md:p-6 flex flex-col md:flex-row gap-4 items-center min-h-[150px]">
+      <!-- Dialogue Portrait -->
+      <div id="dialogue-portrait" class="w-20 h-20 bg-[#1a1110] border-4 border-[#ffd700] flex-shrink-0 flex items-center justify-center p-1">
+        <!-- Default Eye of Horus SVG -->
+        <svg viewBox="0 0 8 8" class="w-12 h-12 pixelated">
+          <rect x="1" y="3" width="6" height="1" fill="#ffd700"/>
+          <rect x="2" y="2" width="4" height="1" fill="#ffd700"/>
+          <rect x="3" y="1" width="2" height="1" fill="#ffd700"/>
+          <rect x="3" y="4" width="1" height="2" fill="#ffd700"/>
+          <rect x="5" y="4" width="1" height="3" fill="#ffd700"/>
+        </svg>
+      </div>
+      <!-- Dialogue Text Area -->
+      <div class="flex-1 w-full">
+        <div class="flex justify-between items-center mb-2 border-b border-[#4a3b32] pb-1">
+          <span id="dialogue-speaker" class="text-red-500 text-xs font-bold">SYSTEM</span>
+          <span class="text-stone-600 text-[9px]">PRESS ANY KEY TO SKIP</span>
+        </div>
+        <div id="dialogue-text" class="text-xs md:text-sm text-green-400 leading-relaxed min-h-[60px]">
+          Welcome, Explorer. Select a character from the left panel to begin your journey into the ancient sands...
+        </div>
+        <!-- Interactive Choice Container (Hidden by default) -->
+        <div id="dialogue-choices" class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-2 hidden">
+          <!-- Dynamic Choice Buttons -->
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- AUDIO SYNTHESIZER (Web Audio API) -->
+  <script>
+    let audioCtx = null;
+    let isMuted = false;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function playSound(type) {
+      if (isMuted || !audioCtx) return;
+      
+      // Resume context if suspended (browser security)
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      const now = audioCtx.currentTime;
+
+      if (type === 'click') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.08);
+        gain.gain.setValueAtTime(0.05, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+        osc.start(now);
+        osc.stop(now + 0.08);
+      } else if (type === 'select') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.setValueAtTime(600, now + 0.06);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      } else if (type === 'powerup') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(900, now + 0.4);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.4);
+        osc.start(now);
+        osc.stop(now + 0.4);
+      } else if (type === 'error') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(100, now);
+        osc.frequency.linearRampToValueAtTime(60, now + 0.3);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+        osc.start(now);
+        osc.stop(now + 0.3);
+      } else if (type === 'success') {
+        // Arpeggio
+        const notes = [261.63, 329.63, 392.00, 523.25]; // C major
+        notes.forEach((freq, index) => {
+          const o = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
+          o.connect(g);
+          g.connect(audioCtx.destination);
+          o.type = 'square';
+          o.frequency.setValueAtTime(freq, now + index * 0.1);
+          g.gain.setValueAtTime(0.08, now + index * 0.1);
+          g.gain.linearRampToValueAtTime(0.01, now + index * 0.1 + 0.15);
+          o.start(now + index * 0.1);
+          o.stop(now + index * 0.1 + 0.15);
+        });
+      }
+    }
+
+    function toggleMute() {
+      isMuted = !isMuted;
+      document.getElementById('mute-btn').innerText = isMuted ? "SOUND: OFF" : "SOUND: ON";
+      playSound('click');
+    }
+  </script>
+
+  <!-- GAME ENGINE & DATA -->
+  <script>
+    // Character Database
+    const characters = [
+      {
+        id: "ra",
+        name: "RA",
+        title: "GOD OF THE SUN",
+        type: "DEITY",
+        stats: { power: 95, wisdom: 90, legacy: 99 },
+        avatar: `<svg viewBox="0 0 8 8" class="w-16 h-16 pixelated">
+          <rect x="3" y="0" width="2" height="2" fill="#FF0000"/>
+          <rect x="2" y="1" width="4" height="1" fill="#FF0000"/>
+          <rect x="2" y="3" width="4" height="4" fill="#E5A93C"/>
+          <rect x="1" y="4" width="2" height="1" fill="#000000"/>
+          <rect x="4" y="4" width="1" height="1" fill="#000000"/>
+          <rect x="2" y="7" width="4" height="1" fill="#1034A6"/>
+        </svg>`,
+        myth: "Ra was the king of the deities and the father of creation. He sailed across the heavens in a sacred bark, fighting the chaos serpent Apophis every night to bring dawn to the mortal world.",
+        artifact: {
+          name: "EYE OF RA",
+          desc: "A powerful symbol of protection and royal authority, representing the sun's destructive power.",
+          icon: `<svg viewBox="0 0 8 8" class="w-8 h-8 pixelated"><rect x="1" y="3" width="6" height="1" fill="#FF0000"/><rect x="2" y="2" width="4" height="1" fill="#FFD700"/><rect x="3" y="4" width="2" height="2" fill="#FFD700"/></svg>`
+        }
+      },
+      {
+        id: "anubis",
+        name: "ANUBIS",
+        title: "LORD OF THE SACRED LAND",
+        type: "DEITY",
+        stats: { power: 85, wisdom: 95, legacy: 90 },
+        avatar: `<svg viewBox="0 0 8 8" class="w-16 h-16 pixelated">
+          <rect x="2" y="0" width="1" height="3" fill="#222"/>
+          <rect x="5" y="0" width="1" height="3" fill="#222"/>
+          <rect x="2" y="3" width="4" height="3" fill="#222"/>
+          <rect x="0" y="4" width="3" height="1" fill="#222"/>
+          <rect x="0" y="4" width="1" height="1" fill="#FFD700"/>
+          <rect x="4" y="4" width="1" height="1" fill="#FF0000"/>
+          <rect x="2" y="6" width="4" height="2" fill="#FFD700"/>
+        </svg>`,
+        myth: "Anubis is the jackal-headed god of mummification and the afterlife. He guides souls to the Hall of Ma'at, where he weighs their hearts against the feather of truth.",
+        artifact: {
+          name: "ANKH OF LIFE",
+          desc: "The sacred key of life, representing eternal existence and the breath of the gods.",
+          icon: `<svg viewBox="0 0 8 8" class="w-8 h-8 pixelated"><rect x="3" y="1" width="2" height="3" fill="#FFD700"/><rect x="2" y="3" width="4" height="1" fill="#FFD700"/><rect x="3" y="4" width="2" height="3" fill="#FFD700"/></svg>`
+        }
+      },
+      {
+        id: "isis",
+        name: "ISIS",
+        title: "GODDESS OF MAGIC",
+        type: "DEITY",
+        stats: { power: 90, wisdom: 99, legacy: 95 },
+        avatar: `<svg viewBox="0 0 8 8" class="w-16 h-16 pixelated">
+          <rect x="3" y="0" width="2" height="1" fill="#FFD700"/>
+          <rect x="2" y="1" width="4" height="1" fill="#FFD700"/>
+          <rect x="3" y="2" width="2" height="1" fill="#FFD700"/>
+          <rect x="2" y="3" width="4" height="3" fill="#F5C29D"/>
+          <rect x="2" y="4" width="1" height="1" fill="#000"/>
+          <rect x="5" y="4" width="1" height="1" fill="#000"/>
+          <rect x="1" y="3" width="1" height="4" fill="#1034A6"/>
+          <rect x="6" y="3" width="1" height="4" fill="#1034A6"/>
+          <rect x="2" y="6" width="4" height="2" fill="#FFD700"/>
+        </svg>`,
+        myth: "Isis used her immense magical wisdom to resurrect her slain husband Osiris and protect her son Horus. She is the divine mother of all pharaohs.",
+        artifact: {
+          name: "TYET KNOT",
+          desc: "Also known as the Buckle of Isis, it represents protection, magic, and the binding of cosmic forces.",
+          icon: `<svg viewBox="0 0 8 8" class="w-8 h-8 pixelated"><rect x="2" y="1" width="4" height="2" fill="#C2452D"/><rect x="3" y="3" width="2" height="4" fill="#C2452D"/><rect x="1" y="4" width="6" height="1" fill="#C2452D"/></svg>`
+        }
+      },
+      {
+        id: "tut",
+        name: "TUTANKHAMUN",
+        title: "THE BOY KING",
+        type: "PHARAOH",
+        stats: { power: 60, wisdom: 75, legacy: 98 },
+        avatar: `<svg viewBox="0 0 8 8" class="w-16 h-16 pixelated">
+          <rect x="1" y="1" width="6" height="2" fill="#FFD700"/>
+          <rect x="1" y="2" width="1" height="4" fill="#1034A6"/>
+          <rect x="6" y="2" width="1" height="4" fill="#1034A6"/>
+          <rect x="2" y="2" width="1" height="4" fill="#FFD700"/>
+          <rect x="5" y="2" width="1" height="4" fill="#FFD700"/>
+          <rect x="3" y="2" width="2" height="4" fill="#F5C29D"/>
+          <rect x="3" y="6" width="2" height="2" fill="#1034A6"/>
+          <rect x="3" y="7" width="2" height="1" fill="#FFD700"/>
+        </svg>`,
+        myth: "Ascending the throne at age nine, Tutankhamun restored the traditional polytheistic religion of Egypt. His intact tomb discovered in 1922 made him a global icon.",
+        artifact: {
+          name: "GOLDEN MASK",
+          desc: "The legendary death mask of the boy king, crafted from solid gold and inlaid with lapis lazuli.",
+          icon: `<svg viewBox="0 0 8 8" class="w-8 h-8 pixelated"><rect x="2" y="1" width="4" height="5" fill="#FFD700"/><rect x="1" y="2" width="1" height="4" fill="#1034A6"/><rect x="6" y="2" width="1" height="4" fill="#1034A6"/><rect x="3" y="3" width="2" height="2" fill="#F5C29D"/></svg>`
+        }
+      },
+      {
+        id: "cleo",
+        name: "CLEOPATRA VII",
+        title: "LAST QUEEN OF THE NILE",
+        type: "PHARAOH",
+        stats: { power: 80, wisdom: 96, legacy: 97 },
+        avatar: `<svg viewBox="0 0 8 8" class="w-16 h-16 pixelated">
+          <rect x="2" y="1" width="4" height="1" fill="#FFD700"/>
+          <rect x="1" y="2" width="6" height="4" fill="#111"/>
+          <rect x="2" y="2" width="4" height="4" fill="#F5C29D"/>
+          <rect x="2" y="3" width="1" height="1" fill="#008080"/>
+          <rect x="5" y="3" width="1" height="1" fill="#008080"/>
+          <rect x="3" y="5" width="2" height="1" fill="#FF0000"/>
+          <rect x="2" y="6" width="4" height="2" fill="#008080"/>
+        </svg>`,
+        myth: "A brilliant diplomat, linguist, and strategist, Cleopatra navigated complex alliances with Rome's greatest generals to preserve Egypt's independence.",
+        artifact: {
+          name: "ROYAL CARTOUCHE",
+          desc: "An oval nameplate representing protective power, bearing Cleopatra's royal name in hieroglyphs.",
+          icon: `<svg viewBox="0 0 8 8" class="w-8 h-8 pixelated"><rect x="2" y="1" width="4" height="6" fill="#FFD700"/><rect x="3" y="2" width="2" height="4" fill="#111"/></svg>`
+        }
+      }
+    ];
+
+    // Sphinx Riddles
+    const riddles = [
+      {
+        question: "I fly without wings, I cry without eyes. Wherever I go, darkness dies. What am I?",
+        choices: ["THE SUN", "THE WIND", "A CLOUD"],
+        correct: 0
+      },
+      {
+        question: "I guard the sacred dead, with a lion's body and a human head. Who am I?",
+        choices: ["ANUBIS", "THE SPHINX", "PHARAOH"],
+        correct: 1
+      },
+      {
+        question: "I am the river that feeds the sand, bringing life to this ancient land. What am I?",
+        choices: ["THE RED SEA", "THE EUPHRATES", "THE NILE"],
+        correct: 2
+      }
+    ];
+
+    // Game State
+    let selectedChar = null;
+    let inventory = [null, null, null, null, null, null]; // 6 slots
+    let score = 0;
+    let currentRiddleIndex = 0;
+    let typewriterInterval = null;
+
+    // Start Game
+    function startGame() {
+      initAudio();
+      playSound('success');
+      document.getElementById('start-screen').classList.add('hidden');
+      document.getElementById('game-container').classList.remove('hidden');
+      renderCharacterList();
+      selectCharacter(characters[0].id);
+    }
+
+    // Render Character List
+    function renderCharacterList() {
+      const listContainer = document.getElementById('character-list');
+      listContainer.innerHTML = '';
+      characters.forEach(char => {
+        const btn = document.createElement('button');
+        btn.id = `char-btn-${char.id}`;
+        btn.className = "w-full text-left p-3 border-retro-dark bg-black hover:border-[#ffd700] flex items-center gap-3 transition-all";
+        btn.onclick = () => {
+          playSound('select');
+          selectCharacter(char.id);
+        };
+        btn.innerHTML = `
+          <div class="w-10 h-10 bg-[#1a1110] border-2 border-[#4a3b32] flex items-center justify-center p-0.5">
+            ${char.avatar}
+          </div>
+          <div>
+            <div class="text-[10px] font-bold text-yellow-400">${char.name}</div>
+            <div class="text-[8px] text-stone-500 mt-0.5">${char.type}</div>
+          </div>
+        `;
+        listContainer.appendChild(btn);
+      });
+    }
+
+    // Select Character
+    function selectCharacter(id) {
+      selectedChar = characters.find(c => c.id === id);
+      
+      // Update active border in list
+      characters.forEach(c => {
+        const btn = document.getElementById(`char-btn-${c.id}`);
+        if (c.id === id) {
+          btn.className = "w-full text-left p-3 border-retro-active bg-[#1a1110] flex items-center gap-3 transition-all";
+        } else {
+          btn.className = "w-full text-left p-3 border-retro-dark bg-black hover:border-[#ffd700] flex items-center gap-3 transition-all";
+        }
+      });
+
+      // Update Profile Panel
+      document.getElementById('profile-avatar').innerHTML = selectedChar.avatar;
+      document.getElementById('profile-name').innerText = selectedChar.name;
+      document.getElementById('profile-title').innerText = selectedChar.title;
+      document.getElementById('profile-type').innerText = selectedChar.type;
+
+      // Update Stats
+      animateStat('power', selectedChar.stats.power);
+      animateStat('wisdom', selectedChar.stats.wisdom);
+      animateStat('legacy', selectedChar.stats.legacy);
+
+      // Update Dialogue Box
+      document.getElementById('dialogue-portrait').innerHTML = selectedChar.avatar;
+      document.getElementById('dialogue-speaker').innerText = selectedChar.name;
+      typeText(`Greetings, mortal. I am ${selectedChar.name}, ${selectedChar.title}. Click 'HEAR MYTH' to learn my legend, or 'CLAIM ITEM' to receive my blessing.`);
+
+      // Reset Sphinx state if active
+      document.getElementById('dialogue-choices').classList.add('hidden');
+    }
+
+    // Animate Stat Bars
+    function animateStat(statName, targetVal) {
+      const bar = document.getElementById(`stat-${statName}-bar`);
+      const valText = document.getElementById(`stat-${statName}-val`);
+      bar.style.width = '0%';
+      valText.innerText = `0/100`;
+      
+      setTimeout(() => {
+        bar.style.width = `${targetVal}%`;
+        valText.innerText = `${targetVal}/100`;
+      }, 100);
+    }
+
+    // Typewriter Effect
+    function typeText(text, speed = 25) {
+      clearInterval(typewriterInterval);
+      const element = document.getElementById('dialogue-text');
+      element.innerHTML = '';
+      let i = 0;
+      typewriterInterval = setInterval(() => {
+        if (i < text.length) {
+          element.innerHTML += text.charAt(i);
+          i++;
+          if (i % 3 === 0) playSound('click');
+        } else {
+          clearInterval(typewriterInterval);
+        }
+      }, speed);
+    }
+
+    // Trigger Actions
+    function triggerAction(actionType) {
+      if (!selectedChar) return;
+
+      if (actionType === 'myth') {
+        playSound('select');
+        typeText(selectedChar.myth);
+      } else if (actionType === 'artifact') {
+        // Check if already in inventory
+        const alreadyClaimed = inventory.some(item => item && item.name === selectedChar.artifact.name);
+        if (alreadyClaimed) {
+          playSound('error');
+          typeText(`You already possess the ${selectedChar.artifact.name}!`);
+          return;
+        }
+
+        // Find empty slot
+        const emptyIndex = inventory.findIndex(item => item === null);
+        if (emptyIndex !== -1) {
+          inventory[emptyIndex] = selectedChar.artifact;
+          playSound('powerup');
+          updateInventoryUI();
+          addScore(100);
+          typeText(`Success! You have claimed the ${selectedChar.artifact.name}. It has been added to your inventory.`);
+        } else {
+          playSound('error');
+          typeText("Your inventory is full! Solve the Sphinx's gate to clear space.");
+        }
+      }
+    }
+
+    // Update Inventory UI
+    function updateInventoryUI() {
+      const grid = document.getElementById('inventory-grid');
+      grid.innerHTML = '';
+      inventory.forEach((item, index) => {
+        const slot = document.createElement('div');
+        if (item) {
+          slot.className = "aspect-square bg-black border-2 border-[#ffd700] flex items-center justify-center cursor-pointer hover:bg-stone-900 transition-all";
+          slot.innerHTML = item.icon;
+          slot.onclick = () => showArtifactInfo(index);
+        } else {
+          slot.className = "aspect-square bg-black border-2 border-[#4a3b32] flex items-center justify-center text-stone-600 text-xs cursor-help";
+          slot.innerText = "[?]";
+          slot.title = "Empty Slot";
+        }
+        grid.appendChild(slot);
+      });
+    }
+
+    // Show Artifact Info
+    function showArtifactInfo(index) {
+      const item = inventory[index];
+      if (item) {
+        playSound('select');
+        document.getElementById('dialogue-portrait').innerHTML = item.icon;
+        document.getElementById('dialogue-speaker').innerText = "ARTIFACT";
+        typeText(`${item.name}: ${item.desc}`);
+      }
+    }
+
+    // Sphinx Riddle Mini-Game
+    function startSphinxRiddle() {
+      playSound('select');
+      document.getElementById('dialogue-portrait').innerHTML = `
+        <svg viewBox="0 0 8 8" class="w-12 h-12 pixelated">
+          <rect x="2" y="1" width="4" height="4" fill="#FFD700"/>
+          <rect x="1" y="2" width="1" height="3" fill="#FFD700"/>
+          <rect x="6" y="2" width="1" height="3" fill="#FFD700"/>
+          <rect x="3" y="3" width="2" height="1" fill="#000"/>
+          <rect x="2" y="5" width="4" height="2" fill="#C2452D"/>
+          <rect x="1" y="6" width="6" height="1" fill="#C2452D"/>
+        </svg>
+      `;
+      document.getElementById('dialogue-speaker').innerText = "SPHINX";
+      
+      const riddle = riddles[currentRiddleIndex];
+      typeText(`Halt, traveler! To pass the Sphinx's Gate, you must answer this riddle: "${riddle.question}"`);
+
+      // Render Choices
+      const choicesContainer = document.getElementById('dialogue-choices');
+      choicesContainer.innerHTML = '';
+      choicesContainer.classList.remove('hidden');
+
+      riddle.choices.forEach((choice, index) => {
+        const btn = document.createElement('button');
+        btn.className = "btn-retro py-2 text-[10px] font-bold";
+        btn.innerText = choice;
+        btn.onclick = () => handleRiddleAnswer(index);
+        choicesContainer.appendChild(btn);
+      });
+    }
+
+    function handleRiddleAnswer(selectedIndex) {
+      const riddle = riddles[currentRiddleIndex];
+      const choicesContainer = document.getElementById('dialogue-choices');
+      choicesContainer.classList.add('hidden');
+
+      if (selectedIndex === riddle.correct) {
+        playSound('success');
+        addScore(500);
+        
+        // Check if legendary item already claimed
+        const hasBook = inventory.some(item => item && item.name === "BOOK OF THOTH");
+        
+        if (!hasBook) {
+          const emptyIndex = inventory.findIndex(item => item === null);
+          const bookOfThoth = {
+            name: "BOOK OF THOTH",
+            desc: "The legendary book containing all the secret knowledge of the gods.",
+            icon: `<svg viewBox="0 0 8 8" class="w-8 h-8 pixelated"><rect x="2" y="1" width="4" height="6" fill="#1034A6"/><rect x="3" y="2" width="2" height="4" fill="#FFD700"/></svg>`
+          };
+          if (emptyIndex !== -1) {
+            inventory[emptyIndex] = bookOfThoth;
+          } else {
+            // Force replace first slot if full
+            inventory[0] = bookOfThoth;
+          }
+          updateInventoryUI();
+          typeText("CORRECT! You have proven your wisdom. I grant you the legendary BOOK OF THOTH! Your journey is complete.");
+        } else {
+          typeText("CORRECT! You have proven your wisdom once again, mortal.");
+        }
+
+        // Cycle riddle
+        currentRiddleIndex = (currentRiddleIndex + 1) % riddles.length;
+      } else {
+        playSound('error');
+        typeText("INCORRECT! The sands of time reject your answer. Try again, mortal!");
+      }
+    }
+
+    // Score Helper
+    function addScore(points) {
+      score += points;
+      document.getElementById('score-display').innerText = String(score).padStart(4, '0');
+    }
+
+    // Global Key Listener to skip typewriter
+    window.addEventListener('keydown', () => {
+      if (typewriterInterval) {
+        clearInterval(typewriterInterval);
+        // Instantly show full text if skipped (simplified)
+      }
+    });
+  </script>
+</body>
+</html>
