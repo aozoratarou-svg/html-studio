@@ -26,7 +26,6 @@
             color: var(--text-color);
             font-family: 'DotGothic16', sans-serif;
             margin: 0;
-            /* iPhoneのノッチやホームインジケータの余白を自動確保 */
             padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom)) 10px;
             box-sizing: border-box;
             overscroll-behavior-y: none;
@@ -63,7 +62,6 @@
             color: var(--bg-color);
         }
 
-        /* 初期状態はすべてのパネルを非表示に */
         .panel {
             display: none;
             border: var(--border-style);
@@ -73,17 +71,16 @@
             box-sizing: border-box;
         }
 
-        /* activeクラスがついたパネルだけを表示（縦並びのFlexboxに統一） */
         .panel.active {
             display: flex;
             flex-direction: column;
         }
 
-        /* 設定パネルは項目が多くなってもスクロールできるようにする */
         #panel-config.active {
             overflow-y: auto;
         }
 
+        /* ツールバーの配置スタイル */
         .editor-toolbar {
             display: flex;
             justify-content: flex-end;
@@ -119,9 +116,16 @@
 
         iframe {
             width: 100%;
-            height: 100%;
+            flex-grow: 1; /* ツールバーの下の領域をいっぱいに広げる */
             background-color: #fff;
             border: none;
+        }
+
+        /* 👑 ブラウザのFullscren APIで全画面化されたときのiframe用のリセット */
+        iframe:fullscreen {
+            width: 100vw;
+            height: 100vh;
+            background-color: #fff;
         }
 
         .config-item {
@@ -209,6 +213,9 @@
     </div>
 
     <div id="panel-preview" class="panel">
+        <div class="editor-toolbar">
+            <button class="tool-btn" onclick="toggleFullscreen()">🖥️ ぜんがめん</button>
+        </div>
         <iframe id="preview-frame"></iframe>
     </div>
 
@@ -245,7 +252,6 @@
     </div>
 
     <script>
-        // 初期読み込みとイベントリスナーの設定
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('gh-token').value = localStorage.getItem('ghToken') || '';
             document.getElementById('gh-owner').value = localStorage.getItem('ghOwner') || '';
@@ -267,7 +273,6 @@
             }
         }
 
-        // JS側でインラインスタイルを触らず、クラスの着脱のみで綺麗に切り替える方式に修正
         function switchTab(tabName) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
@@ -284,6 +289,26 @@
             } else if (tabName === 'config') {
                 document.querySelectorAll('.tab-btn')[2].classList.add('active');
                 document.getElementById('panel-config').classList.add('active');
+            }
+        }
+
+        // 🖥️ 全画面モード（Fullscreen API）の制御関数
+        function toggleFullscreen() {
+            const iframe = document.getElementById('preview-frame');
+            
+            if (!document.fullscreenElement) {
+                // 各種ブラウザ対応を考慮して全画面リクエストを発行
+                if (iframe.requestFullscreen) {
+                    iframe.requestFullscreen();
+                } else if (iframe.webkitRequestFullscreen) { /* iOS / Safari用 */
+                    iframe.webkitRequestFullscreen();
+                } else if (iframe.msRequestFullscreen) { /* IE / Edge用 */
+                    iframe.msRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
             }
         }
 
@@ -331,7 +356,6 @@
 
             const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filename}`;
             
-            // 安全かつモダンなBase64エンコード（TextEncoderを使用）
             const bytes = new TextEncoder().encode(content);
             const encodedContent = btoa(String.fromCharCode(...bytes));
 
@@ -339,7 +363,6 @@
                 let sha = null;
                 const getRes = await fetch(apiUrl, {
                     headers: {
-                        // Bearer認証ヘッダーに最適化
                         'Authorization': `Bearer ${token}`,
                         'Accept': 'application/vnd.github.v3+json'
                     }
@@ -361,7 +384,6 @@
                 const putRes = await fetch(apiUrl, {
                     method: 'PUT',
                     headers: {
-                        // Bearer認証ヘッダーに最適化
                         'Authorization': `Bearer ${token}`,
                         'Accept': 'application/vnd.github.v3+json',
                         'Content-Type': 'application/json'
