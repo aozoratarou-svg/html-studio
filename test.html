@@ -80,7 +80,6 @@
             overflow-y: auto;
         }
 
-        /* ツールバーの配置スタイル */
         .editor-toolbar {
             display: flex;
             justify-content: flex-end;
@@ -116,12 +115,11 @@
 
         iframe {
             width: 100%;
-            flex-grow: 1; /* ツールバーの下の領域をいっぱいに広げる */
+            flex-grow: 1;
             background-color: #fff;
             border: none;
         }
 
-        /* 👑 ブラウザのFullscren APIで全画面化されたときのiframe用のリセット */
         iframe:fullscreen {
             width: 100vw;
             height: 100vh;
@@ -193,6 +191,39 @@
             margin-bottom: 5px;
         }
 
+        /* 👑 ファイルリスト用の新スタイル */
+        .file-list-container {
+            border: 2px dashed #fff;
+            padding: 8px;
+            background-color: #111;
+            max-height: 120px;
+            overflow-y: auto;
+            margin-top: 5px;
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+            border-bottom: 1px solid #333;
+            font-size: 0.9rem;
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-link {
+            color: var(--code-color);
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .file-link:hover {
+            text-decoration: underline;
+        }
+
     </style>
 </head>
 <body>
@@ -214,7 +245,7 @@
 
     <div id="panel-preview" class="panel">
         <div class="editor-toolbar">
-            <button class="tool-btn" onclick="toggleFullscreen()">🖥️ ぜんがめん</button>
+            <button id="fullscreen-btn" class="tool-btn" onclick="toggleFullscreen()">🖥️ ぜんがめん</button>
         </div>
         <iframe id="preview-frame"></iframe>
     </div>
@@ -247,6 +278,14 @@
             <div class="action-row">
                 <button class="action-btn" onclick="saveCustom()">💾 セーブ</button>
                 <button class="action-btn link-btn" onclick="openCustom()">🌍 ひらく</button>
+            </div>
+        </div>
+
+        <div>
+            <div class="section-label">▼ ページをえらんでひらく</div>
+            <button class="tool-btn" style="width: 100%; padding: 8px; font-size: 1rem; margin-bottom: 5px; background-color: #222;" onclick="fetchGitHubFiles()">🔄 リストをこうしん</button>
+            <div id="file-list" class="file-list-container">
+                <div style="color: #888; text-align: center; font-size: 0.8rem; padding: 10px;">「こうしん」ボタンを おしてね</div>
             </div>
         </div>
     </div>
@@ -292,23 +331,109 @@
             }
         }
 
-        // 🖥️ 全画面モード（Fullscreen API）の制御関数
+        // 🖥️ 全画面モード（トグル対応に強化）
         function toggleFullscreen() {
             const iframe = document.getElementById('preview-frame');
             
-            if (!document.fullscreenElement) {
-                // 各種ブラウザ対応を考慮して全画面リクエストを発行
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
                 if (iframe.requestFullscreen) {
                     iframe.requestFullscreen();
-                } else if (iframe.webkitRequestFullscreen) { /* iOS / Safari用 */
+                } else if (iframe.webkitRequestFullscreen) {
                     iframe.webkitRequestFullscreen();
-                } else if (iframe.msRequestFullscreen) { /* IE / Edge用 */
-                    iframe.msRequestFullscreen();
                 }
             } else {
+                // すでに全画面なら解除する
                 if (document.exitFullscreen) {
                     document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
                 }
+            }
+        }
+
+        // 全画面の状態変化を検知してボタンのテキストを自動で切り替える
+        document.addEventListener('fullscreenchange', updateFullscreenButton);
+        document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
+
+        function updateFullscreenButton() {
+            const btn = document.getElementById('fullscreen-btn');
+            if (document.fullscreenElement || document.webkitFullscreenElement) {
+                btn.innerHTML = '❌ もどる';
+            } else {
+                btn.innerHTML = '🖥️ ぜんがめん';
+            }
+        }
+
+        // 👑 GitHubからルート階層と test/ 下のHTML一覧を取得する関数
+        async function fetchGitHubFiles() {
+            const token = document.getElementById('gh-token').value;
+            const owner = document.getElementById('gh-owner').value;
+            const repo = document.getElementById('gh-repo').value;
+            const listContainer = document.getElementById('file-list');
+
+            if(!token || !owner || !repo) {
+                alert('【エラー】\n「⚙️せってい」から GitHubの じょうほうを にゅうりょく してね！');
+                return;
+            }
+
+            listContainer.innerHTML = '<div style="color: #aaa; text-align: center; font-size: 0.8rem; padding: 10px;">取得中...</div>';
+
+            const headers = {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/vnd.github.v3+json'
+            };
+
+            try {
+                let files = [];
+
+                // 1. ルート階層を取得
+                const rootRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/`, { headers });
+                if (rootRes.ok) {
+                    const rootData = await rootRes.json();
+                    // ルートにあるHTMLファイルを抽出
+                    rootData.forEach(item => {
+                        if (item.type === 'file' && item.name.endsWith('.html')) {
+                            files.push(item.path);
+                        }
+                    });
+                }
+
+                // 2. test/ 階層を取得
+                const testRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/test`, { headers });
+                if (testRes.ok) {
+                    const testData = await testRes.json();
+                    // test下のHTMLファイルを抽出
+                    testData.forEach(item => {
+                        if (item.type === 'file' && item.name.endsWith('.html')) {
+                            files.push(item.path);
+                        }
+                    });
+                }
+
+                // リスト画面の構築
+                if (files.length === 0) {
+                    listContainer.innerHTML = '<div style="color: #888; text-align: center; font-size: 0.8rem; padding: 10px;">HTMLファイルが見つかりません</div>';
+                    return;
+                }
+
+                listContainer.innerHTML = ''; // クリア
+                files.forEach(path => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'file-item';
+                    
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'file-link';
+                    nameSpan.textContent = `📄 ${path}`;
+                    // タップしたら直接そのPagesのURLを開く
+                    nameSpan.onclick = () => openPage(path);
+
+                    itemDiv.appendChild(nameSpan);
+                    listContainer.appendChild(itemDiv);
+                });
+
+            } catch (error) {
+                listContainer.innerHTML = '<div style="color: red; text-align: center; font-size: 0.8rem; padding: 10px;">エラーが発生しました</div>';
+                alert(`【エラー】リストの取得に失敗しました。\n${error}`);
             }
         }
 
@@ -393,6 +518,8 @@
 
                 if (putRes.ok) {
                     alert(`【せいこう！】\n${filename} に セーブ しました。\nすこし まってから「🌍 ひらく」ボタンを おしてね！`);
+                    // セーブ成功時に自動でリストを再更新すると便利なので追記
+                    fetchGitHubFiles();
                 } else {
                     const errData = await putRes.json();
                     alert(`【エラー！】\nセーブに しっぱい しました。\nりゆう: ${errData.message}`);
