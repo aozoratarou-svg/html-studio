@@ -81,7 +81,7 @@
             flex-direction: column;
         }
 
-        /* 👑 iPhone(iOS)対応：CSSによる超強力な擬似フルスクリーンモード */
+        /* iPhone(iOS)対応：CSSによる最前面固定の全画面プレビュー */
         .panel.ios-fullscreen {
             display: flex !important;
             flex-direction: column !important;
@@ -93,7 +93,7 @@
             z-index: 99999 !important;
             margin: 0 !important;
             border: none !important;
-            padding: max(10px, env(safe-area-inset-top)) 12px max(10px, env(safe-area-inset-bottom)) 12px !important;
+            padding: 0 !important; /* 全画面を活かすため親のパディングを相殺 */
             background-color: var(--bg-color) !important;
         }
 
@@ -149,11 +149,13 @@
             background-color: #666;
         }
 
-        /* 全画面プレビュー時のみ最上部に表示する「もどる」ツールバー */
+        /* 👑 変更点：「もどる」ボタンを右上にフローティング配置するスタイル */
         .fullscreen-toolbar {
             display: none;
-            justify-content: flex-start;
-            margin-bottom: 8px;
+            position: absolute;
+            top: max(12px, env(safe-area-inset-top)); /* ノッチ回避 */
+            right: 12px;
+            z-index: 100000; /* iframeより前面に配置 */
         }
         .panel.ios-fullscreen .fullscreen-toolbar {
             display: flex;
@@ -260,11 +262,23 @@
             font-size: 0.9rem;
             border-radius: 0;
         }
+        
+        .list-link-btn {
+            background-color: var(--accent-blue);
+            color: var(--text-color);
+            border: 2px solid #fff;
+            font-family: 'DotGothic16', sans-serif;
+            padding: 7px 12px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            border-radius: 0;
+            white-space: nowrap;
+        }
 
         .system-msg {
             color: yellow;
             font-size: 0.75rem;
-            margin: 5px 0 0 0;
+            margin: max(5px, 2px) 0 0 0;
         }
     </style>
 </head>
@@ -294,12 +308,18 @@
 
     <div id="panel-preview-full" class="panel">
         <div class="fullscreen-toolbar">
-            <button class="tool-btn" style="background-color: var(--accent-red);" onclick="exitIosFullscreen()">❌ もどる</button>
+            <button class="tool-btn" style="background-color: var(--accent-red); box-shadow: 2px 2px 4px rgba(0,0,0,0.5);" onclick="exitIosFullscreen()">❌ もどる</button>
         </div>
         <iframe id="preview-frame-full"></iframe>
     </div>
 
     <div id="panel-config" class="panel" style="overflow-y: auto;">
+        <div class="config-item">
+            <label>GEMINI API キー (Gemini 3.5 Flash用)</label>
+            <input type="password" id="gemini-key" placeholder="AIzaSyxxxxxxxx...">
+        </div>
+        <hr style="border: 1px dashed #555; margin: 15px 0;">
+        
         <div class="config-item">
             <label>GITHUB トークン (PAT)</label>
             <input type="password" id="gh-token" placeholder="ghp_xxxxxxxx...">
@@ -318,7 +338,7 @@
     <div class="actions">
         <div class="action-row">
             <button class="action-btn save-btn" onclick="saveToGitHub('test.html')">💾 TESTセーブ</button>
-            <button class="action-btn link-btn" onclick="openPage('test.html', true)">🌍 ひらく</button>
+            <button class="action-btn link-btn" onclick="openPage('test.html')">🌍 ひらく</button>
         </div>
 
         <div>
@@ -332,15 +352,17 @@
         </div>
 
         <div class="action-row">
-            <select id="file-select-box" class="file-select" onchange="if(this.value) openPage(this.value, false)">
+            <select id="file-select-box" class="file-select">
                 <option value="">▼ ページをえらんでひらく</option>
             </select>
             <button class="sync-btn" onclick="fetchGitHubFiles()">🔄</button>
+            <button class="list-link-btn" onclick="openSelectedPage()">📂 ひらく</button>
         </div>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('gemini-key').value = localStorage.getItem('geminiKey') || '';
             document.getElementById('gh-token').value = localStorage.getItem('ghToken') || '';
             document.getElementById('gh-owner').value = localStorage.getItem('ghOwner') || '';
             document.getElementById('gh-repo').value = localStorage.getItem('ghRepo') || '';
@@ -348,6 +370,7 @@
             document.getElementById('custom-filename').value = localStorage.getItem('lastCustomFile') || '';
         });
 
+        document.getElementById('gemini-key').addEventListener('input', (e) => localStorage.setItem('geminiKey', e.target.value));
         document.getElementById('gh-token').addEventListener('input', (e) => localStorage.setItem('ghToken', e.target.value));
         document.getElementById('gh-owner').addEventListener('input', (e) => localStorage.setItem('ghOwner', e.target.value));
         document.getElementById('gh-repo').addEventListener('input', (e) => localStorage.setItem('ghRepo', e.target.value));
@@ -365,7 +388,7 @@
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.panel').forEach(panel => {
                 panel.classList.remove('active');
-                panel.classList.remove('ios-fullscreen'); // フルスクリーン状態もリセット
+                panel.classList.remove('ios-fullscreen');
             });
             
             const code = document.getElementById('code-editor').value;
@@ -380,8 +403,6 @@
             } else if (tabName === 'preview-full') {
                 document.querySelectorAll('.tab-btn')[2].classList.add('active');
                 const fullPanel = document.getElementById('panel-preview-full');
-                
-                // 👑 iPhone用に最前面固定の全画面クラスを付与
                 fullPanel.classList.add('ios-fullscreen');
                 document.getElementById('preview-frame-full').srcdoc = code;
             } else if (tabName === 'config') {
@@ -390,7 +411,6 @@
             }
         }
 
-        // 全画面モードから安全にエディタへ抜ける関数
         function exitIosFullscreen() {
             switchTab('edit');
         }
@@ -447,7 +467,18 @@
                 alert('【エラー】\nファイルめいを にゅうりょく してね！');
                 return;
             }
-            openPage(filename, true); // 明示的にタップした場合は別窓を試みる
+            openPage(filename);
+        }
+
+        function openSelectedPage() {
+            const selectBox = document.getElementById('file-select-box');
+            const filename = selectBox.value;
+            if (!filename) {
+                alert('【エラー】\nリストから ページを えらんでね！');
+                return;
+            }
+            openPage(filename);
+            selectBox.value = "";
         }
 
         function saveCustom() {
@@ -459,8 +490,7 @@
             saveToGitHub(filename);
         }
 
-        // 👑 iPhoneのポップアップブロック対策を搭載した遷移関数
-        function openPage(filename, allowBlank) {
+        function openPage(filename) {
             const owner = document.getElementById('gh-owner').value;
             const repo = document.getElementById('gh-repo').value;
             
@@ -470,16 +500,7 @@
             }
 
             const url = `https://${owner}.github.io/${repo}/${filename}`;
-            
-            // リスト選択（allowBlank=false）の場合は、ブロックを100%回避するため現在のタブで開く
-            if (!allowBlank) {
-                window.location.href = url;
-            } else {
-                // 直接のボタンタップ時は別窓を開く
-                window.open(url, '_blank');
-            }
-            
-            document.getElementById('file-select-box').value = "";
+            window.open(url, '_blank');
         }
 
         async function saveToGitHub(filename) {
