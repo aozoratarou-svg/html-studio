@@ -143,7 +143,6 @@
             font-family: 'DotGothic16', sans-serif;
             box-sizing: border-box;
             font-size: 0.9rem;
-            border-radius: 0; /* 角の丸みを排除 */
         }
 
         .actions {
@@ -190,7 +189,6 @@
             font-family: 'DotGothic16', sans-serif;
             box-sizing: border-box;
             font-size: 0.9rem;
-            border-radius: 0; /* 角の丸みを排除 */
         }
 
         .section-label {
@@ -199,7 +197,6 @@
             white-space: nowrap;
         }
 
-        /* 👑 リスト枠の丸みを抑え（border-radius: 0）、ボタンとの一体感を向上 */
         .file-select {
             flex-grow: 1;
             padding: 6px;
@@ -210,9 +207,6 @@
             font-size: 0.85rem;
             outline: none;
             box-sizing: border-box;
-            border-radius: 0; /* OS標準の丸みをリセット */
-            -webkit-appearance: none; /* iOS特有の丸みのある立体デザインをリセット */
-            appearance: none;
         }
 
         .system-msg {
@@ -276,10 +270,10 @@
         </div>
 
         <div class="action-row">
+            <button class="tool-btn" style="padding: 6px 10px; font-size: 0.85rem;" onclick="fetchGitHubFiles()">🔄</button>
             <select id="file-select-box" class="file-select" onchange="if(this.value) openPage(this.value)">
                 <option value="">▼ ページをえらんでひらく</option>
             </select>
-            <button class="tool-btn" style="padding: 6px 12px; font-size: 0.85rem;" onclick="fetchGitHubFiles()">🔄</button>
         </div>
     </div>
 
