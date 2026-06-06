@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="HTML STUDIO">
+    
+    <title>8-BIT HTML STUDIO</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --accent-red: #e52521;
+            --accent-blue: #0055aa;
+            --code-color: #33ff33;
+            --btn-gray: #444444;
+            --border-style: 4px solid #ffffff;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'DotGothic16', sans-serif;
+            margin: 0;
+            padding: max(10px, env(safe-area-inset-top)) 12px max(10px, env(safe-area-inset-bottom)) 12px;
+            box-sizing: border-box;
+            overscroll-behavior-y: none;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.6rem;
+            color: var(--text-color);
+            text-shadow: 2px 2px 0 var(--accent-red);
+            margin: 5px 0 15px 0;
+            letter-spacing: 2px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border: var(--border-style);
+            font-family: 'DotGothic16', sans-serif;
+            padding: 8px 0;
+            font-size: 0.95rem;
+            cursor: pointer;
+            box-shadow: 2px 2px 0px #888;
+            white-space: nowrap;
+        }
+
+        .tab-btn.active {
+            background-color: var(--text-color);
+            color: var(--bg-color);
+        }
+
+        .panel {
+            display: none;
+            border: var(--border-style);
+            padding: 8px;
+            margin-bottom: 12px;
+            height: 45vh;
+            box-sizing: border-box;
+            background-color: var(--bg-color);
+            position: relative;
+        }
+
+        .panel.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* iPhone(iOS)対応：CSSによる最前面固定の全画面プレビュー */
+        .panel.ios-fullscreen {
+            display: flex !important;
+            flex-direction: column !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: 99999 !important;
+            margin: 0 !important;
+            border: none !important;
+            padding: 0 !important; /* 全画面を活かすため親のパディングを相殺 */
+            background-color: var(--bg-color) !important;
+        }
+
+        .editor-container {
+            width: 100%;
+            flex-grow: 1;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        textarea {
+            width: 100%;
+            flex-grow: 1;
+            background-color: var(--bg-color);
+            color: #888888;
+            border: none;
+            font-family: 'DotGothic16', monospace;
+            font-size: 1rem;
+            resize: none;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        textarea:focus {
+            color: var(--code-color);
+        }
+
+        iframe {
+            width: 100%;
+            flex-grow: 1;
+            background-color: #fff;
+            border: none;
+        }
+
+        .editor-toolbar-bottom {
+            position: absolute;
+            right: 4px;
+            bottom: 4px;
+        }
+
+        .tool-btn {
+            background-color: var(--btn-gray);
+            color: var(--text-color);
+            border: 2px solid #fff;
+            font-family: 'DotGothic16', sans-serif;
+            padding: 4px 10px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .tool-btn:active {
+            background-color: #666;
+        }
+
+        /* 👑 変更点：「もどる」ボタンを右上にフローティング配置するスタイル */
+        .fullscreen-toolbar {
+            display: none;
+            position: absolute;
+            top: max(12px, env(safe-area-inset-top)); /* ノッチ回避 */
+            right: 12px;
+            z-index: 100000; /* iframeより前面に配置 */
+        }
+        .panel.ios-fullscreen .fullscreen-toolbar {
+            display: flex;
+        }
+
+        .config-item {
+            margin-bottom: 10px;
+        }
+        .config-item label {
+            display: block;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+        }
+        .config-item input {
+            width: 100%;
+            padding: 6px;
+            background-color: #222;
+            color: #fff;
+            border: 2px solid #fff;
+            font-family: 'DotGothic16', sans-serif;
+            box-sizing: border-box;
+            border-radius: 0;
+        }
+
+        .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .action-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .action-btn {
+            color: var(--text-color);
+            border: var(--border-style);
+            font-family: 'DotGothic16', sans-serif;
+            padding: 10px 0;
+            font-size: 1.1rem;
+            cursor: pointer;
+            box-shadow: 2px 2px 0px #888;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .action-btn.save-btn {
+            background-color: var(--accent-red);
+            flex: 1.8;
+        }
+
+        .action-btn.link-btn {
+            background-color: var(--accent-blue);
+            flex: 1;
+        }
+
+        .action-btn:active {
+            box-shadow: inset 2px 2px 0px #888;
+            transform: translate(1px, 1px);
+        }
+
+        .section-label {
+            font-size: 0.9rem;
+            color: var(--text-color);
+            margin: 2px 0;
+        }
+
+        .custom-file-input {
+            width: 100%;
+            padding: 8px;
+            background-color: #222;
+            color: #fff;
+            border: 2px solid #fff;
+            font-family: 'DotGothic16', sans-serif;
+            box-sizing: border-box;
+            font-size: 0.9rem;
+            border-radius: 0;
+        }
+
+        .file-select {
+            flex-grow: 1;
+            padding: 8px 6px;
+            background-color: var(--bg-color);
+            color: #33ff33;
+            border: 2px solid #fff;
+            font-family: 'DotGothic16', sans-serif;
+            font-size: 0.9rem;
+            outline: none;
+            box-sizing: border-box;
+            border-radius: 0;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .sync-btn {
+            background-color: #335577;
+            color: var(--text-color);
+            border: 2px solid #fff;
+            font-family: 'DotGothic16', sans-serif;
+            padding: 7px 10px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            border-radius: 0;
+        }
+        
+        .list-link-btn {
+            background-color: var(--accent-blue);
+            color: var(--text-color);
+            border: 2px solid #fff;
+            font-family: 'DotGothic16', sans-serif;
+            padding: 7px 12px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            border-radius: 0;
+            white-space: nowrap;
+        }
+
+        .system-msg {
+            color: yellow;
+            font-size: 0.75rem;
+            margin: max(5px, 2px) 0 0 0;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>HTML STUDIO</h1>
+
+    <div class="tabs">
+        <button id="tab-edit-btn" class="tab-btn active" onclick="switchTab('edit')">🔨つくる</button>
+        <button class="tab-btn" onclick="switchTab('preview-normal')">👁みる</button>
+        <button class="tab-btn" onclick="switchTab('preview-full')">🖥️ みる</button>
+        <button class="tab-btn" onclick="switchTab('config')">⚙️せってい</button>
+    </div>
+
+    <div id="panel-edit" class="panel active">
+        <div class="editor-container">
+            <textarea id="code-editor" placeholder="ここに HTML を にゅうりょく してね！"></textarea>
+            <div class="editor-toolbar-bottom">
+                <button class="tool-btn" onclick="clearEditor()">🗑️ クリア</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="panel-preview-normal" class="panel">
+        <iframe id="preview-frame-normal"></iframe>
+    </div>
+
+    <div id="panel-preview-full" class="panel">
+        <div class="fullscreen-toolbar">
+            <button class="tool-btn" style="background-color: var(--accent-red); box-shadow: 2px 2px 4px rgba(0,0,0,0.5);" onclick="exitIosFullscreen()">❌ もどる</button>
+        </div>
+        <iframe id="preview-frame-full"></iframe>
+    </div>
+
+    <div id="panel-config" class="panel" style="overflow-y: auto;">
+        <div class="config-item">
+            <label>GEMINI API キー (Gemini 3.5 Flash用)</label>
+            <input type="password" id="gemini-key" placeholder="AIzaSyxxxxxxxx...">
+        </div>
+        <hr style="border: 1px dashed #555; margin: 15px 0;">
+        
+        <div class="config-item">
+            <label>GITHUB トークン (PAT)</label>
+            <input type="password" id="gh-token" placeholder="ghp_xxxxxxxx...">
+        </div>
+        <div class="config-item">
+            <label>ユーザー名 (Owner)</label>
+            <input type="text" id="gh-owner" placeholder="例: octocat">
+        </div>
+        <div class="config-item">
+            <label>リポジトリ名 (Repo)</label>
+            <input type="text" id="gh-repo" placeholder="例: my-website">
+        </div>
+        <p class="system-msg">※にゅうりょくした じょうほうは ブラウザに ほぞん されます。</p>
+    </div>
+
+    <div class="actions">
+        <div class="action-row">
+            <button class="action-btn save-btn" onclick="saveToGitHub('test.html')">💾 TESTセーブ</button>
+            <button class="action-btn link-btn" onclick="openPage('test.html')">🌍 ひらく</button>
+        </div>
+
+        <div>
+            <div class="section-label">▼ ほんばん用 (なまえをきめる)</div>
+            <input type="text" id="custom-filename" class="custom-file-input" placeholder="例: app1.html または tool/index.html">
+        </div>
+
+        <div class="action-row">
+            <button class="action-btn save-btn" onclick="saveCustom()">💾 セーブ</button>
+            <button class="action-btn link-btn" onclick="openPageCustom()">🌍 ひらく</button>
+        </div>
+
+        <div class="action-row">
+            <select id="file-select-box" class="file-select">
+                <option value="">▼ ページをえらんでひらく</option>
+            </select>
+            <button class="sync-btn" onclick="fetchGitHubFiles()">🔄</button>
+            <button class="list-link-btn" onclick="openSelectedPage()">📂 ひらく</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('gemini-key').value = localStorage.getItem('geminiKey') || '';
+            document.getElementById('gh-token').value = localStorage.getItem('ghToken') || '';
+            document.getElementById('gh-owner').value = localStorage.getItem('ghOwner') || '';
+            document.getElementById('gh-repo').value = localStorage.getItem('ghRepo') || '';
+            document.getElementById('code-editor').value = localStorage.getItem('savedCode') || '';
+            document.getElementById('custom-filename').value = localStorage.getItem('lastCustomFile') || '';
+        });
+
+        document.getElementById('gemini-key').addEventListener('input', (e) => localStorage.setItem('geminiKey', e.target.value));
+        document.getElementById('gh-token').addEventListener('input', (e) => localStorage.setItem('ghToken', e.target.value));
+        document.getElementById('gh-owner').addEventListener('input', (e) => localStorage.setItem('ghOwner', e.target.value));
+        document.getElementById('gh-repo').addEventListener('input', (e) => localStorage.setItem('ghRepo', e.target.value));
+        document.getElementById('code-editor').addEventListener('input', (e) => localStorage.setItem('savedCode', e.target.value));
+        document.getElementById('custom-filename').addEventListener('input', (e) => localStorage.setItem('lastCustomFile', e.target.value));
+
+        function clearEditor() {
+            if(confirm('かきかけの コードを ぜんぶ けしますか？')) {
+                document.getElementById('code-editor').value = '';
+                localStorage.setItem('savedCode', '');
+            }
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(panel => {
+                panel.classList.remove('active');
+                panel.classList.remove('ios-fullscreen');
+            });
+            
+            const code = document.getElementById('code-editor').value;
+
+            if (tabName === 'edit') {
+                document.querySelectorAll('.tab-btn')[0].classList.add('active');
+                document.getElementById('panel-edit').classList.add('active');
+            } else if (tabName === 'preview-normal') {
+                document.querySelectorAll('.tab-btn')[1].classList.add('active');
+                document.getElementById('panel-preview-normal').classList.add('active');
+                document.getElementById('preview-frame-normal').srcdoc = code;
+            } else if (tabName === 'preview-full') {
+                document.querySelectorAll('.tab-btn')[2].classList.add('active');
+                const fullPanel = document.getElementById('panel-preview-full');
+                fullPanel.classList.add('ios-fullscreen');
+                document.getElementById('preview-frame-full').srcdoc = code;
+            } else if (tabName === 'config') {
+                document.querySelectorAll('.tab-btn')[3].classList.add('active');
+                document.getElementById('panel-config').classList.add('active');
+            }
+        }
+
+        function exitIosFullscreen() {
+            switchTab('edit');
+        }
+
+        async function fetchGitHubFiles() {
+            const token = document.getElementById('gh-token').value;
+            const owner = document.getElementById('gh-owner').value;
+            const repo = document.getElementById('gh-repo').value;
+            const selectBox = document.getElementById('file-select-box');
+
+            if(!token || !owner || !repo) {
+                alert('【エラー】\n「⚙️せってい」から GitHubの じょうほうを にゅうりょく してね！');
+                return;
+            }
+
+            selectBox.innerHTML = '<option value="">取得中...</option>';
+            const headers = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' };
+
+            try {
+                let files = [];
+                const rootRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/`, { headers });
+                if (rootRes.ok) {
+                    const rootData = await rootRes.json();
+                    rootData.forEach(item => { if (item.type === 'file' && item.name.endsWith('.html')) files.push(item.path); });
+                }
+
+                const testRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/test`, { headers });
+                if (testRes.ok) {
+                    const testData = await testRes.json();
+                    testData.forEach(item => { if (item.type === 'file' && item.name.endsWith('.html')) files.push(item.path); });
+                }
+
+                selectBox.innerHTML = '<option value="">▼ ページをえらんでひらく</option>';
+                if (files.length === 0) {
+                    selectBox.innerHTML = '<option value="">HTMLが見つかりません</option>';
+                    return;
+                }
+
+                files.forEach(path => {
+                    const opt = document.createElement('option');
+                    opt.value = path;
+                    opt.textContent = `📄 ${path}`;
+                    selectBox.appendChild(opt);
+                });
+            } catch (error) {
+                selectBox.innerHTML = '<option value="">取得失敗</option>';
+                alert(`【エラー】リストの取得に失敗しました。\n${error}`);
+            }
+        }
+
+        function openPageCustom() {
+            let filename = document.getElementById('custom-filename').value.trim();
+            if(!filename) {
+                alert('【エラー】\nファイルめいを にゅうりょく してね！');
+                return;
+            }
+            openPage(filename);
+        }
+
+        function openSelectedPage() {
+            const selectBox = document.getElementById('file-select-box');
+            const filename = selectBox.value;
+            if (!filename) {
+                alert('【エラー】\nリストから ページを えらんでね！');
+                return;
+            }
+            openPage(filename);
+            selectBox.value = "";
+        }
+
+        function saveCustom() {
+            let filename = document.getElementById('custom-filename').value.trim();
+            if(!filename) {
+                alert('【エラー】\nファイルめいを にゅうりょく してね！');
+                return;
+            }
+            saveToGitHub(filename);
+        }
+
+        function openPage(filename) {
+            const owner = document.getElementById('gh-owner').value;
+            const repo = document.getElementById('gh-repo').value;
+            
+            if(!owner || !repo) {
+                alert('【エラー】\n「⚙️せってい」で ユーザー名と リポジトリ名を いれてね！');
+                return;
+            }
+
+            const url = `https://${owner}.github.io/${repo}/${filename}`;
+            window.open(url, '_blank');
+        }
+
+        async function saveToGitHub(filename) {
+            const token = document.getElementById('gh-token').value;
+            const owner = document.getElementById('gh-owner').value;
+            const repo = document.getElementById('gh-repo').value;
+            const content = document.getElementById('code-editor').value;
+
+            if(!token || !owner || !repo) {
+                alert('【エラー】\n「⚙️せってい」から GitHubの じょうほうを にゅうりょく してね！');
+                return;
+            }
+
+            const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filename}`;
+            const bytes = new TextEncoder().encode(content);
+            const encodedContent = btoa(String.fromCharCode(...bytes));
+
+            try {
+                let sha = null;
+                const getRes = await fetch(apiUrl, { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' } });
+                if (getRes.ok) {
+                    const data = await getRes.json();
+                    sha = data.sha;
+                }
+
+                const body = { message: `📝 ${filename} を更新 (via 8-BIT STUDIO)`, content: encodedContent };
+                if (sha) body.sha = sha;
+
+                const putRes = await fetch(apiUrl, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                if (putRes.ok) {
+                    alert(`【せいこう！】\n${filename} に セーブ しました。`);
+                    fetchGitHubFiles();
+                } else {
+                    const errData = await putRes.json();
+                    alert(`【エラー！】\nセーブに しっぱい しました。\nりゆう: ${errData.message}`);
+                }
+            } catch (error) {
+                alert(`【つうしんエラー！】\nネットワークを かくにん してね。\n${error}`);
+            }
+        }
+    </script>
+</body>
+</html>
