@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>FlickType</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg:      #0d0d0d;
+  --s1:      #161616;
+  --s2:      #202020;
+  --s3:      #2a2a2a;
+  --border:  #333;
+  --border2: #444;
+  --text:    #f2f2f2;
+  --text2:   #999;
+  --text3:   #555;
+  --acc:     #e8ff47;   /* vivid yellow-green – high contrast */
+  --red:     #ff4d4d;
+  --green:   #3ddc84;
+  --blue:    #4da6ff;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);color:var(--text);
+  font-family:var(--sans);user-select:none;-webkit-user-select:none;touch-action:none}
+
+#app{display:flex;flex-direction:column;height:100%;height:100dvh;max-width:420px;margin:0 auto}
+
+/* ── TOP BAR ── */
+#topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding: max(44px,env(safe-area-inset-top)) 18px 10px;
+  flex-shrink:0;
+}
+.logo{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--acc);letter-spacing:-0.5px}
+#mode-pill{
+  font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:1px;
+  padding:4px 10px;border-radius:20px;text-transform:uppercase;
+  border:1.5px solid var(--border2);color:var(--text2);cursor:pointer;
+  transition:all .2s;
+}
+#mode-pill.lv2{border-color:var(--acc);color:var(--acc)}
+
+/* ── STATS ROW ── */
+#stats{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  margin:0 18px 12px;
+  background:var(--s1);border:1px solid var(--border);border-radius:12px;
+  overflow:hidden;flex-shrink:0;
+}
+.sc{padding:9px 6px;text-align:center;position:relative}
+.sc+.sc::before{content:'';position:absolute;left:0;top:15%;height:70%;width:1px;background:var(--border)}
+.sl{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text3);margin-bottom:2px}
+.sv{font-size:19px;font-weight:700;font-family:var(--mono);line-height:1}
+#vs{color:var(--acc)}  #vc{color:#ff884d} #va{color:var(--green)}
+
+/* ── LEVEL MODE TABS ── */
+#lv-tabs{
+  display:flex;margin:0 18px 12px;
+  background:var(--s1);border:1px solid var(--border);border-radius:10px;
+  padding:3px;gap:3px;flex-shrink:0;
+}
+.lv-btn{
+  flex:1;padding:8px 4px;border-radius:7px;font-size:12px;font-weight:600;
+  color:var(--text3);background:none;border:none;cursor:pointer;
+  transition:all .18s;font-family:var(--sans);
+}
+.lv-btn.active{background:var(--s3);color:var(--text);border:1px solid var(--border2)}
+
+/* ── KEY SELECTOR (Lv1) ── */
+#key-selector{
+  margin:0 18px 12px;flex-shrink:0;
+}
+#key-selector-label{
+  font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;
+  color:var(--text3);margin-bottom:6px;
+}
+#key-selector-grid{
+  display:grid;grid-template-columns:repeat(7,1fr);gap:5px;
+}
+.ks-btn{
+  aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text2);
+  background:var(--s1);border:1.5px solid var(--border);cursor:pointer;
+  transition:all .15s;
+}
+.ks-btn.active{background:var(--acc);color:#000;border-color:var(--acc)}
+
+/* ── CARD ── */
+#card{
+  flex:1;min-height:0;margin:0 18px;
+  background:var(--s1);border:1.5px solid var(--border);border-radius:18px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;position:relative;overflow:hidden;
+  transition:border-color .12s,background .12s;
+}
+#card.ok {border-color:var(--green);background:rgba(61,220,132,.05)}
+#card.ng {border-color:var(--red);  background:rgba(255,77,77,.05);animation:shk .22s ease}
+@keyframes shk{0%,100%{transform:translateX(0)}25%,75%{transform:translateX(-7px)}50%{transform:translateX(7px)}}
+
+/* Lv1: single char target */
+#lv1-target{
+  font-family:var(--mono);font-size:80px;font-weight:700;line-height:1;
+  color:var(--text);
+}
+#lv1-dir{
+  font-size:12px;font-weight:600;font-family:var(--mono);
+  color:var(--text3);letter-spacing:2px;text-transform:uppercase;
+  min-height:20px;
+}
+#lv1-key-hint{
+  font-size:11px;color:var(--text3);font-family:var(--mono);
+}
+
+/* Lv2: word chars */
+#lv2-chars{display:flex;gap:5px;flex-wrap:wrap;justify-content:center;padding:0 16px}
+.ch{font-size:34px;font-weight:700;font-family:var(--mono);line-height:1;transition:color .1s}
+.ch.done{color:var(--green)}
+.ch.cur {color:var(--text);border-bottom:2.5px solid var(--acc);padding-bottom:2px}
+.ch.todo{color:var(--text3)}
+#lv2-hint{font-size:12px;color:var(--text2);min-height:18px;font-family:var(--sans)}
+
+/* progress bar */
+#pbar-wrap{margin:0 18px;height:2px;background:var(--s2);border-radius:99px;flex-shrink:0;margin-bottom:10px}
+#pbar{height:100%;border-radius:99px;background:var(--acc);width:0%;transition:width .35s cubic-bezier(.4,0,.2,1)}
+
+/* ── KEYBOARD ── */
+#kb-wrap{
+  flex-shrink:0;padding:10px 14px;
+  padding-bottom:max(18px,env(safe-area-inset-bottom));
+  background:rgba(13,13,13,.92);border-top:1px solid var(--border);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+}
+#kb{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;max-width:340px;margin:0 auto}
+
+.key{
+  height:62px;background:var(--s2);border:1.5px solid var(--border);border-radius:13px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  cursor:pointer;transition:transform .08s,background .08s,border-color .08s;
+  position:relative;overflow:visible;
+}
+.key.pressing{transform:scale(.93);background:var(--s3)}
+.key.highlight{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc) inset}
+
+.km{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--text);line-height:1}
+.ks-row{display:flex;gap:7px}
+.ks-sub{font-family:var(--mono);font-size:9px;font-weight:600;color:var(--text3)}
+
+.key.key-del .km{font-size:16px;color:var(--text2);font-family:var(--sans)}
+.key.key-sp  .km{font-size:12px;color:var(--text2);letter-spacing:.5px;font-family:var(--sans)}
+
+.key.mastered{border-color:#333;opacity:.5}
+.key.mastered .km{color:var(--text3)}
+
+/* ── FLICK POPUP ── */
+#popup{position:fixed;display:none;z-index:999;pointer-events:none}
+#popup.on{display:block}
+.pg{width:116px;height:116px;position:relative}
+.pc{
+  position:absolute;width:38px;height:38px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;font-weight:700;font-family:var(--mono);
+  background:var(--s3);border:1.5px solid var(--border2);color:var(--text2);
+  transition:all .1s;
+}
+.pc.cen{left:50%;top:50%;transform:translate(-50%,-50%);width:46px;height:46px;font-size:22px;background:var(--s2);color:var(--text)}
+.pc.pu {left:50%;top:2px;   transform:translateX(-50%)}
+.pc.pd {left:50%;bottom:2px;transform:translateX(-50%)}
+.pc.pl {top:50%; left:2px;  transform:translateY(-50%)}
+.pc.pr {top:50%; right:2px; transform:translateY(-50%)}
+
+.pc.act{background:var(--acc);border-color:var(--acc);color:#000;box-shadow:0 0 14px rgba(232,255,71,.4)}
+.pc.cen.act{transform:translate(-50%,-50%) scale(1.12)}
+.pc.pu.act {transform:translateX(-50%) scale(1.12)}
+.pc.pd.act {transform:translateX(-50%) scale(1.12)}
+.pc.pl.act {transform:translateY(-50%) scale(1.12)}
+.pc.pr.act {transform:translateY(-50%) scale(1.12)}
+
+/* combo burst */
+@keyframes burst{0%{opacity:1;transform:translate(-50%,-40%) scale(.7)}70%{opacity:1;transform:translate(-50%,-120%) scale(1.05)}100%{opacity:0;transform:translate(-50%,-150%) scale(.9)}}
+.burst{position:fixed;pointer-events:none;font-size:14px;font-weight:700;color:#ff884d;z-index:9999;animation:burst .55s ease forwards;font-family:var(--mono);white-space:nowrap}
+
+/* unlock toast */
+@keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes toast-out{from{opacity:1}to{opacity:0;transform:translateY(-6px)}}
+.toast{
+  position:fixed;bottom:120px;left:50%;transform:translateX(-50%);
+  background:var(--s3);border:1.5px solid var(--acc);color:var(--acc);
+  font-family:var(--mono);font-size:12px;font-weight:600;
+  padding:8px 18px;border-radius:99px;white-space:nowrap;
+  animation:toast-in .25s ease,toast-out .3s ease 1.6s forwards;
+  z-index:9999;pointer-events:none;
+}
+
+/* hidden helper */
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Top bar -->
+  <div id="topbar">
+    <div class="logo">FlickType</div>
+    <div id="mode-pill" onclick="cycleModeFromPill()">Lv.1 · Single Key</div>
+  </div>
+
+  <!-- Stats -->
+  <div id="stats">
+    <div class="sc"><div class="sl">Score</div><div class="sv" id="vs">0</div></div>
+    <div class="sc"><div class="sl">Combo</div><div class="sv" id="vc">0</div></div>
+    <div class="sc"><div class="sl">Acc</div><div class="sv" id="va">100%</div></div>
+  </div>
+
+  <!-- Level mode tabs -->
+  <div id="lv-tabs">
+    <button class="lv-btn active" id="btn-lv1" onclick="setLevel(1)">Lv.1 · Single Key</button>
+    <button class="lv-btn"        id="btn-lv2" onclick="setLevel(2)">Lv.2 · Word Drill</button>
+  </div>
+
+  <!-- Key selector (Lv1 only) -->
+  <div id="key-selector">
+    <div id="key-selector-label">Practice key</div>
+    <div id="key-selector-grid"></div>
+  </div>
+
+  <!-- Progress bar -->
+  <div id="pbar-wrap"><div id="pbar"></div></div>
+
+  <!-- Card -->
+  <div id="card">
+    <!-- Lv1 view -->
+    <div id="lv1-view">
+      <div id="lv1-target">A</div>
+      <div id="lv1-dir">Tap key to type</div>
+      <div id="lv1-key-hint"></div>
+    </div>
+    <!-- Lv2 view -->
+    <div id="lv2-view" class="hidden">
+      <div id="lv2-chars"></div>
+      <div id="lv2-hint">Swipe keys to type</div>
+    </div>
+  </div>
+
+  <!-- Keyboard -->
+  <div id="kb-wrap">
+    <div id="kb"></div>
+  </div>
+</div>
+
+<!-- Flick popup -->
+<div id="popup">
+  <div class="pg">
+    <div class="pc pu"  id="pp-up"></div>
+    <div class="pc pd"  id="pp-dn"></div>
+    <div class="pc pl"  id="pp-lt"></div>
+    <div class="pc pr"  id="pp-rt"></div>
+    <div class="pc cen" id="pp-cn"></div>
+  </div>
+</div>
+
+<script>
+// ── KEY LAYOUT ────────────────────────────────────────────
+const KEYS = [
+  {c:'a', l:'b', u:'c', r:'d', d:''},
+  {c:'e', l:'f', u:'g', r:'h', d:''},
+  {c:'i', l:'j', u:'k', r:'l', d:''},
+  {c:'m', l:'n', u:'o', r:'p', d:''},
+  {c:'q', l:'r', u:'s', r:'t', d:''},
+  {c:'u', l:'v', u:'w', r:'x', d:''},
+  {c:'y', l:'z', u:"'", r:'"',d:''},
+  {c:'SP',l:',', u:'.', r:'?', d:'!'},
+  {c:'DEL',l:'',u:'',  r:'',  d:''},
+];
+// All typeable chars mapped to their key index and direction
+const CHAR_MAP = {}; // char -> {ki, dir}
+KEYS.forEach((k,i) => {
+  ['c','l','u','r','d'].forEach(dir => {
+    const ch = k[dir];
+    if (ch && ch !== 'SP' && ch !== 'DEL') CHAR_MAP[ch] = {ki:i, dir};
+  });
+  if (k.c==='SP') CHAR_MAP[' '] = {ki:i, dir:'c'};
+});
+
+// All individually-drillable chars (letters only, a-z)
+const DRILLABLE = 'abcdefghijklmnopqrstuvwxyz'.split('');
+
+// Word pools for Lv2 (only use chars that are "mastered" subset or all)
+const WORD_POOL = [
+  'add','bad','cab','dad','face','beef','head','each','bead',
+  'ink','pink','lion','milk','king','mind','limp','mono',
+  'quiz','rust','very','wet','tax','zero','year','zone',
+  'quick','brown','fox','jumps','over','lazy','dog',
+  'pixel','wave','flick','swift','cool','vibe',
+  'acid','base','cafe','demo','edge','flag','goal',
+  'hack','icon','jail','kind','lamp','mail','nail',
+  'oval','path','quit','road','salt','tale','unit',
+  'vale','walk','exam','yell','zeal',
+];
+
+const SWIPE = 26;
+
+// ── STATE ──────────────────────────────────────────────────
+let lvl = 1;
+let masteredKeys = new Set(['a']); // start with 'a' selected
+let currentKey = 'a';   // Lv1: which key group to drill
+let currentChar = '';   // Lv1: the exact char to type
+let currentWord = '';   // Lv2
+let wordIdx = 0;
+let score=0, combo=0, attempts=0, correct=0;
+let drillCount = 0;     // correct presses in current key before moving on
+const LV1_REPS = 5;     // correct reps to consider a char "session-done"
+let charRepsLeft = LV1_REPS;
+
+// Touch state
+let tx=0, ty=0, activeKi=null, activeEl=null, selDir='c';
+
+// ── DOM ────────────────────────────────────────────────────
+const $kb   = document.getElementById('kb');
+const $pop  = document.getElementById('popup');
+const $pbar = document.getElementById('pbar');
+const $card = document.getElementById('card');
+const $vs   = document.getElementById('vs');
+const $vc   = document.getElementById('vc');
+const $va   = document.getElementById('va');
+const $pill = document.getElementById('mode-pill');
+const $lv1v = document.getElementById('lv1-view');
+const $lv2v = document.getElementById('lv2-view');
+const $lv1t = document.getElementById('lv1-target');
+const $lv1d = document.getElementById('lv1-dir');
+const $lv1h = document.getElementById('lv1-key-hint');
+const $lv2c = document.getElementById('lv2-chars');
+const $lv2h = document.getElementById('lv2-hint');
+const $ksg  = document.getElementById('key-selector-grid');
+const $ksel = document.getElementById('key-selector');
+
+// ── BUILD KEY SELECTOR ─────────────────────────────────────
+function buildKeySelector() {
+  $ksg.innerHTML = '';
+  DRILLABLE.forEach(ch => {
+    const b = document.createElement('div');
+    b.className = 'ks-btn' + (ch === currentKey ? ' active' : '');
+    b.textContent = ch.toUpperCase();
+    b.dataset.ch = ch;
+    b.addEventListener('touchstart', e => {
+      e.stopPropagation();
+      selectDrillKey(ch);
+    }, {passive:true});
+    $ksg.appendChild(b);
+  });
+}
+
+function selectDrillKey(ch) {
+  currentKey = ch;
+  charRepsLeft = LV1_REPS;
+  document.querySelectorAll('.ks-btn').forEach(b => b.classList.toggle('active', b.dataset.ch === ch));
+  nextLv1Char();
+}
+
+// ── BUILD KEYBOARD ─────────────────────────────────────────
+function buildKeyboard() {
+  $kb.innerHTML = '';
+  KEYS.forEach((k, i) => {
+    const el = document.createElement('div');
+    el.className = 'key' + (k.c==='DEL'?' key-del':'') + (k.c==='SP'?' key-sp':'');
+    el.dataset.i = i;
+
+    const main = document.createElement('div');
+    main.className = 'km';
+    main.textContent = k.c==='SP'?'SPACE':k.c==='DEL'?'⌫':k.c.toUpperCase();
+    el.appendChild(main);
+
+    if (k.c !== 'DEL') {
+      const row = document.createElement('div');
+      row.className = 'ks-row';
+      [k.l, k.u, k.r].filter(Boolean).forEach(s => {
+        const sp = document.createElement('span');
+        sp.className = 'ks-sub';
+        sp.textContent = s;
+        row.appendChild(sp);
+      });
+      el.appendChild(row);
+    }
+
+    el.addEventListener('touchstart', e => onStart(e, i, el), {passive:true});
+    $kb.appendChild(el);
+  });
+
+  document.addEventListener('touchmove', onMove, {passive:false});
+  document.addEventListener('touchend', onEnd);
+}
+
+function getKeyEl(ki) { return $kb.children[ki]; }
+
+// ── HIGHLIGHT TARGET KEY ───────────────────────────────────
+function highlightTargetKey() {
+  document.querySelectorAll('.key').forEach(k => k.classList.remove('highlight'));
+  if (lvl === 1 && currentChar) {
+    const info = currentChar === ' ' ? CHAR_MAP[' '] : CHAR_MAP[currentChar];
+    if (info) getKeyEl(info.ki).classList.add('highlight');
+  } else if (lvl === 2 && currentWord && wordIdx < currentWord.length) {
+    const ch = currentWord[wordIdx];
+    const info = ch === ' ' ? CHAR_MAP[' '] : CHAR_MAP[ch];
+    if (info) getKeyEl(info.ki).classList.add('highlight');
+  }
+}
+
+// ── GESTURES ───────────────────────────────────────────────
+function onStart(e, ki, el) {
+  const t = e.touches[0];
+  tx = t.clientX; ty = t.clientY;
+  activeKi = ki; activeEl = el; selDir = 'c';
+  el.classList.add('pressing');
+  showPopup(el, ki);
+  hlPopup('c');
+}
+
+function onMove(e) {
+  if (activeKi === null) return;
+  if (e.cancelable) e.preventDefault();
+  const t = e.touches[0];
+  const dx = t.clientX - tx, dy = t.clientY - ty;
+  const ax = Math.abs(dx), ay = Math.abs(dy);
+  let dir = 'c';
+  if (ax > SWIPE || ay > SWIPE) {
+    if (ax > ay) dir = dx > 0 ? 'r' : 'l';
+    else         dir = dy > 0 ? 'd' : 'u';
+  }
+  if (dir !== selDir) { selDir = dir; hlPopup(dir); }
+}
+
+function onEnd() {
+  if (activeKi === null) return;
+  activeEl.classList.remove('pressing');
+  hidePopup();
+  const k = KEYS[activeKi];
+  let ch = selDir === 'c' ? k.c : (k[selDir] || k.c);
+  processChar(ch);
+  activeKi = null; activeEl = null;
+}
+
+// ── POPUP ──────────────────────────────────────────────────
+const POP_IDS = {u:'pp-up',d:'pp-dn',l:'pp-lt',r:'pp-rt',c:'pp-cn'};
+function showPopup(el, ki) {
+  const k = KEYS[ki];
+  const fmt = v => v==='SP'?'␣':v==='DEL'?'⌫':v?v.toUpperCase():'';
+  const set = (id, v) => {
+    const c = document.getElementById(id);
+    c.textContent = fmt(v);
+    c.style.display = v ? '' : 'none';
+  };
+  set('pp-cn', k.c); set('pp-up', k.u); set('pp-dn', k.d);
+  set('pp-lt', k.l); set('pp-rt', k.r);
+  const r = el.getBoundingClientRect();
+  $pop.style.left = (r.left + r.width/2 - 58) + 'px';
+  $pop.style.top  = (r.top + r.height/2 - 58 - 54) + 'px';
+  $pop.classList.add('on');
+}
+function hlPopup(dir) {
+  Object.entries(POP_IDS).forEach(([d,id]) =>
+    document.getElementById(id).classList.toggle('act', d===dir));
+}
+function hidePopup() { $pop.classList.remove('on'); }
+
+// ── LEVEL SWITCHING ────────────────────────────────────────
+function setLevel(n) {
+  lvl = n;
+  document.getElementById('btn-lv1').classList.toggle('active', n===1);
+  document.getElementById('btn-lv2').classList.toggle('active', n===2);
+  $lv1v.classList.toggle('hidden', n!==1);
+  $lv2v.classList.toggle('hidden', n!==2);
+  $ksel.classList.toggle('hidden', n!==1);
+  $pill.textContent = n===1 ? 'Lv.1 · Single Key' : 'Lv.2 · Word Drill';
+  $pill.classList.toggle('lv2', n===2);
+  $pbar.style.width = '0%';
+  if (n===1) { charRepsLeft = LV1_REPS; nextLv1Char(); }
+  else nextLv2Word();
+}
+
+function cycleModeFromPill() {
+  setLevel(lvl===1 ? 2 : 1);
+  document.getElementById(lvl===1?'btn-lv1':'btn-lv2').classList.add('active');
+  document.getElementById(lvl===1?'btn-lv2':'btn-lv1').classList.remove('active');
+}
+
+// ── LV1 LOGIC ──────────────────────────────────────────────
+// Find all chars on the same key as currentKey
+function keyCharsOf(ch) {
+  const info = CHAR_MAP[ch];
+  if (!info) return [ch];
+  const k = KEYS[info.ki];
+  return ['c','l','u','r','d'].map(d => k[d]).filter(c => c && c!=='SP'&&c!=='DEL'&&c!=='');
+}
+
+function nextLv1Char() {
+  // Drill the center char only (the key's main letter)
+  // For simplicity: drill currentKey itself as the target
+  // If charRepsLeft <= 0, auto-advance to next key in DRILLABLE
+  currentChar = currentKey;
+  const info = CHAR_MAP[currentChar];
+  // Show direction hint
+  let dirLabel = '';
+  if (info) {
+    dirLabel = info.dir === 'c' ? 'tap' :
+               info.dir === 'u' ? '↑ flick up' :
+               info.dir === 'd' ? '↓ flick down' :
+               info.dir === 'l' ? '← flick left' :
+               info.dir === 'r' ? '→ flick right' : '';
+  }
+  $lv1t.textContent = currentChar.toUpperCase();
+  $lv1d.textContent = dirLabel;
+  // Show which key group
+  if (info) {
+    const k = KEYS[info.ki];
+    $lv1h.textContent = 'Key: ' + k.c.toUpperCase();
+  }
+  // Progress: reps
+  const done = LV1_REPS - charRepsLeft;
+  $pbar.style.width = (done / LV1_REPS * 100) + '%';
+  highlightTargetKey();
+}
+
+// ── LV2 LOGIC ──────────────────────────────────────────────
+function wordsForMastered() {
+  // Filter words that only use mastered chars
+  const ms = masteredKeys;
+  const usable = WORD_POOL.filter(w =>
+    w.split('').every(c => ms.has(c))
+  );
+  return usable.length >= 3 ? usable : WORD_POOL.slice(0, 8);
+}
+
+function nextLv2Word() {
+  const pool = wordsForMastered();
+  let w;
+  let tries = 0;
+  do { w = pool[Math.floor(Math.random()*pool.length)]; tries++; }
+  while (w === currentWord && pool.length > 1 && tries < 20);
+  currentWord = w; wordIdx = 0;
+  renderLv2();
+  $lv2h.textContent = 'Swipe keys to type';
+  $lv2h.style.color = '';
+  highlightTargetKey();
+}
+
+function renderLv2() {
+  $lv2c.innerHTML = '';
+  for (let i=0; i<currentWord.length; i++) {
+    const sp = document.createElement('span');
+    sp.className = 'ch';
+    const c = currentWord[i];
+    sp.textContent = c===' '?'·':c.toUpperCase();
+    if (i < wordIdx)       sp.classList.add('done');
+    else if (i === wordIdx) sp.classList.add('cur');
+    else                   sp.classList.add('todo');
+    $lv2c.appendChild(sp);
+  }
+  $pbar.style.width = (wordIdx / currentWord.length * 100) + '%';
+}
+
+// ── PROCESS INPUT ──────────────────────────────────────────
+function processChar(ch) {
+  if (ch === 'DEL') {
+    if (lvl===2 && wordIdx>0) { wordIdx--; renderLv2(); highlightTargetKey(); }
+    return;
+  }
+
+  const inputCh = ch==='SP' ? ' ' : ch.toLowerCase();
+  attempts++;
+
+  if (lvl === 1) {
+    const target = currentChar;
+    if (inputCh === target) {
+      correct++; combo++;
+      score += 10 + Math.floor(combo/5)*5;
+      flash(true);
+      if (navigator.vibrate) navigator.vibrate(10);
+      if (combo > 1) spawnBurst('+'+combo);
+      charRepsLeft--;
+      if (charRepsLeft <= 0) {
+        // Mark as mastered; show unlock toast
+        masteredKeys.add(currentKey);
+        showToast(currentKey.toUpperCase() + ' mastered!');
+        charRepsLeft = LV1_REPS;
+        $pbar.style.width = '100%';
+        // Auto-advance to next key
+        const idx2 = DRILLABLE.indexOf(currentKey);
+        const next = DRILLABLE[(idx2+1) % DRILLABLE.length];
+        setTimeout(() => {
+          selectDrillKey(next);
+          document.querySelectorAll('.ks-btn').forEach(b => b.classList.toggle('active', b.dataset.ch===next));
+        }, 400);
+      } else {
+        nextLv1Char();
+      }
+    } else {
+      combo = 0;
+      flash(false);
+      if (navigator.vibrate) navigator.vibrate([25,8,25]);
+    }
+  } else {
+    // Lv2
+    const target = currentWord[wordIdx];
+    if (inputCh === target) {
+      correct++; combo++;
+      score += 10 + Math.floor(combo/5)*5;
+      flash(true);
+      wordIdx++;
+      if (combo>1) spawnBurst('+'+combo);
+      if (navigator.vibrate) navigator.vibrate(10);
+      renderLv2();
+      if (wordIdx === currentWord.length) {
+        score += 50;
+        $pbar.style.width = '100%';
+        $lv2h.textContent = '✓ Done!';
+        $lv2h.style.color = 'var(--green)';
+        setTimeout(nextLv2Word, 380);
+        updateStats(); return;
+      }
+      highlightTargetKey();
+    } else {
+      combo = 0;
+      flash(false);
+      if (navigator.vibrate) navigator.vibrate([25,8,25]);
+    }
+  }
+
+  updateStats();
+}
+
+function flash(ok) {
+  $card.classList.remove('ok','ng');
+  void $card.offsetWidth;
+  $card.classList.add(ok?'ok':'ng');
+  setTimeout(()=>$card.classList.remove('ok','ng'), ok?180:280);
+}
+
+function updateStats() {
+  $vs.textContent = score;
+  $vc.textContent = combo;
+  const acc = attempts ? Math.round(correct/attempts*100) : 100;
+  $va.textContent = acc + '%';
+}
+
+function spawnBurst(txt) {
+  const el = document.createElement('div');
+  el.className = 'burst';
+  el.textContent = txt + '🔥';
+  const r = $card.getBoundingClientRect();
+  el.style.left = (r.left+r.width/2)+'px';
+  el.style.top  = (r.top+r.height/2)+'px';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 600);
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 2200);
+}
+
+// prevent double-tap zoom
+let lastTap=0;
+document.addEventListener('touchstart', e=>{
+  const now=Date.now();
+  if (now-lastTap<300) e.preventDefault();
+  lastTap=now;
+},{passive:false});
+
+// ── INIT ──────────────────────────────────────────────────
+buildKeyboard();
+buildKeySelector();
+nextLv1Char();
+// init Lv2 view but hidden
+nextLv2Word();
+$lv2v.classList.add('hidden');
+</script>
+</body>
+</html>
