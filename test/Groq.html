@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Groq Code Generator</title>
+    <style>
+        :root {
+            --bg-color: #f5f7fa;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --accent-color: #24292e;
+            --accent-hover: #444d56;
+            --border-color: #e1e4e8;
+            --success-color: #28a745;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            position: relative;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .icon-btn:hover {
+            background-color: var(--border-color);
+        }
+
+        .icon-btn svg {
+            width: 24px;
+            height: 24px;
+            fill: #586069;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #586069;
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            resize: vertical;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        textarea:focus {
+            border-color: var(--accent-color);
+        }
+
+        .btn {
+            width: 100%;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background var(--accent-hover) 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .btn:disabled {
+            background-color: #9eccf5;
+            cursor: not-allowed;
+        }
+
+        /* 成果物エリア */
+        .output-container {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .copy-btn {
+            background-color: #f6f8fa;
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .copy-btn:hover {
+            background-color: #eff3f6;
+        }
+
+        pre {
+            background-color: #272822;
+            color: #f8f8f2;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: "Courier New", Courier, monospace;
+            font-size: 0.9rem;
+            max-height: 400px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        /* 設定モーダル */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.4);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal {
+            background: white;
+            width: 100%;
+            max-width: 450px;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .modal-body input, .modal-body select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.95rem;
+            margin-bottom: 12px;
+            outline: none;
+        }
+
+        .modal-body input:focus, .modal-body select:focus {
+            border-color: var(--accent-color);
+        }
+
+        /* ローディングアニメーション */
+        .spinner {
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 3px solid #fff;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* スマホ向け調整 */
+        @media (max-width: 480px) {
+            body { padding: 8px; }
+            .container { padding: 16px; border-radius: 8px; }
+            h1 { font-size: 1.1rem; }
+            textarea { height: 100px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Groq Code Generator</h1>
+            <button class="icon-btn" id="openSettings" aria-label="設定">
+                <svg viewBox="0 0 24 24">
+                    <path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3-1.07-3-3s1.07-3 3-3 3 1.07 3 3-1.07 3-3 3z"/>
+                </svg>
+            </button>
+        </header>
+
+        <div class="form-group">
+            <label for="prompt">どのようなコードを作成しますか？</label>
+            <textarea id="prompt" placeholder="例: PythonでCSVファイルを読み込んでグラフ化するスクリプト、Reactのタブ切り替えコンポーネントなど..."></textarea>
+        </div>
+
+        <button class="btn" id="generateBtn">
+            <span class="spinner" id="spinner"></span>
+            <span id="btnText">コードを生成する</span>
+        </button>
+
+        <div class="output-container" id="outputContainer">
+            <div class="output-header">
+                <label>生成されたコード</label>
+                <button class="copy-btn" id="copyBtn">
+                    <span id="copyTxt">コピー</span>
+                </button>
+            </div>
+            <pre><code id="outputCode"></code></pre>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>設定</h2>
+                <button class="icon-btn" id="closeSettings" style="padding:4px;">✕</button>
+            </div>
+            <div class="modal-body">
+                <label for="apiKey">Groq API Key</label>
+                <input type="password" id="apiKey" placeholder="gsk_...">
+
+                <label for="modelSelect">使用モデル</label>
+                <select id="modelSelect">
+                    <option value="llama3-70b-8192">Llama 3 70B (高性能・コード向け)</option>
+                    <option value="llama3-8b-8192">Llama 3 8B (高速・軽量リクエスト向け)</option>
+                    <option value="mixtral-8x7b-32768">Mixtral 8x7b</option>
+                </select>
+                
+                <p style="font-size: 0.75rem; color: #586069; line-height: 1.4; margin-top: 8px;">
+                    ※APIキーはブラウザにのみ保存されます。ソースコード上には保存されないため安全です。
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM要素の取得
+        const openSettingsBtn = document.getElementById('openSettings');
+        const closeSettingsBtn = document.getElementById('closeSettings');
+        const modalOverlay = document.getElementById('modalOverlay');
+        const apiKeyInput = document.getElementById('apiKey');
+        const modelSelect = document.getElementById('modelSelect');
+        const promptInput = document.getElementById('prompt');
+        const generateBtn = document.getElementById('generateBtn');
+        const spinner = document.getElementById('spinner');
+        const btnText = document.getElementById('btnText');
+        const outputContainer = document.getElementById('outputContainer');
+        const outputCode = document.getElementById('outputCode');
+        const copyBtn = document.getElementById('copyBtn');
+        const copyTxt = document.getElementById('copyTxt');
+
+        // ローカルストレージから設定を読み込み
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedKey = localStorage.getItem('groq_api_key');
+            const savedModel = localStorage.getItem('groq_model');
+            if (savedKey) apiKeyInput.value = savedKey;
+            if (savedModel) modelSelect.value = savedModel;
+
+            // 初期状態でキーがなければ設定を開く
+            if (!savedKey) {
+                modalOverlay.classList.add('active');
+            }
+        });
+
+        // 設定の保存
+        const saveSettings = () => {
+            localStorage.setItem('groq_api_key', apiKeyInput.value.trim());
+            localStorage.setItem('groq_model', modelSelect.value);
+        };
+
+        // モーダルの開閉
+        openSettingsBtn.addEventListener('click', () => modalOverlay.classList.add('active'));
+        closeSettingsBtn.addEventListener('click', () => {
+            modalOverlay.classList.remove('active');
+            saveSettings();
+        });
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) {
+                modalOverlay.classList.remove('active');
+                saveSettings();
+            }
+        });
+
+        // コピー機能
+        copyBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(outputCode.textContent);
+                copyTxt.textContent = 'チェック！';
+                copyBtn.style.backgroundColor = '#dcffe4';
+                copyBtn.style.borderColor = '#34d058';
+                setTimeout(() => {
+                    copyTxt.textContent = 'コピー';
+                    copyBtn.style.backgroundColor = '#f6f8fa';
+                    copyBtn.style.borderColor = 'var(--border-color)';
+                }, 2000);
+            } catch (err) {
+                alert('コピーに失敗しました。');
+            }
+        });
+
+        // APIリクエスト処理
+        generateBtn.addEventListener('click', async () => {
+            const rawApiKey = apiKeyInput.value.trim();
+            const prompt = promptInput.value.trim();
+            const model = modelSelect.value;
+
+            // APIキーの未入力チェック
+            if (!rawApiKey) {
+                alert('先に右上の歯車ボタンからGroqのAPIキーを設定してください。');
+                modalOverlay.classList.add('active');
+                return;
+            }
+
+            // APIキー内の空白（スペース）混入チェック
+            if (rawApiKey.includes(' ') || rawApiKey.includes('　')) {
+                alert('APIキーの中に空白（スペース）が含まれています。アンダースコア（_）のコピー漏れなどの可能性がないか確認してください。');
+                modalOverlay.classList.add('active');
+                return;
+            }
+
+            if (!prompt) {
+                alert('指示を入力してください。');
+                return;
+            }
+
+            // ローディング状態開始
+            generateBtn.disabled = true;
+            spinner.style.display = 'block';
+            btnText.textContent = '生成中...';
+            outputContainer.style.display = 'none'; // 新規生成時は一度隠す
+
+            try {
+                const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${rawApiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: model,
+                        messages: [
+                            {
+                                role: 'system',
+                                content: 'あなたは優秀なシニアプログラマーです。ユーザーからの指示に沿ったコードのみを出力してください。挨拶やコードの解説、前置き、まとめ、Markdownのコードブロック記法（```）といった装飾は一切不要です。純粋なソースコードの中身だけを返してください。'
+                            },
+                            {
+                                role: 'user',
+                                content: prompt
+                            }
+                        ],
+                        temperature: 0.2
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error?.message || `APIエラー (Status: ${response.status})`);
+                }
+
+                const data = await response.json();
+                let generatedCode = data.choices[0].message.content;
+
+                // LLMが無視してMarkdown記法（```言語名 ... ```）を含めてきた場合の自動除去
+                // 最初と最後にある ``` を取り除く
+                generatedCode = generatedCode.replace(/^```[a-zA-Z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+
+                // 結果を表示
+                outputCode.textContent = generatedCode;
+                outputContainer.style.display = 'block';
+                
+                // モバイル向けに結果位置までスムーズスクロール
+                outputContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            } catch (error) {
+                console.error(error);
+                alert(`エラーが発生しました: ${error.message}\n\n※無料枠の制限(Rate Limit)に達したか、キーが間違っている可能性があります。`);
+            } finally {
+                // ローディング状態解除
+                generateBtn.disabled = false;
+                spinner.style.display = 'none';
+                btnText.textContent = 'コードを生成する';
+            }
+        });
+    </script>
+</body>
+</html>
