@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kitchen Timer</title>
+  <style>
+    :root {
+      --primary-color: #3498db;
+      --secondary-color: #f1c40f;
+      --background-color: #f9f9f9;
+      --text-color: #333333;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background-color: var(--background-color);
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .timer-display {
+      font-size: 48px;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .preset-buttons {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    button {
+      background-color: var(--primary-color);
+      color: #ffffff;
+      border: none;
+      padding: 8px 16px;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 0 10px;
+    }
+
+    button:hover {
+      background-color: var(--secondary-color);
+    }
+
+    .custom-timer {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    input[type="number"] {
+      width: 50px;
+      height: 30px;
+      font-size: 16px;
+      padding: 5px;
+      margin: 0 10px;
+    }
+
+    .start-stop-button {
+      background-color: var(--primary-color);
+      color: #ffffff;
+      border: none;
+      padding: 8px 16px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .start-stop-button:hover {
+      background-color: var(--secondary-color);
+    }
+  </style>
+</head>
+<body>
+  <div class="timer-display" id="timer-display">00:00</div>
+  <div class="preset-buttons">
+    <button id="5-min-button">5 min</button>
+    <button id="3-min-button">3 min</button>
+  </div>
+  <div class="custom-timer">
+    <input type="number" id="custom-minutes" placeholder="minutes">
+    <button id="custom-button">Custom</button>
+  </div>
+  <button class="start-stop-button" id="start-stop-button">Start</button>
+
+  <script>
+    let timer = null;
+    let remainingTime = 0;
+    let isRunning = false;
+
+    document.getElementById('5-min-button').addEventListener('click', () => {
+      remainingTime = 300;
+      updateDisplay();
+      isRunning = false;
+      document.getElementById('start-stop-button').textContent = 'Start';
+    });
+
+    document.getElementById('3-min-button').addEventListener('click', () => {
+      remainingTime = 180;
+      updateDisplay();
+      isRunning = false;
+      document.getElementById('start-stop-button').textContent = 'Start';
+    });
+
+    document.getElementById('custom-button').addEventListener('click', () => {
+      const customMinutes = parseInt(document.getElementById('custom-minutes').value);
+      if (!isNaN(customMinutes) && customMinutes > 0) {
+        remainingTime = customMinutes * 60;
+        updateDisplay();
+        isRunning = false;
+        document.getElementById('start-stop-button').textContent = 'Start';
+      }
+    });
+
+    document.getElementById('start-stop-button').addEventListener('click', () => {
+      if (isRunning) {
+        clearInterval(timer);
+        isRunning = false;
+        document.getElementById('start-stop-button').textContent = 'Start';
+      } else {
+        if (remainingTime > 0) {
+          timer = setInterval(() => {
+            remainingTime--;
+            updateDisplay();
+            if (remainingTime === 0) {
+              clearInterval(timer);
+              alert('Timer has expired!');
+              const audio = new Audio('https://soundbible.com/grab.php?id=1074&type=mp3');
+              audio.play();
+            }
+          }, 1000);
+          isRunning = true;
+          document.getElementById('start-stop-button').textContent = 'Stop';
+        }
+      }
+    });
+
+    function updateDisplay() {
+      const minutes = Math.floor(remainingTime / 60);
+      const seconds = remainingTime % 60;
+      document.getElementById('timer-display').textContent = `${padZero(minutes)}:${padZero(seconds)}`;
+    }
+
+    function padZero(number) {
+      return (number < 10 ? '0' : '') + number;
+    }
+  </script>
+</body>
+</html>
