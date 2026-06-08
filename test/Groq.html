@@ -208,6 +208,7 @@
                 // --- Phase 1: 親エージェント (要件定義とタスク分割) ---
                 addLog('【Phase 1: 親エージェント】要件を分析し、英語のJSONでタスク分割中... (Model: openai/gpt-oss-20b)');
                 const parentSystemPrompt = `You are an expert System Architect. Analyze the user's request and break it down into parallel implementable tasks. 
+IMPORTANT: Keep the total number of tasks to 5 or fewer to prevent output token limits.
 Return ONLY a valid JSON object with this structure:
 {
   "project_overview_en": "Brief description",
@@ -254,12 +255,12 @@ Please generate the code snippet for your task. ONLY code.`;
                 addLog('✓ 全子エージェントのコーディングが完了しました。');
 
                 // --- Phase 4: 統合エージェント (最終マージ) ---
-                addLog('【Phase 4: 統合エージェント】各コンポーネントを結合し、最終コードを生成中... (Model: llama-3.1-8b-instant)');
+                addLog('【Phase 4: 統合エージェント】各コンポーネントを結合し、最終コードを生成中... (Model: meta-llama/llama-4-scout-17b-16e-instruct)');
                 const integratorSystemPrompt = `You are a Lead Integrator. Merge the provided code snippets into a single, complete, and functional file (e.g., HTML file with embedded CSS/JS). 
 Output ONLY the final raw code. Do NOT use markdown code blocks (\`\`\`). No explanations.`;
                 const integratorUserPrompt = `User's original request: ${userRequest}\n\nHere are the components created by the team:\n${allSnippets}\n\nMerge them into one cohesive file.`;
                 
-                let finalCode = await callGroqAPI('llama-3.1-8b-instant', integratorSystemPrompt, integratorUserPrompt, 0.1);
+                let finalCode = await callGroqAPI('meta-llama/llama-4-scout-17b-16e-instruct', integratorSystemPrompt, integratorUserPrompt, 0.1);
                 
                 // マークダウン除去の安全網
                 finalCode = finalCode.replace(/^```[a-zA-Z]*\n?/m, '').replace(/\n?```$/m, '').trim();
@@ -277,7 +278,6 @@ Output ONLY the final raw code. Do NOT use markdown code blocks (\`\`\`). No exp
                 } else {
                     console.error(error);
                     addLog(`❌ エラー発生: ${error.message}`, 'error');
-                    // エラー時は設定モーダルを開くよう促す場合がある
                     if(error.message.includes("APIキー")) UI.modalOverlay.classList.add('active');
                 }
             } finally {
