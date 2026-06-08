@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="ja" class="h-full w-full overflow-hidden select-none">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Infinite Canvas - MindMap File Board</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+          },
+        },
+      },
+    }
+  </script>
+  <style>
+    /* Custom Scrollbar for Card Content */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+    /* Dot Grid Background */
+    .dot-grid {
+      background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1.5px, transparent 1.5px);
+      background-size: 28px 28px;
+    }
+    /* Card Smooth Transition */
+    .card-transition {
+      transition: transform 0.1s ease-out, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+    /* Pulse animation for active linking */
+    @keyframes pulse-border {
+      0%, 100% { border-color: rgba(99, 102, 241, 0.4); }
+      50% { border-color: rgba(99, 102, 241, 1); }
+    }
+    .linking-active {
+      animation: pulse-border 1.5s infinite;
+    }
+  </style>
+</head>
+<body class="h-full w-full bg-[#0b0f19] text-slate-100 overflow-hidden font-sans antialiased">
+
+  <!-- Canvas Container -->
+  <div id="canvas-container" class="relative w-screen h-screen overflow-hidden cursor-grab active:cursor-grabbing">
+    
+    <!-- Infinite Board -->
+    <div id="board" class="absolute w-[10000px] h-[10000px] dot-grid origin-top-left pointer-events-auto">
+      <!-- SVG Connection Layer -->
+      <svg id="connections-svg" class="absolute inset-0 pointer-events-none w-full h-full">
+        <defs>
+          <linearGradient id="grad-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.6" />
+            <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.6" />
+          </linearGradient>
+          <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" fill="rgba(255,255,255,0.3)" />
+          </marker>
+        </defs>
+      </svg>
+      
+      <!-- Cards Container -->
+      <div id="cards-container" class="absolute inset-0 pointer-events-none"></div>
+    </div>
+
+    <!-- Drag & Drop Overlay -->
+    <div id="drop-overlay" class="absolute inset-0 bg-indigo-950/20 backdrop-blur-sm border-4 border-dashed border-indigo-500/50 m-4 rounded-2xl flex flex-col items-center justify-center opacity-0 pointer-events-none transition-all duration-300 z-40">
+      <div class="p-6 rounded-full bg-indigo-500/10 border border-indigo-500/20 mb-4 animate-bounce">
+        <svg class="w-12 h-12 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+        </svg>
+      </div>
+      <p class="text-xl font-semibold text-indigo-200">ファイルをここにドロップして追加</p>
+      <p class="text-sm text-indigo-400/80 mt-1">テキスト、画像、その他のファイルをマインドマップに展開します</p>
+    </div>
+
+    <!-- Floating UI Controls -->
+    <div class="absolute top-6 left-6 z-50 flex flex-col gap-4 pointer-events-none">
+      <!-- Title & Status -->
+      <div class="bg-slate-900/75 backdrop-blur-md border border-slate-800 px-4 py-3 rounded-xl shadow-xl pointer-events-auto flex items-center gap-4">
+        <div>
+          <h1 class="text-sm font-bold tracking-wider text-slate-200 uppercase">Infinite Canvas</h1>
+          <p class="text-xs text-slate-400">MindMap File Board</p>
+        </div>
+        <div class="h-6 w-px bg-slate-800"></div>
+        <div class="flex items-center gap-2">
+          <span id="save-indicator" class="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] transition-all duration-300"></span>
+          <span class="text-xs text-slate-400" id="save-text">保存済み</span>
+        </div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="bg-slate-900/75 backdrop-blur-md border border-slate-800 p-1.5 rounded-xl shadow-xl pointer-events-auto flex items-center gap-1">
+        <button id="btn-add-card" class="p-2.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors group relative" title="新規テキストカード追加">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          <span class="absolute left-full ml-2 px-2 py-1 bg-slate-950 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">カード追加</span>
+        </button>
+        <button id="btn-reset-view" class="p-2.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors group relative" title="表示位置をリセット">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+          <span class="absolute left-full ml-2 px-2 py-1 bg-slate-950 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">表示リセット</span>
+        </button>
+        <button id="btn-clear-all" class="p-2.5 hover:bg-rose-950/50 rounded-lg text-slate-400 hover:text-rose-400 transition-colors group relative" title="全消去">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          <span class="absolute left-full ml-2 px-2 py-1 bg-slate-950 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">全消去</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Navigation Guide (Bottom Right) -->
+    <div class="absolute bottom-6 right-6 z-50 bg-slate-900/75 backdrop-blur-md border border-slate-800 px-4 py-3 rounded-xl shadow-xl pointer-events-none text-xs text-slate-400 flex flex-col gap-1.5">
+      <div class="flex items-center gap-2">
+        <span class="px-1.5 py-0.5 bg-slate-800 rounded text-slate-200 font-mono">右ドラッグ</span>
+        <span>または</span>
+        <span class="px-1.5 py-0.5 bg-slate-800 rounded text-slate-200 font-mono">Space+ドラッグ</span>
+        <span>: パン移動</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="px-1.5 py-0.5 bg-slate-800 rounded text-slate-200 font-mono">ホイール</span>
+        <span>: ズーム (15% - 300%)</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="px-1.5 py-0.5 bg-slate-800 rounded text-slate-200 font-mono">Shift+クリック</span>
+        <span>: カード同士をリンク</span>
+      </div>
+    </div>
+
+    <!-- Linking Mode Overlay Indicator -->
+    <div id="linking-indicator" class="absolute top-6 left-1/2 -translate-x-1/2 z-50 bg-indigo-600 border border-indigo-400 px-4 py-2 rounded-full shadow-2xl pointer-events-none flex items-center gap-2 transform -translate-y-20 opacity-0 transition-all duration-300">
+      <span class="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-indigo-200 opacity-75"></span>
+      <span class="relative inline-flex rounded-full h-2 w-2 bg-indigo-100"></span>
+      <span class="text-xs font-bold tracking-wide text-white">リンク作成モード: 接続先カードを選択してください (Escでキャンセル)</span>
+    </div>
+
+  </div>
+
+  <script>
+    // --- State Management ---
+    let state = {
+      scale: 1,
+      panX: window.innerWidth / 2 - 5000,
+      panY: window.innerHeight / 2 - 5000,
+      cards: [],
+      links: []
+    };
+
+    // Color Themes Configuration
+    const colorThemes = {
+      slate: {
+        bg: 'rgba(15, 23, 42, 0.65)',
+        border: 'rgba(148, 163, 184, 0.3)',
+        glow: 'rgba(148, 163, 184, 0.1)',
+        dot: 'bg-slate-400'
+      },
+      blue: {
+        bg: 'rgba(30, 58, 138, 0.5)',
+        border: 'rgba(59, 130, 246, 0.5)',
+        glow: 'rgba(59, 130, 246, 0.2)',
+        dot: 'bg-blue-500'
+      },
+      emerald: {
+        bg: 'rgba(6, 78, 59, 0.5)',
+        border: 'rgba(16, 185, 129, 0.5)',
+        glow: 'rgba(16, 185, 129, 0.2)',
+        dot: 'bg-emerald-500'
+      },
+      violet: {
+        bg: 'rgba(76, 29, 149, 0.5)',
+        border: 'rgba(139, 92, 246, 0.5)',
+        glow: 'rgba(139, 92, 246, 0.2)',
+        dot: 'bg-violet-500'
+      },
+      rose: {
+        bg: 'rgba(136, 19, 55, 0.5)',
+        border: 'rgba(244, 63, 94, 0.5)',
+        glow: 'rgba(244, 63, 94, 0.2)',
+        dot: 'bg-rose-500'
+      },
+      amber: {
+        bg: 'rgba(120, 53, 4, 0.5)',
+        border: 'rgba(245, 158, 11, 0.5)',
+        glow: 'rgba(245, 158, 11, 0.2)',
+        dot: 'bg-amber-500'
+      }
+    };
+
+    // DOM Elements
+    const container = document.getElementById('canvas-container');
+    const board = document.getElementById('board');
+    const cardsContainer = document.getElementById('cards-container');
+    const connectionsSvg = document.getElementById('connections-svg');
+    const dropOverlay = document.getElementById('drop-overlay');
+    const saveIndicator = document.getElementById('save-indicator');
+    const saveText = document.getElementById('save-text');
+    const linkingIndicator = document.getElementById('linking-indicator');
+
+    // Dragging & Panning State Variables
+    let isPanning = false;
+    let panStartX = 0;
+    let panStartY = 0;
+    let spacePressed = false;
+
+    let activeDragCard = null;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let cardStartX = 0;
+    let cardStartY = 0;
+
+    let linkingSourceCardId = null;
+
+    // --- Initialization ---
+    window.addEventListener('DOMContentLoaded', () => {
+      loadState();
+      updateTransform();
+      setupCanvasEvents();
+      setupGlobalEvents();
+      setupToolbarEvents();
+      renderAll();
+    });
+
+    // --- LocalStorage Auto-Save ---
+    function saveState() {
+      saveIndicator.classList.remove('bg-emerald-500', 'shadow-[0_0_8px_rgba(16,185,129,0.5)]');
+      saveIndicator.classList.add('bg-amber-500', 'shadow-[0_0_8px_rgba(245,158,11,0.5)]');
+      saveText.textContent = '保存中...';
+
+      localStorage.setItem('infinite_canvas_state', JSON.stringify(state));
+
+      setTimeout(() => {
+        saveIndicator.classList.remove('bg-amber-500', 'shadow-[0_0_8px_rgba(245,158,11,0.5)]');
+        saveIndicator.classList.add('bg-emerald-500', 'shadow-[0_0_8px_rgba(16,185,129,0.5)]');
+        saveText.textContent = '保存済み';
+      }, 600);
+    }
+
+    function loadState() {
+      const saved = localStorage.getItem('infinite_canvas_state');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          state.scale = parsed.scale || 1;
+          state.panX = parsed.panX !== undefined ? parsed.panX : (window.innerWidth / 2 - 5000);
+          state.panY = parsed.panY !== undefined ? parsed.panY : (window.innerHeight / 2 - 5000);
+          state.cards = parsed.cards || [];
+          state.links = parsed.links || [];
+        } catch (e) {
+          console.error("Failed to load state", e);
+        }
+      } else {
+        // Default Cards
+        state.cards = [
+          {
+            id: 'welcome-card',
+            x: 4850,
+            y: 4850,
+            title: 'Welcome to Canvas! 🚀',
+            content: 'ここは無限に広がる思考整理ボードです。\n\n・ファイルを画面全体にドラッグ＆ドロップして追加\n・右クリックドラッグでキャンバスを移動\n・Shift+クリックでカード同士をリンク接続\n・ダブルクリックでテキストを編集可能',
+            color: 'violet',
+            type: 'text'
+          }
+        ];
+        saveState();
+      }
+    }
+
+    // --- Canvas Pan & Zoom ---
+    function updateTransform() {
+      board.style.transform = `translate(${state.panX}px, ${state.panY}px) scale(${state.scale})`;
+    }
+
+    function setupCanvasEvents() {
+      // Prevent Context Menu for Right Click Dragging
+      container.addEventListener('contextmenu', e => e.preventDefault());
+
+      // Mouse Wheel Zoom
+      container.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const rect = container.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        // Calculate board-relative coordinates before zoom
+        const boardX = (mouseX - state.panX) / state.scale;
+        const boardY = (mouseY - state.panY) / state.scale;
+
+        // Zoom factor
+        const zoomFactor = 1.1;
+        if (e.deltaY < 0) {
+          state.scale = Math.min(state.scale * zoomFactor, 3.0);
+        } else {
+          state.scale = Math.max(state.scale / zoomFactor, 0.15);
+        }
+
+        // Adjust pan to keep mouse position anchored
+        state.panX = mouseX - boardX * state.scale;
+        state.panY = mouseY - boardY * state.scale;
+
+        updateTransform();
+        saveState();
+      }, { passive: false });
+
+      // Pointer Down for Pan
+      container.addEventListener('pointerdown', (e) => {
+        // Start pan on right click (2), middle click (1), or left click (0) with Space key
+        if (e.button === 2 || e.button === 1 || (e.button === 0 && spacePressed)) {
+          isPanning = true;
+          panStartX = e.clientX - state.panX;
+          panStartY = e.clientY - state.panY;
+          container.setPointerCapture(e.pointerId);
+          e.stopPropagation();
+        }
+      });
+
+      container.addEventListener('pointermove', (e) => {
+        if (isPanning) {
+          state.panX = e.clientX - panStartX;
+          state.panY = e.clientY - panStartY;
+          updateTransform();
+        }
+      });
+
+      container.addEventListener('pointerup', (e) => {
+        if (isPanning) {
+          isPanning = false;
+          container.releasePointerCapture(e.pointerId);
+          saveState();
+        }
+      });
+    }
+
+    function setupGlobalEvents() {
+      // Space Key Detection
+      window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space') {
+          spacePressed = true;
+          if (document.activeElement.tagName !== 'TEXTAREA' && !document.activeElement.isContentEditable) {
+            e.preventDefault();
+          }
+        }
+        if (e.key === 'Escape') {
+          cancelLinkingMode();
+        }
+      });
+
+      window.addEventListener('keyup', (e) => {
+        if (e.code === 'Space') {
+          spacePressed = false;
+        }
+      });
+
+      // Window Resize
+      window.addEventListener('resize', () => {
+        drawLinks();
+      });
+
+      // File Drag & Drop Setup
+      window.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropOverlay.classList.remove('opacity-0', 'pointer-events-none');
+        dropOverlay.classList.add('opacity-100');
+      });
+
+      const hideOverlay = (e) => {
+        e.preventDefault();
+        dropOverlay.classList.remove('opacity-100');
+        dropOverlay.classList.add('opacity-0', 'pointer-events-none');
+      };
+
+      dropOverlay.addEventListener('dragleave', hideOverlay);
+      dropOverlay.addEventListener('drop', (e) => {
+        hideOverlay(e);
+        handleFileDrop(e);
+      });
+    }
+
+    function setupToolbarEvents() {
+      document.getElementById('btn-add-card').addEventListener('click', () => {
+        // Spawn card at current viewport center
+        const centerX = (window.innerWidth / 2 - state.panX) / state.scale;
+        const centerY = (window.innerHeight / 2 - state.panY) / state.scale;
+        createCard(centerX - 140, centerY - 100, '新規メモ', 'ダブルクリックして編集できます。', 'slate', 'text');
+      });
+
+      document.getElementById('btn-reset-view').addEventListener('click', () => {
+        state.scale = 1;
+        state.panX = window.innerWidth / 2 - 5000;
+        state.panY = window.innerHeight / 2 - 5000;
+        updateTransform();
+        saveState();
+      });
+
+      document.getElementById('btn-clear-all').addEventListener('click', () => {
+        if (confirm('すべてのカードとリンクを削除しますか？')) {
+          state.cards = [];
+          state.links = [];
+          renderAll();
+          saveState();
+        }
+      });
+    }
+
+    // --- File Drop Logic ---
+    function handleFileDrop(e) {
+      const files = e.dataTransfer.files;
+      if (!files.length) return;
+
+      // Calculate drop position in board coordinates
+      const dropX = (e.clientX - state.panX) / state.scale;
+      const dropY = (e.clientY - state.panY) / state.scale;
+
+      Array.from(files).forEach((file, index) => {
+        const offset = index * 40; // Offset multiple files
+        const reader = new FileReader();
+
+        if (file.type.startsWith('image/')) {
+          reader.onload = (event) => {
+            createCard(dropX + offset - 140, dropY + offset - 120, file.name, event.target.result, 'blue', 'image');
+          };
+          reader.readAsDataURL(file);
+        } else if (file.type.startsWith('text/') || file.name.endsWith('.md') || file.name.endsWith('.json')) {
+          reader.onload = (event) => {
+            createCard(dropX + offset - 140, dropY + offset - 100, file.name, event.target.result, 'emerald', 'text');
+          };
+          reader.readAsText(file);
+        } else {
+          // Binary / Other Files
+          const sizeStr = formatBytes(file.size);
+          createCard(dropX + offset - 140, dropY + offset - 80, file.name, `ファイルタイプ: ${file.type || '不明'}\nサイズ: ${sizeStr}`, 'amber', 'file', {
+            size: sizeStr,
+            type: file.type
+          });
+        }
+      });
+    }
+
+    function formatBytes(bytes, decimals = 2) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const dm = decimals < 0 ? 0 : decimals;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
+    // --- Card Management ---
+    function createCard(x, y, title, content, color = 'slate', type = 'text', meta = null) {
+      const card = {
+        id: 'card-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+        x,
+        y,
+        title,
+        content,
+        color,
+        type,
+        meta
+      };
+      state.cards.push(card);
+      renderCard(card);
+      saveState();
+    }
+
+    function deleteCard(id) {
+      state.cards = state.cards.filter(c => c.id !== id);
+      state.links = state.links.filter(l => l.from !== id && l.to !== id);
+      const el = document.getElementById(id);
+      if (el) el.remove();
+      drawLinks();
+      saveState();
+    }
+
+    // --- Rendering Logic ---
+    function renderAll() {
+      cardsContainer.innerHTML = '';
+      state.cards.forEach(card => renderCard(card));
+      drawLinks();
+    }
+
+    function renderCard(card) {
+      const theme = colorThemes[card.color] || colorThemes.slate;
+      
+      const cardEl = document.createElement('div');
+      cardEl.id = card.id;
+      cardEl.className = `absolute pointer-events-auto w-72 rounded-xl border backdrop-blur-md shadow-2xl flex flex-col card-transition select-none`;
+      cardEl.style.left = `${card.x}px`;
+      cardEl.style.top = `${card.y}px`;
+      cardEl.style.backgroundColor = theme.bg;
+      cardEl.style.borderColor = theme.border;
+      cardEl.style.boxShadow = `0 10px 30px -10px ${theme.glow}, 0 1px 1px rgba(255,255,255,0.05) inset`;
+
+      // Card Header
+      const headerEl = document.createElement('div');
+      headerEl.className = 'flex items-center justify-between px-4 py-3 border-b border-white/5 cursor-grab active:cursor-grabbing drag-handle';
+      
+      const titleEl = document.createElement('div');
+      titleEl.className = 'font-semibold text-sm text-slate-100 outline-none truncate w-44';
+      titleEl.contentEditable = true;
+      titleEl.textContent = card.title;
+      titleEl.addEventListener('blur', () => {
+        card.title = titleEl.textContent;
+        saveState();
+      });
+
+      const actionsEl = document.createElement('div');
+      actionsEl.className = 'flex items-center gap-1.5';
+
+      // Link Button
+      const linkBtn = document.createElement('button');
+      linkBtn.className = 'p-1 hover:bg-white/10 rounded text-slate-400 hover:text-indigo-400 transition-colors';
+      linkBtn.innerHTML = `
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+        </svg>
+      `;
+      linkBtn.title = '他のカードと接続 (Shift+クリックでも可)';
+      linkBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        startLinkingMode(card.id);
+      });
+
+      // Delete Button
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'p-1 hover:bg-rose-500/20 rounded text-slate-400 hover:text-rose-400 transition-colors';
+      deleteBtn.innerHTML = `
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+      `;
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteCard(card.id);
+      });
+
+      actionsEl.appendChild(linkBtn);
+      actionsEl.appendChild(deleteBtn);
+      headerEl.appendChild(titleEl);
+      headerEl.appendChild(actionsEl);
+      cardEl.appendChild(headerEl);
+
+      // Card Body
+      const bodyEl = document.createElement('div');
+      bodyEl.className = 'p-4 flex-1 flex flex-col gap-3';
+
+      if (card.type === 'image') {
+        const img = document.createElement('img');
+        img.src = card.content;
+        img.className = 'w-full max-h-48 object-cover rounded-lg border border-white/10 pointer-events-none';
+        bodyEl.appendChild(img);
+      } else if (card.type === 'file') {
+        const fileContainer = document.createElement('div');
+        fileContainer.className = 'flex items-center gap-3 bg-white/5 p-3 rounded-lg border border-white/10';
+        fileContainer.innerHTML = `
+          <div class="p-2 bg-amber-500/20 text-amber-400 rounded-lg">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <div class="overflow-hidden">
+            <p class="text-xs text-slate-400 truncate">${card.meta?.type || 'バイナリファイル'}</p>
+            <p class="text-xs font-semibold text-slate-300">${card.meta?.size || ''}</p>
+          </div>
+        `;
+        bodyEl.appendChild(fileContainer);
+      } else {
+        // Text Card
+        const textEl = document.createElement('div');
+        textEl.className = 'text-sm text-slate-300 outline-none min-h-[80px] max-h-[240px] overflow-y-auto custom-scrollbar whitespace-pre-wrap';
+        textEl.contentEditable = true;
+        textEl.textContent = card.content;
+        textEl.addEventListener('blur', () => {
+          card.content = textEl.textContent;
+          saveState();
+        });
+        bodyEl.appendChild(textEl);
+      }
+
+      cardEl.appendChild(bodyEl);
+
+      // Card Footer (Color Palette)
+      const footerEl = document.createElement('div');
+      footerEl.className = 'px-4 py-2.5 border-t border-white/5 flex items-center justify-between';
+      
+      const paletteEl = document.createElement('div');
+      paletteEl.className = 'flex items-center gap-1.5';
+      
+      Object.keys(colorThemes).forEach(colorName => {
+        const dot = document.createElement('button');
+        dot.className = `w-3.5 h-3.5 rounded-full ${colorThemes[colorName].dot} border border-white/20 hover:scale-125 transition-transform`;
+        if (card.color === colorName) {
+          dot.classList.add('ring-2', 'ring-white', 'ring-offset-1', 'ring-offset-slate-900');
+        }
+        dot.addEventListener('click', (e) => {
+          e.stopPropagation();
+          card.color = colorName;
+          // Update card styles instantly
+          const newTheme = colorThemes[colorName];
+          cardEl.style.backgroundColor = newTheme.bg;
+          cardEl.style.borderColor = newTheme.border;
+          cardEl.style.boxShadow = `0 10px 30px -10px ${newTheme.glow}, 0 1px 1px rgba(255,255,255,0.05) inset`;
+          
+          // Update active dot ring
+          Array.from(paletteEl.children).forEach(child => child.classList.remove('ring-2', 'ring-white', 'ring-offset-1', 'ring-offset-slate-900'));
+          dot.classList.add('ring-2', 'ring-white', 'ring-offset-1', 'ring-offset-slate-900');
+          
+          saveState();
+        });
+        paletteEl.appendChild(dot);
+      });
+
+      footerEl.appendChild(paletteEl);
+      cardEl.appendChild(footerEl);
+
+      // --- Drag & Drop Card Logic ---
+      headerEl.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return; // Left click only
+        if (e.target.closest('button') || e.target.isContentEditable) return;
+
+        activeDragCard = card;
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
+        cardStartX = card.x;
+        cardStartY = card.y;
+
+        cardEl.classList.remove('card-transition');
+        cardEl.style.cursor = 'grabbing';
+        headerEl.style.cursor = 'grabbing';
+
+        window.addEventListener('pointermove', onCardPointerMove);
+        window.addEventListener('pointerup', onCardPointerUp);
+        
+        e.preventDefault();
+        e.stopPropagation();
+      });
+
+      // Shift + Click to Link Shortcut
+      cardEl.addEventListener('click', (e) => {
+        if (e.shiftKey) {
+          e.stopPropagation();
+          if (linkingSourceCardId) {
+            completeLinking(card.id);
+          } else {
+            startLinkingMode(card.id);
+          }
+        } else if (linkingSourceCardId) {
+          e.stopPropagation();
+          completeLinking(card.id);
+        }
+      });
+
+      cardsContainer.appendChild(cardEl);
+    }
+
+    // --- Card Drag Handlers ---
+    function onCardPointerMove(e) {
+      if (!activeDragCard) return;
+      const dx = (e.clientX - dragStartX) / state.scale;
+      const dy = (e.clientY - dragStartY) / state.scale;
+
+      activeDragCard.x = cardStartX + dx;
+      activeDragCard.y = cardStartY + dy;
+
+      const el = document.getElementById(activeDragCard.id);
+      if (el) {
+        el.style.left = `${activeDragCard.x}px`;
+        el.style.top = `${activeDragCard.y}px`;
+      }
+      drawLinks();
+    }
+
+    function onCardPointerUp() {
+      if (activeDragCard) {
+        const el = document.getElementById(activeDragCard.id);
+        if (el) {
+          el.classList.add('card-transition');
+          el.style.cursor = '';
+          const header = el.querySelector('.drag-handle');
+          if (header) header.style.cursor = '';
+        }
+        activeDragCard = null;
+        saveState();
+      }
+      window.removeEventListener('pointermove', onCardPointerMove);
+      window.removeEventListener('pointerup', onCardPointerUp);
+    }
+
+    // --- Linking Mode Logic ---
+    function startLinkingMode(sourceId) {
+      linkingSourceCardId = sourceId;
+      linkingIndicator.classList.remove('-translate-y-20', 'opacity-0');
+      linkingIndicator.classList.add('translate-y-0', 'opacity-100');
+      
+      // Highlight source card
+      const sourceEl = document.getElementById(sourceId);
+      if (sourceEl) {
+        sourceEl.classList.add('linking-active');
+      }
+    }
+
+    function completeLinking(targetId) {
+      if (linkingSourceCardId && linkingSourceCardId !== targetId) {
+        // Check if link already exists
+        const exists = state.links.some(l => 
+          (l.from === linkingSourceCardId && l.to === targetId) || 
+          (l.from === targetId && l.to === linkingSourceCardId)
+        );
+
+        if (!exists) {
+          state.links.push({ from: linkingSourceCardId, to: targetId });
+          drawLinks();
+          saveState();
+        }
+      }
+      cancelLinkingMode();
+    }
+
+    function cancelLinkingMode() {
+      if (linkingSourceCardId) {
+        const sourceEl = document.getElementById(linkingSourceCardId);
+        if (sourceEl) {
+          sourceEl.classList.remove('linking-active');
+        }
+      }
+      linkingSourceCardId = null;
+      linkingIndicator.classList.remove('translate-y-0', 'opacity-100');
+      linkingIndicator.classList.add('-translate-y-20', 'opacity-0');
+    }
+
+    // --- Draw SVG Connections ---
+    function drawLinks() {
+      // Clear existing paths
+      const paths = connectionsSvg.querySelectorAll('path.connection-line');
+      paths.forEach(p => p.remove());
+
+      state.links.forEach(link => {
+        const fromEl = document.getElementById(link.from);
+        const toEl = document.getElementById(link.to);
+
+        if (fromEl && toEl) {
+          const fromCard = state.cards.find(c => c.id === link.from);
+          const toCard = state.cards.find(c => c.id === link.to);
+
+          if (fromCard && toCard) {
+            const wA = fromEl.offsetWidth || 288;
+            const hA = fromEl.offsetHeight || 200;
+            const wB = toEl.offsetWidth || 288;
+            const hB = toEl.offsetHeight || 200;
+
+            // Center points
+            const x1 = fromCard.x + wA / 2;
+            const y1 = fromCard.y + hA / 2;
+            const x2 = toCard.x + wB / 2;
+            const y2 = toCard.y + hB / 2;
+
+            // Draw beautiful cubic bezier curve
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            
+            // Control points
+            const cx1 = x1 + dx * 0.4;
+            const cy1 = y1;
+            const cx2 = x1 + dx * 0.6;
+            const cy2 = y2;
+
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`);
+            path.setAttribute('stroke', 'url(#grad-blue)');
+            path.setAttribute('stroke-width', '2.5');
+            path.setAttribute('fill', 'none');
+            path.setAttribute('class', 'connection-line transition-all duration-300');
+            path.setAttribute('marker-end', 'url(#arrow)');
+            
+            // Double click link to delete it
+            path.style.pointerEvents = 'auto';
+            path.style.cursor = 'pointer';
+            path.addEventListener('mouseenter', () => {
+              path.setAttribute('stroke-width', '4');
+              path.setAttribute('stroke', '#f43f5e'); // Rose glow on hover
+            });
+            path.addEventListener('mouseleave', () => {
+              path.setAttribute('stroke-width', '2.5');
+              path.setAttribute('stroke', 'url(#grad-blue)');
+            });
+            path.addEventListener('dblclick', (e) => {
+              e.stopPropagation();
+              if (confirm('この接続リンクを削除しますか？')) {
+                state.links = state.links.filter(l => l !== link);
+                path.remove();
+                saveState();
+              }
+            });
+
+            connectionsSvg.appendChild(path);
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>
