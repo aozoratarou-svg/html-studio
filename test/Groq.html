@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Agent Code Generator</title>
+    <title>Multi-Agent Code Hub</title>
     <style>
         :root {
             --bg-color: #f5f7fa;
@@ -31,7 +31,7 @@
 
         .form-group { margin-bottom: 16px; }
         label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: #586069; }
-        textarea { width: 100%; height: 100px; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; resize: vertical; font-size: 1rem; outline: none; }
+        textarea { width: 100%; height: 120px; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; resize: vertical; font-size: 1rem; outline: none; }
         textarea:focus { border-color: var(--accent-color); }
 
         .btn-group { display: flex; gap: 10px; margin-bottom: 20px; }
@@ -42,10 +42,11 @@
         .btn-stop:hover { background-color: var(--danger-hover); }
 
         /* ログエリア */
-        .log-container { background: var(--log-bg); color: var(--log-color); padding: 12px; border-radius: 8px; font-family: "Courier New", Courier, monospace; font-size: 0.85rem; height: 150px; overflow-y: auto; margin-bottom: 20px; border: 1px solid #000; }
-        .log-entry { margin-bottom: 4px; }
+        .log-container { background: var(--log-bg); color: var(--log-color); padding: 12px; border-radius: 8px; font-family: "Courier New", Courier, monospace; font-size: 0.85rem; height: 180px; overflow-y: auto; margin-bottom: 20px; border: 1px solid #000; }
+        .log-entry { margin-bottom: 4px; line-height: 1.4; }
         .log-entry.system { color: #aaaaaa; }
-        .log-entry.error { color: #ff5555; }
+        .log-entry.error { color: #ffaa00; } /* 警告色に変更 */
+        .log-entry.fatal { color: #ff5555; }
 
         /* 成果物エリア */
         .output-container { display: none; }
@@ -59,6 +60,13 @@
         .modal { background: white; width: 100%; max-width: 500px; padding: 20px; border-radius: 12px; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
         .modal-body input { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.95rem; margin-bottom: 12px; }
+        
+        /* 全画面プレビュー */
+        #fullscreen-view { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #fff; z-index: 100; }
+        #fullscreen-view iframe { width: 100%; height: 100%; border: none; display: block; }
+        .back-btn { position: fixed; top: 20px; right: 20px; width: 50px; height: 50px; background: rgba(36, 41, 46, 0.9); border: none; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.3); color: white; transition: 0.2s; }
+        .back-btn:hover { transform: scale(1.05); background: #000; }
+        .back-btn svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     </style>
 </head>
 <body>
@@ -79,6 +87,7 @@
         <div class="btn-group">
             <button class="btn" id="generateBtn">🚀 開発開始 (マルチエージェント稼働)</button>
             <button class="btn btn-stop" id="stopBtn">🛑 強制停止</button>
+            <button class="btn" id="previewBtn" style="background-color: #28a745; display: none;">👁️ プレビュー</button>
         </div>
 
         <div class="log-container" id="logContainer">
@@ -103,14 +112,25 @@
             <div class="modal-body">
                 <label for="apiKey">Groq API Key</label>
                 <input type="password" id="apiKey" placeholder="gsk_...">
-                <p style="font-size: 0.8rem; color: #586069;">※使用モデルは内部で最適なもの(gpt-oss-20b, qwen3-32b等)に自動割り当てされます。</p>
+                <p style="font-size: 0.8rem; color: #586069; margin-bottom: 16px;">※使用モデルは内部で最適なものに自動割り当てされます。<br>※制限時は自動で代替モデルに切り替わります。</p>
+                
+                <label for="geminiApiKey">Gemini API Key (最終統合エージェント用)</label>
+                <input type="password" id="geminiApiKey" placeholder="AIza...">
             </div>
         </div>
+    </div>
+
+    <div id="fullscreen-view">
+        <button id="backBtn" class="back-btn" title="入力画面に戻る">
+            <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+        </button>
+        <iframe id="result-frame"></iframe>
     </div>
 
     <script>
         const UI = {
             apiKey: document.getElementById('apiKey'),
+            geminiApiKey: document.getElementById('geminiApiKey'),
             prompt: document.getElementById('prompt'),
             generateBtn: document.getElementById('generateBtn'),
             stopBtn: document.getElementById('stopBtn'),
@@ -119,26 +139,58 @@
             outputCode: document.getElementById('outputCode'),
             copyBtn: document.getElementById('copyBtn'),
             copyTxt: document.getElementById('copyTxt'),
-            modalOverlay: document.getElementById('modalOverlay')
+            modalOverlay: document.getElementById('modalOverlay'),
+            previewBtn: document.getElementById('previewBtn'),
+            fullscreenView: document.getElementById('fullscreen-view'),
+            backBtn: document.getElementById('backBtn'),
+            resultFrame: document.getElementById('result-frame'),
+            mainContainer: document.querySelector('.container')
         };
 
         let abortController = null;
+        let executionState = {
+            phase: 1,
+            projectPlan: null,
+            designGuidelines: null,
+            tasks: [],
+            lastPrompt: ""
+        };
 
-        // 初期設定ロード
-        window.addEventListener('DOMContentLoaded', () => {
-            const savedKey = localStorage.getItem('groq_api_key_multi');
-            if (savedKey) UI.apiKey.value = savedKey;
-            else UI.modalOverlay.classList.add('active');
+        UI.prompt.addEventListener('input', () => {
+            if (UI.prompt.value.trim() !== executionState.lastPrompt) {
+                UI.generateBtn.textContent = "🚀 開発開始 (マルチエージェント稼働)";
+            } else if (executionState.phase > 1 && executionState.phase < 5) {
+                UI.generateBtn.textContent = "🔄 中断箇所から再開する";
+            }
         });
 
-        // モーダル制御
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedKey = localStorage.getItem('groq_api_key_multi');
+            const savedGeminiKey = localStorage.getItem('gemini_api_key_multi');
+            
+            if (savedKey) UI.apiKey.value = savedKey;
+            if (savedGeminiKey) UI.geminiApiKey.value = savedGeminiKey;
+            
+            if (!savedKey || !savedGeminiKey) UI.modalOverlay.classList.add('active');
+        });
+
         document.getElementById('openSettings').addEventListener('click', () => UI.modalOverlay.classList.add('active'));
         document.getElementById('closeSettings').addEventListener('click', () => {
             UI.modalOverlay.classList.remove('active');
             localStorage.setItem('groq_api_key_multi', UI.apiKey.value.trim());
+            localStorage.setItem('gemini_api_key_multi', UI.geminiApiKey.value.trim());
         });
 
-        // ログ出力関数
+        UI.previewBtn.addEventListener('click', () => {
+            UI.mainContainer.style.display = 'none';
+            UI.fullscreenView.style.display = 'block';
+        });
+
+        UI.backBtn.addEventListener('click', () => {
+            UI.fullscreenView.style.display = 'none';
+            UI.mainContainer.style.display = 'block';
+        });
+
         function addLog(message, type = 'normal') {
             const div = document.createElement('div');
             div.className = `log-entry ${type}`;
@@ -148,12 +200,10 @@
             UI.logContainer.scrollTop = UI.logContainer.scrollHeight;
         }
 
-        // 汎用APIコール関数
         async function callGroqAPI(model, systemPrompt, userPrompt, temperature, jsonMode = false) {
             const rawApiKey = UI.apiKey.value.trim();
-            // APIキーの空白（スペース・全角スペース）混入チェック
-            if (!rawApiKey || rawApiKey.includes(' ') || rawApiKey.includes('　')) {
-                throw new Error("APIキーが未入力、または空白が含まれています。アンダースコア(_)の確認をしてください。");
+            if (!rawApiKey || rawApiKey.includes(' ') || rawApiKey.includes(' ')) {
+                throw new Error("APIキーが未入力、または空白が含まれています。");
             }
 
             const body = {
@@ -188,14 +238,62 @@
             return data.choices[0].message.content;
         }
 
-        // メイン処理パイプライン
+        async function callGeminiAPI(model, systemPrompt, userPrompt, temperature) {
+            const rawApiKey = UI.geminiApiKey.value.trim();
+            if (!rawApiKey || rawApiKey.includes(' ')) {
+                throw new Error("Gemini APIキーが未入力、または空白が含まれています。");
+            }
+
+            const body = {
+                system_instruction: {
+                    parts: [{ text: systemPrompt }]
+                },
+                contents: [
+                    { role: "user", parts: [{ text: userPrompt }] }
+                ],
+                generationConfig: {
+                    temperature: temperature
+                }
+            };
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${rawApiKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body),
+                signal: abortController.signal
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(`Gemini API Error (${response.status}): ${errorData.error?.message || 'Unknown error'}`);
+            }
+
+            const data = await response.json();
+            return data.candidates[0].content.parts[0].text;
+        }
+
         UI.generateBtn.addEventListener('click', async () => {
             const userRequest = UI.prompt.value.trim();
             if (!userRequest) { alert('要件を入力してください。'); return; }
 
-            // UIリセット＆状態変更
+            if (executionState.lastPrompt !== userRequest || executionState.phase === 5) {
+                executionState = {
+                    phase: 1,
+                    projectPlan: null,
+                    designGuidelines: null,
+                    tasks: [],
+                    lastPrompt: userRequest
+                };
+                UI.logContainer.innerHTML = '';
+            } else if (executionState.phase > 1) {
+                addLog('🔄 前回の中断箇所から処理を再開します...', 'system');
+            } else {
+                UI.logContainer.innerHTML = '';
+            }
+
             UI.outputContainer.style.display = 'none';
-            UI.logContainer.innerHTML = '';
             UI.generateBtn.disabled = true;
             UI.generateBtn.style.display = 'none';
             UI.stopBtn.style.display = 'block';
@@ -203,99 +301,143 @@
             abortController = new AbortController();
 
             try {
-                addLog('🚀 開発プロジェクト始動...', 'system');
+                if (executionState.phase === 1) {
+                    addLog('🚀 開発プロジェクト始動...', 'system');
 
-                // --- Phase 1: 親エージェント (要件定義とタスク分割) ---
-                addLog('【Phase 1: 親エージェント】要件を分析し、英語のJSONでタスク分割中... (Model: openai/gpt-oss-20b)');
-                const parentSystemPrompt = `You are an expert System Architect. Analyze the user's request and break it down into parallel implementable tasks. 
-IMPORTANT: Keep the total number of tasks to 5 or fewer to prevent output token limits.
-Return ONLY a valid JSON object with this structure:
+                    // --- Phase 1: 親エージェント ---
+                    addLog('【Phase 1: 親エージェント】要件を分析中... (Model: openai/gpt-oss-20b)');
+                    const currentYear = new Date().getFullYear();
+                    const parentSystemPrompt = `You are an expert System Architect. Analyze the user's request and break it down into parallel implementable tasks. 
+IMPORTANT: Keep the total number of tasks to 5 or fewer.
+Assume the current year is ${currentYear}.
+You MUST output ONLY a valid JSON object. Do NOT wrap the JSON in markdown code blocks.
+If the user provides raw code, DO NOT include raw code inside the JSON.
+Use exactly this JSON structure:
 {
   "project_overview_en": "Brief description",
   "tasks": [
-    { "id": "task_1", "role": "logic or ui or data", "instruction_en": "Detailed technical instruction for this specific component." }
+    { "id": "task_1", "role": "logic or ui", "instruction_en": "Detailed technical instruction" }
   ]
 }`;
-                const parentRawResponse = await callGroqAPI('openai/gpt-oss-20b', parentSystemPrompt, userRequest, 0.2, true);
-                const projectPlan = JSON.parse(parentRawResponse);
-                addLog(`✓ 親エージェント完了: ${projectPlan.tasks.length}個のタスクに分割しました。`);
+                    const parentRawResponse = await callGroqAPI('openai/gpt-oss-20b', parentSystemPrompt, userRequest, 0.2, true);
+                    const sanitizedResponse = parentRawResponse.replace(/^```[a-zA-Z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+                    executionState.projectPlan = JSON.parse(sanitizedResponse);
+                    executionState.tasks = executionState.projectPlan.tasks.map(t => ({...t, status: 'pending', code: null}));
+                    addLog(`✓ 親エージェント完了: ${executionState.tasks.length}個のタスクに分割しました。`);
+                    executionState.phase = 2;
+                }
 
-                // --- Phase 2: デザイナーエージェント (UI/UX指針) ---
-                addLog('【Phase 2: デザイナー】UI/UXのガイドラインを策定中... (Model: meta-llama/llama-4-scout-17b-16e-instruct)');
-                const designerSystemPrompt = "You are a Lead UI/UX Designer. Based on the project overview, define color codes, layout structures, and modern CSS/UI guidelines in English. Keep it concise.";
-                const designGuidelines = await callGroqAPI('meta-llama/llama-4-scout-17b-16e-instruct', designerSystemPrompt, projectPlan.project_overview_en, 0.4);
-                addLog('✓ デザイナー完了: デザイン指針を策定しました。');
+                if (executionState.phase === 2) {
+                    // --- Phase 2: デザイナーエージェント ---
+                    addLog('【Phase 2: デザイナー】UI/UXのガイドラインを策定中... (Model: meta-llama/llama-4-scout-17b-16e-instruct)');
+                    const designerSystemPrompt = "You are a Lead UI/UX Designer. Based on the project overview, define color codes, layout structures, and modern CSS guidelines in English. Keep it concise.";
+                    executionState.designGuidelines = await callGroqAPI('meta-llama/llama-4-scout-17b-16e-instruct', designerSystemPrompt, executionState.projectPlan.project_overview_en, 0.4);
+                    addLog('✓ デザイナー完了: デザイン指針を策定しました。');
+                    executionState.phase = 3;
+                }
 
-                // --- Phase 3: 子エージェント群 (並列コーディング) ---
-                addLog(`【Phase 3: 子エージェント】${projectPlan.tasks.length}名のエージェントを召喚し、並列コーディングを開始...`);
-                
-                // タスクごとにPromiseを生成して並列実行
-                const codingPromises = projectPlan.tasks.map(async (task) => {
-                    // 役割に応じてモデルを変更
-                    const model = task.role.includes('logic') ? 'qwen/qwen3-32b' : 'meta-llama/llama-4-scout-17b-16e-instruct';
-                    addLog(`  -> [Task ${task.id}] (${model}) に依頼中...`);
+                if (executionState.phase === 3) {
+                    // --- Phase 3: 子エージェント群 (並列 + 自動フォールバック) ---
+                    const pendingTasks = executionState.tasks.filter(t => t.status !== 'completed');
+                    addLog(`【Phase 3: 子エージェント】${pendingTasks.length}名のエージェントを召喚し、並列コーディングを開始...`);
                     
-                    const childSystemPrompt = `You are an expert programmer. Output ONLY the raw source code based on the instructions. NO markdown formatting, NO explanations.`;
-                    const childUserPrompt = `
-Project Overview: ${projectPlan.project_overview_en}
-Design Guidelines: ${designGuidelines}
+                    const codingPromises = pendingTasks.map(async (task) => {
+                        const primaryModel = task.role.includes('logic') ? 'qwen/qwen3-32b' : 'meta-llama/llama-4-scout-17b-16e-instruct';
+                        const fallbackModel = 'meta-llama/llama-4-scout-17b-16e-instruct'; // 制限が緩いモデルを控えに
+                        
+                        addLog(`  -> [Task ${task.id}] (${primaryModel}) に依頼中...`);
+                        
+                        const childSystemPrompt = `You are an expert programmer. Output ONLY the raw source code based on the instructions. NO markdown formatting, NO explanations.`;
+                        const childUserPrompt = `
+Project Overview: ${executionState.projectPlan.project_overview_en}
+Design Guidelines: ${executionState.designGuidelines}
+Original User Request (may contain reference code): ${userRequest}
 
 Your Specific Task: ${task.instruction_en}
 
 Please generate the code snippet for your task. ONLY code.`;
 
-                    const codeSnippet = await callGroqAPI(model, childSystemPrompt, childUserPrompt, 0.1);
-                    addLog(`  ✓ [Task ${task.id}] 完了！`);
-                    return `/* --- Component: ${task.id} --- */\n${codeSnippet}\n`;
-                });
+                        try {
+                            const codeSnippet = await callGroqAPI(primaryModel, childSystemPrompt, childUserPrompt, 0.1);
+                            addLog(`  ✓ [Task ${task.id}] 完了！`);
+                            task.code = `/* --- Component: ${task.id} --- */\n${codeSnippet}\n`;
+                            task.status = 'completed';
+                        } catch (error) {
+                            if (error.message.includes('429')) {
+                                addLog(`  ⚠️ [Task ${task.id}] 制限到達(429)。代替モデル(${fallbackModel})で引き継ぎます...`, 'error');
+                                const fallbackCode = await callGroqAPI(fallbackModel, childSystemPrompt, childUserPrompt, 0.1);
+                                addLog(`  ✓ [Task ${task.id}] (代替モデル) 完了！`);
+                                task.code = `/* --- Component: ${task.id} --- */\n${fallbackCode}\n`;
+                                task.status = 'completed';
+                            } else {
+                                throw error;
+                            }
+                        }
+                    });
 
-                // 並列処理の完了を待つ
-                const completedCodes = await Promise.all(codingPromises);
-                const allSnippets = completedCodes.join('\n');
-                addLog('✓ 全子エージェントのコーディングが完了しました。');
+                    await Promise.all(codingPromises);
+                    addLog('✓ 全子エージェントのコーディングが完了しました。');
+                    executionState.phase = 4;
+                }
 
-                // --- Phase 4: 統合エージェント (最終マージ) ---
-                addLog('【Phase 4: 統合エージェント】各コンポーネントを結合し、最終コードを生成中... (Model: meta-llama/llama-4-scout-17b-16e-instruct)');
-                const integratorSystemPrompt = `You are a Lead Integrator. Merge the provided code snippets into a single, complete, and functional file (e.g., HTML file with embedded CSS/JS). 
+                if (executionState.phase === 4) {
+                    // --- Phase 4: 統合エージェント ---
+                    addLog('【Phase 4: 統合エージェント】各コンポーネントを結合し、最終コードを生成中... (Model: gemini-3.5-flash)');
+                    const integratorSystemPrompt = `You are a Lead Integrator. Merge the provided code snippets into a single, complete, and functional file (e.g., HTML file with embedded CSS/JS). 
+CRITICAL: Do NOT use placeholders. The final product must be highly polished, visually stunning, and work perfectly out of the box.
 Output ONLY the final raw code. Do NOT use markdown code blocks (\`\`\`). No explanations.`;
-                const integratorUserPrompt = `User's original request: ${userRequest}\n\nHere are the components created by the team:\n${allSnippets}\n\nMerge them into one cohesive file.`;
-                
-                let finalCode = await callGroqAPI('meta-llama/llama-4-scout-17b-16e-instruct', integratorSystemPrompt, integratorUserPrompt, 0.1);
-                
-                // マークダウン除去の安全網
-                finalCode = finalCode.replace(/^```[a-zA-Z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+                    
+                    const allSnippets = executionState.tasks.map(t => t.code).join('\n');
+                    const integratorUserPrompt = `User's original request: ${userRequest}\n\nHere are the components created by the team:\n${allSnippets}\n\nMerge them into one cohesive file. Make sure all CSS, JS, and HTML are properly enclosed in their respective tags.`;
+                    
+                    let finalCode = await callGeminiAPI('gemini-3.5-flash', integratorSystemPrompt, integratorUserPrompt, 0.1);
+                    
+                    finalCode = finalCode.replace(/^```[a-zA-Z]*\n?/m, '').replace(/\n?```$/m, '').trim();
 
-                addLog('🎉 全工程完了！成果物を出力します。', 'system');
+                    addLog('🎉 全工程完了！成果物を出力します。', 'system');
 
-                // 結果表示
-                UI.outputCode.textContent = finalCode;
-                UI.outputContainer.style.display = 'block';
-                UI.outputContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    UI.outputCode.textContent = finalCode;
+                    UI.outputContainer.style.display = 'block';
+                    UI.outputContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    UI.previewBtn.style.display = 'block';
+
+                    const frameDoc = UI.resultFrame.contentDocument || UI.resultFrame.contentWindow.document;
+                    frameDoc.open();
+                    frameDoc.write(finalCode);
+                    frameDoc.close();
+
+                    UI.mainContainer.style.display = 'none';
+                    UI.fullscreenView.style.display = 'block';
+                    executionState.phase = 5;
+                }
 
             } catch (error) {
                 if (error.name === 'AbortError') {
-                    addLog('🛑 ユーザーによって処理が強制停止されました。', 'error');
+                    addLog('🛑 ユーザーによって処理が強制停止されました。', 'fatal');
                 } else {
                     console.error(error);
-                    addLog(`❌ エラー発生: ${error.message}`, 'error');
+                    addLog(`❌ エラー発生: ${error.message}`, 'fatal');
                     if(error.message.includes("APIキー")) UI.modalOverlay.classList.add('active');
                 }
             } finally {
-                // UIリセット
                 UI.generateBtn.disabled = false;
                 UI.generateBtn.style.display = 'block';
                 UI.stopBtn.style.display = 'none';
+                
+                if (executionState.phase > 1 && executionState.phase < 5) {
+                    UI.generateBtn.textContent = "🔄 中断箇所から再開する";
+                } else {
+                    UI.generateBtn.textContent = "🚀 開発開始 (マルチエージェント稼働)";
+                }
             }
         });
 
-        // 強制停止処理
         UI.stopBtn.addEventListener('click', () => {
             if (abortController) {
                 abortController.abort();
             }
         });
 
-        // コピー機能
         UI.copyBtn.addEventListener('click', async () => {
             try {
                 await navigator.clipboard.writeText(UI.outputCode.textContent);
