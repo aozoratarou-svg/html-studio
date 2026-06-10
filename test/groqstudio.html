@@ -200,34 +200,11 @@
             UI.logContainer.scrollTop = UI.logContainer.scrollHeight;
         }
 
-        async function callGroqAPI(model, systemPrompt, userPrompt, temperature, jsonMode = false) {
+        async function callGroqAPI(models, systemPrompt, userPrompt, temperature, jsonMode = false) {
             const rawApiKey = UI.apiKey.value.trim();
-            if (!rawApiKey || rawApiKey.includes(' ') || rawApiKey.includes(' ')) {
+            if (!rawApiKey || rawApiKey.includes(' ')) {
                 throw new Error("APIキーが未入力、または空白が含まれています。");
             }
-
-            const body = {
-                model: model,
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userPrompt }
-                ],
-                temperature: temperature
-            };
-
-            if (jsonMode) {
-                body.response_format = { type: "json_object" };
-            }
-
-            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${rawApiKey}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(body),
-                signal: abortController.signal
-            });
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
@@ -305,7 +282,7 @@
                     addLog('🚀 開発プロジェクト始動...', 'system');
 
                     // --- Phase 1: 親エージェント ---
-                    addLog('【Phase 1: 親エージェント】要件を分析中... (Model: openai/gpt-oss-20b)');
+                    addLog('【Phase 1: 親エージェント】要件を分析中...');
                     const currentYear = new Date().getFullYear();
                     const parentSystemPrompt = `You are an expert System Architect. Analyze the user's request and break it down into parallel implementable tasks. 
 IMPORTANT: Keep the total number of tasks to 5 or fewer.
@@ -319,7 +296,8 @@ Use exactly this JSON structure:
     { "id": "task_1", "role": "logic or ui", "instruction_en": "Detailed technical instruction" }
   ]
 }`;
-                    const parentRawResponse = await callGroqAPI('openai/gpt-oss-20b', parentSystemPrompt, userRequest, 0.2, true);
+                    const parentModels = ['openai/gpt-oss-20b', 'llama-3.1-70b-versatile', 'llama3-70b-8192', 'mixtral-8x7b-32768'];
+                    const parentRawResponse = await callGroqAPI(parentModels, parentSystemPrompt, userRequest, 0.2, true);
                     const sanitizedResponse = parentRawResponse.replace(/^```[a-zA-Z]*\n?/m, '').replace(/\n?```$/m, '').trim();
                     executionState.projectPlan = JSON.parse(sanitizedResponse);
                     executionState.tasks = executionState.projectPlan.tasks.map(t => ({...t, status: 'pending', code: null}));
@@ -329,9 +307,10 @@ Use exactly this JSON structure:
 
                 if (executionState.phase === 2) {
                     // --- Phase 2: デザイナーエージェント ---
-                    addLog('【Phase 2: デザイナー】UI/UXのガイドラインを策定中... (Model: meta-llama/llama-4-scout-17b-16e-instruct)');
+                    addLog('【Phase 2: デザイナー】UI/UXのガイドラインを策定中...');
                     const designerSystemPrompt = "You are a Lead UI/UX Designer. Based on the project overview, define color codes, layout structures, and modern CSS guidelines in English. Keep it concise.";
-                    executionState.designGuidelines = await callGroqAPI('meta-llama/llama-4-scout-17b-16e-instruct', designerSystemPrompt, executionState.projectPlan.project_overview_en, 0.4);
+                    const designerModels = ['meta-llama/llama-4-scout-17b-16e-instruct', 'llama-3.1-70b-versatile', 'llama3-70b-8192', 'mixtral-8x7b-32768'];
+                    executionState.designGuidelines = await callGroqAPI(designerModels, designerSystemPrompt, executionState.projectPlan.project_overview_en, 0.4);
                     addLog('✓ デザイナー完了: デザイン指針を策定しました。');
                     executionState.phase = 3;
                 }
@@ -343,9 +322,9 @@ Use exactly this JSON structure:
                     
                     const codingPromises = pendingTasks.map(async (task) => {
                         const primaryModel = task.role.includes('logic') ? 'qwen/qwen3-32b' : 'meta-llama/llama-4-scout-17b-16e-instruct';
-                        const fallbackModel = 'meta-llama/llama-4-scout-17b-16e-instruct'; // 制限が緩いモデルを控えに
+                        const childModels = [primaryModel, 'llama-3.1-70b-versatile', 'llama3-70b-8192', 'llama3-8b-8192', 'mixtral-8x7b-32768'];
                         
-                        addLog(`  -> [Task ${task.id}] (${primaryModel}) に依頼中...`);
+                        addLog(`  -> [Task ${task.id}] に依頼中...`);
                         
                         const childSystemPrompt = `You are an expert programmer. Output ONLY the raw source code based on the instructions. NO markdown formatting, NO explanations.`;
                         const childUserPrompt = `
@@ -358,20 +337,13 @@ Your Specific Task: ${task.instruction_en}
 Please generate the code snippet for your task. ONLY code.`;
 
                         try {
-                            const codeSnippet = await callGroqAPI(primaryModel, childSystemPrompt, childUserPrompt, 0.1);
+                            const codeSnippet = await callGroqAPI(childModels, childSystemPrompt, childUserPrompt, 0.1);
                             addLog(`  ✓ [Task ${task.id}] 完了！`);
                             task.code = `/* --- Component: ${task.id} --- */\n${codeSnippet}\n`;
                             task.status = 'completed';
                         } catch (error) {
-                            if (error.message.includes('429')) {
-                                addLog(`  ⚠️ [Task ${task.id}] 制限到達(429)。代替モデル(${fallbackModel})で引き継ぎます...`, 'error');
-                                const fallbackCode = await callGroqAPI(fallbackModel, childSystemPrompt, childUserPrompt, 0.1);
-                                addLog(`  ✓ [Task ${task.id}] (代替モデル) 完了！`);
-                                task.code = `/* --- Component: ${task.id} --- */\n${fallbackCode}\n`;
-                                task.status = 'completed';
-                            } else {
-                                throw error;
-                            }
+                            addLog(`  ❌ [Task ${task.id}] エラー: ${error.message}`, 'fatal');
+                            throw error;
                         }
                     });
 
