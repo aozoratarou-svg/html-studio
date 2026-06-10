@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MULTI STUDIO">
+    <title>MULTI AGENT & HTML STUDIO</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #000; --fg: #fff; --red: #e52521; --blue: #0047BB;
+            --green: #33ff33; --gray: #444; --bdr: 2px solid #fff; --shd: 2px 2px 0px #fff;
+        }
+        body {
+            background: var(--bg); color: var(--fg); font-family: 'DotGothic16', sans-serif;
+            margin: 0; padding: max(10px, env(safe-area-inset-top)) 12px max(10px, env(safe-area-inset-bottom)) 12px;
+            box-sizing: border-box; display: flex; flex-direction: column; min-height: 100vh; overflow-x: hidden;
+        }
+        h1 { text-align: center; font-size: 1.2rem; color: var(--red); text-shadow: 2px 2px 0 #fff; margin: 5px 0 12px; letter-spacing: 1px; white-space: nowrap; }
+        
+        .tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-shrink: 0; }
+        .tab-btn { flex: 1; background: var(--bg); color: var(--fg); border: var(--bdr); font-family: inherit; padding: 8px 0; font-size: .85rem; cursor: pointer; box-shadow: var(--shd); white-space: nowrap; user-select: none; }
+        .tab-btn.active { background: var(--fg); color: var(--bg); box-shadow: none; transform: translate(2px, 2px); }
+        .panel { display: none; border: var(--bdr); padding: 10px; margin-bottom: 10px; box-sizing: border-box; background: var(--bg); position: relative; width: 100%; }
+        .panel.active { display: flex; flex-direction: column; }
+        .panel-borderless { border: none; padding: 0; }
+        
+        #panel-edit { flex: 1; }
+        #panel-output { flex: 1; border: var(--bdr); padding: 10px; background: #000; }
+        #panel-preview-full { display: none; flex-direction: column; position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 99999; margin: 0; border: none; padding: 0; background: var(--bg); }
+        #panel-preview-full.active { display: flex; }
+
+        /* 共通レイアウト */
+        .flex-row { display: flex; gap: 6px; align-items: center; width: 100%; }
+        .section-header-row { display: flex; justify-content: space-between; align-items: center; margin: 10px 0 4px; }
+        .section-header-title { font-size: .9rem; color: #fff; font-weight: bold; letter-spacing: 1px; margin: 0; }
+        .editor-container { width: 100%; flex-grow: 1; display: flex; flex-direction: column; }
+
+        /* 入力フィールド */
+        textarea, input[type="text"], input[type="password"], select { width: 100%; background: #0000AA; color: #fff; border: var(--bdr); padding: 8px; font-family: 'DotGothic16', monospace; font-size: 1rem; line-height: 1.4; resize: none; outline: none; box-sizing: border-box; }
+        textarea:focus, input:focus, select:focus { border-color: var(--red); }
+        textarea::placeholder { color: #aaa; }
+        #userInput { height: 110px; flex-shrink: 0; margin-bottom: 8px; }
+        #code-editor { flex-grow: 1; min-height: 25vh; }
+        iframe { width: 100%; flex-grow: 1; background: #fff; border: none; }
+
+        /* ボタン */
+        .editor-inline-btn { background: var(--gray); color: var(--fg); border: 1px solid #fff; font-family: inherit; padding: 2px 8px; cursor: pointer; font-size: .8rem; margin-left: 4px; }
+        .editor-inline-btn:active { background: #666; }
+        .fullscreen-toolbar { position: absolute; top: max(12px, env(safe-area-inset-top)); right: 12px; z-index: 100000; }
+        .fullscreen-close-btn { background: var(--red); box-shadow: 2px 2px 4px rgba(0,0,0,.5); font-weight: bold; border: 2px solid #fff; color: #fff; padding: 4px 10px; font-family: inherit; cursor: pointer; }
+
+        /* Web Components - 状態・アクション */
+        agent-status-board { display: block; background: #000; border: 2px dashed #fff; padding: 6px; margin-bottom: 8px; font-size: .85rem; max-height: 120px; overflow-y: auto; flex-shrink: 0; }
+        agent-status-board:empty { display: none; }
+        .agent-status { margin: 2px 0; }
+        .status-wait { color: #aaa; }
+        .status-run { color: #f39c12; animation: blink 1s infinite; }
+        .status-done { color: #2ecc71; }
+        .status-err { color: #e74c3c; }
+        @keyframes blink { 50% { opacity: .5; } }
+
+        action-buttons { display: flex; gap: 6px; margin-bottom: 8px; flex-shrink: 0; }
+        .btn-action { flex: 1; padding: 10px 2px; font-size: .85rem; text-align: center; white-space: nowrap; color: #fff; border-color: #fff; box-shadow: var(--shd); }
+        .red { background: var(--red); }
+        .blue { background: var(--blue); }
+        .gray { background: var(--gray); }
+        .btn-action:active { transform: translate(2px, 2px); box-shadow: none; }
+        .btn-action:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: var(--shd); }
+
+        /* Web Components - Github, Output, Config */
+        github-manager { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+        .gh-btn { padding: 8px 4px; font-family: inherit; font-size: .85rem; cursor: pointer; border: 2px solid #fff; color: #fff; box-sizing: border-box; height: 36px; white-space: nowrap; text-align: center; }
+        .gh-btn-narrow { width: 52px; font-size: .8rem; padding: 8px 1px; }
+        .gh-input-text { flex-grow: 1; background: #222 !important; border: 2px solid #fff !important; height: 36px !important; font-size: .85rem !important; padding: 4px 6px !important; }
+        .gh-select-box { flex-grow: 1; color: var(--green) !important; background: #000 !important; border: 2px solid #fff !important; height: 36px !important; font-size: .8rem !important; padding: 4px 2px !important; }
+        .gh-sync-btn { width: 36px; height: 36px; background: #335577; border: 2px solid #fff; color: #fff; font-size: .9rem; cursor: pointer; }
+
+        output-console { display: block; width: 100%; flex-grow: 1; background: #000; color: #fff; font-family: 'DotGothic16', monospace; font-size: .95rem; line-height: 1.5; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; }
+        .console-toolbar { display: flex; gap: 6px; margin-bottom: 6px; flex-shrink: 0; width: 100%; }
+        .console-toolbar-btn { padding: 6px; font-size: .82rem; margin-bottom: 0; flex: 1; white-space: nowrap; }
+        .section-title { color: var(--red); margin: 12px 0 4px; font-weight: bold; }
+        .section-title:first-child { margin-top: 0; }
+        .constitution-text { color: #f1c40f; font-style: italic; background: #222; padding: 5px 8px; border-left: 3px solid #f1c40f; margin-bottom: 5px; }
+        .audit-text { color: #2ecc71; }
+        .sys-log { color: #0f3; font-size: .85rem; border-bottom: 1px dashed #333; padding: 2px 0; }
+        .error-msg { color: #e74c3c; margin-top: 10px; }
+
+        .config-item { margin-bottom: 10px; box-sizing: border-box; width: 100%; }
+        .config-item label { display: block; font-size: .85rem; margin-bottom: 3px; color: var(--red); }
+        .config-warning-text { font-size: .75rem; color: #f1c40f; margin-bottom: 2px; }
+    </style>
+</head>
+<body>
+    <h1>MULTI AGENT & HTML STUDIO</h1>
+    <div class="tabs">
+        <button id="tab-edit-btn" class="tab-btn active" onclick="switchTab('edit')" aria-label="つくるタブ">🔨つくる</button>
+        <button id="tab-output-btn" class="tab-btn" onclick="switchTab('output')" aria-label="AIコンソールタブ">🧠AIコンソール</button>
+        <button id="tab-preview-full-btn" class="tab-btn" onclick="switchTab('preview-full')" aria-label="プレビュータブ">👁みる</button>
+        <button id="tab-config-btn" class="tab-btn" onclick="switchTab('config')" aria-label="設定タブ">⚙️せってい</button>
+    </div>
+
+    <div id="panel-edit" class="panel panel-borderless active">
+        <div class="section-header-row">
+            <div class="section-header-title">▼ GENERATOR</div>
+            <div>
+                <button class="editor-inline-btn" onclick="applyTemplate(1)" aria-label="定型文1を適用">⚡定型1</button>
+                <button class="editor-inline-btn" onclick="applyTemplate(2)" aria-label="定型文2を適用">⚡定型2</button>
+            </div>
+        </div>
+        <textarea id="userInput" placeholder="▶AIニ 何ヲ サセマスカ？ (例: 19世紀の学術書風の美しいタイマーアプリを作って)"></textarea>
+        
+        <agent-status-board></agent-status-board>
+        
+        <action-buttons>
+            <button class="btn btn-action red" data-action="swarms" aria-label="Swarmsモードで実行">🕹️ Swarms</button>
+            <button class="btn btn-action blue" data-action="dev" aria-label="開発直結モードで実行">🛠️ 開発直結</button>
+            <button class="btn btn-action blue" data-action="prompt" aria-label="指示書のみモードで実行">📝 指示書のみ</button>
+        </action-buttons>
+        
+        <div class="editor-container">
+            <div class="section-header-row">
+                <div class="section-header-title">▼ CODE EDITOR</div>
+                <div>
+                    <button class="editor-inline-btn" onclick="copyEditorOnly()" aria-label="コードをコピー">📋コピ</button>
+                    <button class="editor-inline-btn" onclick="clearEditor()" aria-label="エディタをクリア">🗑️ケス</button>
+                </div>
+            </div>
+            <textarea id="code-editor" data-store-key="savedCode" placeholder="ここに生成されたHTMLコードが入ります。"></textarea>
+        </div>
+        
+        <div class="section-header-title" style="margin-top:10px;margin-bottom:4px">▼ GITHUB</div>
+        <github-manager>
+            <div class="flex-row">
+                <input type="text" id="test-filename" class="gh-input-text" data-store-key="lastTestFile" data-default="test.html" placeholder="テスト用名">
+                <button class="gh-btn" data-action="save" data-target="test-filename" style="background:var(--red);width:85px" aria-label="テストファイルを保存">💾 セーブ</button>
+                <button class="gh-btn" data-action="open" data-target="test-filename" style="background:var(--blue);width:55px" aria-label="テストファイルを開く">🌍 開く</button>
+            </div>
+            <div class="flex-row">
+                <input type="text" id="custom-filename" class="gh-input-text" data-store-key="lastCustomFile" placeholder="ファイル名 (例: index.html)">
+                <button class="gh-btn" data-action="save" data-target="custom-filename" style="background:var(--red);width:85px" aria-label="本番ファイルを保存">💾 セーブ</button>
+                <button class="gh-btn" data-action="open" data-target="custom-filename" style="background:var(--blue);width:55px" aria-label="本番ファイルを開く">🌍 開く</button>
+            </div>
+            <div class="flex-row">
+                <select id="file-select-box" class="gh-select-box" aria-label="ファイル選択"><option value="">ページをえらんでひらく</option></select>
+                <button class="gh-sync-btn" data-action="sync" title="同期" aria-label="ファイルリストを同期">🔄</button>
+                <button class="gh-btn gh-btn-narrow" data-action="open" data-target="file-select-box" style="background:var(--blue)" aria-label="選択したページを開く">📂 開く</button>
+            </div>
+        </github-manager>
+    </div>
+
+    <div id="panel-output" class="panel">
+        <div class="console-toolbar">
+            <button class="btn btn-action gray console-toolbar-btn" onclick="copyOutput()" aria-label="最適化コピー">📋 最適化コピー</button>
+            <button class="btn btn-action gray console-toolbar-btn" style="background:#2c3e50" onclick="copyPromptsOnly()" aria-label="プロンプトのみコピー">📝 プロンプトコピー</button>
+        </div>
+        <output-console id="output-view">
+            <div style="color:#aaa">▶ここにエージェント同士の思考ログや、デザイン憲法、監査結果がリアルタイムに出力されます。</div>
+        </output-console>
+    </div>
+
+    <div id="panel-preview-full" class="panel">
+        <div class="fullscreen-toolbar"><button class="fullscreen-close-btn" onclick="switchTab('edit')" aria-label="プレビューを閉じる">❌ もどる</button></div>
+        <iframe id="preview-frame-full" sandbox="allow-scripts allow-modals"></iframe>
+    </div>
+
+    <div id="panel-config" class="panel">
+        <div class="section-header-title" style="margin-bottom:8px">▼ SECURITY (暗号化管理)</div>
+        <div class="config-item">
+            <label>🔐 マスターパスワード (復号・保存用)</label>
+            <div class="config-warning-text">※アプリ起動時にキーを復元するための合言葉です</div>
+            <input type="password" id="master-password" placeholder="任意のパスワードを入力">
+        </div>
+        <div class="action-button-row" style="margin-bottom:15px">
+            <button class="btn btn-action blue" onclick="encryptAndSaveKeys()" aria-label="暗号化して保存">💾 暗号化保存</button>
+            <button class="btn btn-action red" onclick="unlockKeys()" aria-label="ロック解除">🔓 ロック解除</button>
+        </div>
+        <div class="config-item"><label>GEMINI API キー (Gemini 3.5 Flash用)</label><input type="password" id="gemini-key" placeholder="AIzaSyxxxxxxxx..."></div>
+        <div class="config-item"><label>GITHUB トークン (PAT)</label><input type="password" id="gh-token" placeholder="ghp_xxxxxxxx..."></div>
+        
+        <div class="section-header-title" style="margin-top:15px;margin-bottom:8px">▼ SETUP</div>
+        <div class="config-item"><label>ユーザー名 (Owner)</label><input type="text" id="gh-owner" data-store-key="ghOwner" placeholder="例: octocat"></div>
+        <div class="config-item"><label>リポジトリ名 (Repo)</label><input type="text" id="gh-repo" data-store-key="ghRepo" placeholder="例: my-website"></div>
+        <div class="config-item">
+            <label>⚡ GENERATOR 定型1 登録</label>
+            <div class="config-warning-text">※スマホで見切れないよう、横に長く書きすぎないでください</div>
+            <textarea id="tmpl-text-1" data-store-key="tmplText1" data-default="挨拶返信不要\nオシャレなUI UX\n携帯画面で利用可能\n英語" rows="2" placeholder="定型ボタン1を押したときに末尾に追記されるプロンプト"></textarea>
+        </div>
+        <div class="config-item">
+            <label>⚡ GENERATOR 定型2 登録</label>
+            <div class="config-warning-text">※スマホで見切れないよう、横に長く書きすぎないでください</div>
+            <textarea id="tmpl-text-2" data-store-key="tmplText2" rows="2" placeholder="定型ボタン2を押したときに末尾に追記されるプロンプト"></textarea>
+        </div>
+        <div class="config-item"><label>マイ・コンテキスト (全体の前提条件/技術スタック)</label><textarea id="myContext" data-store-key="my_context" rows="2" placeholder="例: シンプルかつ実用的な道具感を好む。目に優しい配色。"></textarea></div>
+        <label class="checkbox-label"><input type="checkbox" id="soundToggle" checked><span>タイピング音 (SOUND) を鳴らす</span></label>
+        <p class="system-msg" style="margin-top:15px">※入力した設定は安全にブラウザに保存されます。キー情報は暗号化保存を推奨します。</p>
+    </div>
+
+<script>
+    /** ===================================================================
+     *  JSDoc 型定義 (Type Safety)
+     *  =================================================================== */
+    /**
+     * @typedef {Object} AgentStatus
+     * @property {string} id
+     * @property {string} icon
+     * @property {string} label
+     * @property {'wait'|'run'|'done'|'err'} state
+     * @property {string} text
+     * @property {boolean} visible
+     */
+    
+    /**
+     * @typedef {Object} AppState
+     * @property {boolean} isProcessing
+     * @property {'swarms'|'dev'|'prompt'|''} currentMode
+     * @property {AgentStatus[]} agents
+     */
+
+    const MODEL = "gemini-3.5-flash", API = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}`;
+    const STAGGER = 1200, BEEP = {base:320, range:280, gain:0.01, dur:0.04}, MAX_TOKENS = 60000;
+    
+    const $ = id => document.getElementById(id);
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    const mkEl = (tag, cls, text) => { const e = document.createElement(tag); if(cls) e.className = cls; if(text) e.textContent = text; return e; };
+
+    /** ===================================================================
+     *  オートヒーリング (プレビュー・エラー監視)
+     *  =================================================================== */
+    let previewErrors = [];
+    window.addEventListener('message', e => {
+        if (e.data?.type === 'preview_error') previewErrors.push(e.data.msg);
+    });
+
+    function injectErrorCatcher(html) {
+        const script = `<script>
+            window.onerror = function(msg, url, line) { window.parent.postMessage({type:'preview_error', msg: msg + ' (Line ' + line + ')'}, '*'); };
+            window.addEventListener('unhandledrejection', function(e) { window.parent.postMessage({type:'preview_error', msg: e.reason}, '*'); });
+            const _err = console.error; console.error = function(...args) { window.parent.postMessage({type:'preview_error', msg: args.join(' ')}, '*'); _err.apply(console, args); };
+        <\/script>`;
+        return html.includes('<head>') ? html.replace(/<head>/i, '<head>' + script) : script + html;
+    }
+
+    /** ===================================================================
+     *  状態管理 (Signals Pattern)
+     *  =================================================================== */
+    function createSignal(initial) {
+        let value = initial;
+        const subs = new Set();
+        return {
+            get: () => value,
+            set: (val) => { value = val; subs.forEach(fn => fn(value)); },
+            subscribe: (fn) => { subs.add(fn); fn(value); return () => subs.delete(fn); }
+        };
+    }
+
+    /** @type {ReturnType<typeof createSignal<AppState>>} */
+    const store = createSignal({ isProcessing: false, currentMode: '', agents: [] });
+
+    const StoreActions = {
+        setProcessing: (bool, mode = '') => store.set({ ...store.get(), isProcessing: bool, currentMode: mode }),
+        initBaseAgents: () => store.set({ ...store.get(), agents: [
+            { id: 'sys', icon: '📡', label: 'システム', state: 'wait', text: '待機中...', visible: true },
+            { id: 'pm', icon: '🧠', label: '親(PM)', state: 'wait', text: '待機中...', visible: true },
+            { id: 'en', icon: '🗣️', label: '子A(EN)', state: 'wait', text: '待機中...', visible: false },
+            { id: 'code', icon: '💻', label: '子B(CD)', state: 'wait', text: '待機中...', visible: false },
+            { id: 'audit', icon: '🕵️', label: '監査(AU)', state: 'wait', text: '待機中...', visible: false }
+        ]}),
+        initSwarmAgents: (team) => {
+            const s = store.get(), base = s.agents.filter(a => ['sys', 'pm'].includes(a.id));
+            const swarms = team.map((a, i) => ({ id: `child-${i}`, icon: '🤖', label: `子[${a.role}]`, state: 'wait', text: '待機中...', visible: true }));
+            store.set({ ...s, agents: [...base, ...swarms] });
+        },
+        updateAgent: (id, state, text) => {
+            const s = store.get();
+            store.set({ ...s, agents: s.agents.map(a => a.id === id ? { ...a, state, text, visible: true } : a) });
+        }
+    };
+
+    /** ===================================================================
+     *  Web Components (カプセル化されたUI)
+     *  =================================================================== */
+    class AgentStatusBoard extends HTMLElement {
+        connectedCallback() { this.unsub = store.subscribe(s => this.render(s.agents)); }
+        disconnectedCallback() { if(this.unsub) this.unsub(); }
+        render(agents) {
+            this.innerHTML = '';
+            agents.forEach(a => {
+                if(!a.visible) return;
+                const div = document.createElement('div');
+                div.className = `agent-status status-${a.state}`;
+                div.textContent = `${a.icon} ${a.label} : ${a.text}`;
+                this.appendChild(div);
+            });
+        }
+    }
+    customElements.define('agent-status-board', AgentStatusBoard);
+
+    class ActionButtons extends HTMLElement {
+        connectedCallback() {
+            this.unsub = store.subscribe(s => {
+                this.querySelectorAll('button').forEach(btn => btn.disabled = s.isProcessing);
+                if (s.isProcessing) {
+                    const btn = this.querySelector(`[data-action="${s.currentMode}"]`);
+                    if(btn) btn.textContent = s.currentMode === 'swarms' ? "⏳ Swarms..." : (s.currentMode === 'dev' ? "⏳ 開発中..." : "⏳ 記述中...");
+                } else {
+                    this.querySelector('[data-action="swarms"]').textContent = "🕹️ Swarms";
+                    this.querySelector('[data-action="dev"]').textContent = "🛠️ 開発直結";
+                    this.querySelector('[data-action="prompt"]').textContent = "📝 指示書のみ";
+                }
+            });
+            this.addEventListener('click', e => {
+                const btn = e.target.closest('button[data-action]');
+                if(!btn || store.get().isProcessing) return;
+                const act = btn.dataset.action;
+                if(act === 'swarms') runSwarms(); else runMultiAgent(act);
+            });
+        }
+        disconnectedCallback() { if(this.unsub) this.unsub(); }
+    }
+    customElements.define('action-buttons', ActionButtons);
+
+    class OutputConsole extends HTMLElement {
+        log(msg) { this.appendChild(mkEl('div', 'sys-log', `[${new Date().toLocaleTimeString()}] 📡 ${msg}`)); this.scrollTop = this.scrollHeight; }
+        error(msg) { this.appendChild(mkEl('div', 'error-msg', `ERROR: ${msg}`)); this.scrollTop = this.scrollHeight; }
+        clear() { this.innerHTML = ''; }
+        initLayout() { this.innerHTML = `<div id="const-section"><div class="section-title">--- [ System Design Constitution (魂) ] ---</div><div id="constitution-text" class="constitution-text">思考中...</div></div><div id="en-section"><div class="section-title">--- [ Task / EN Prompt ] ---</div><div id="en-text"></div></div><div id="audit-section" style="display:none"><div class="section-title">--- [ AUDIT REFLECTION (憲法適合性監査) ] ---</div><div id="audit-text" class="audit-text"></div></div>`; }
+    }
+    customElements.define('output-console', OutputConsole);
+
+    class GithubManager extends HTMLElement {
+        connectedCallback() {
+            this.addEventListener('click', e => {
+                const btn = e.target.closest('button[data-action]');
+                if(!btn) return;
+                const action = btn.dataset.action, targetId = btn.dataset.target;
+                const el = $(targetId), filename = el ? (el.tagName === 'SELECT' ? el.value : el.value.trim()) : '';
+                
+                if(action === 'sync') this.fetchFiles();
+                else if(action === 'save') { if(!filename) alert('エラー: ファイル名を入力！'); else this.saveFile(filename); }
+                else if(action === 'open') { if(!filename) alert('エラー: ページを選択！'); else this.openPage(filename); }
+                if(el && el.tagName === 'SELECT') el.value = "";
+            });
+        }
+        openPage(filename) {
+            const o = $('gh-owner').value, r = $('gh-repo').value;
+            if(!o || !r) return alert('【エラー】設定タブからユーザー・リポジトリ名を入力！');
+            window.open(`https://${o}.github.io/${r}/${filename}`, '_blank');
+        }
+        async fetchFiles() {
+            const token = getToken(), owner = $('gh-owner').value, repo = $('gh-repo').value, sel = $('file-select-box');
+            if(!token || !owner || !repo) return;
+            sel.innerHTML = '<option value="">取得中...</option>';
+            const h = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' };
+            try {
+                let files = [];
+                for (const path of ['', 'test']) {
+                    const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, { headers: h });
+                    if(r.ok) (await r.json()).forEach(i => { if(i.type === 'file' && i.name.endsWith('.html')) files.push(i.path); });
+                }
+                sel.innerHTML = '<option value="">ページをえらんでひらく</option>';
+                if(!files.length) return sel.innerHTML = '<option value="">HTMLファイルが見つかりません</option>';
+                files.forEach(p => sel.appendChild(mkEl('option', '', `📄 ${p}`)).value = p);
+            } catch(e) { sel.innerHTML = '<option value="">取得失敗</option>'; }
+        }
+        async saveFile(filename) {
+            const token = getToken(), owner = $('gh-owner').value, repo = $('gh-repo').value, content = $('code-editor').value;
+            if(!token || !owner || !repo) { alert('【エラー】GitHub認証情報が不足しています。'); return switchTab('config'); }
+            const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filename}`;
+            const encoded = btoa(unescape(encodeURIComponent(content))); // Standard base64
+            const h = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' };
+            try {
+                let sha = null;
+                const g = await fetch(url, { headers: h }); if(g.ok) sha = (await g.json()).sha;
+                const body = { message: `📝 ${filename} を更新 (via AgentForge Mobile)`, content: encoded };
+                if(sha) body.sha = sha;
+                const p = await fetch(url, { method: 'PUT', headers: h, body: JSON.stringify(body) });
+                if(p.ok) { alert(`【せいこう！】\n${filename} にGitHubへ同期・セーブしました。`); this.fetchFiles(); }
+                else alert(`【エラー】セーブに失敗しました。\n理由: ${(await p.json()).message}`);
+            } catch(e) { alert(`【通信エラー】${e}`); }
+        }
+    }
+    customElements.define('github-manager', GithubManager);
+
+    /** ===================================================================
+     *  コアロジック
+     *  =================================================================== */
+    let audioCtx = null;
+    const out = () => /** @type {OutputConsole} */ (document.querySelector('output-console'));
+
+    function uint8ToBase64(bytes) {
+        let b = ''; for (let i = 0; i < bytes.length; i += 0x8000) b += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+        return btoa(b);
+    }
+
+    const SecureStore = {
+        async deriveKey(pw, salt) {
+            const km = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), {name:"PBKDF2"}, false, ["deriveBits","deriveKey"]);
+            return crypto.subtle.deriveKey({name:"PBKDF2", salt, iterations:100000, hash:"SHA-256"}, km, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]);
+        },
+        async encrypt(text, pw) {
+            const enc = new TextEncoder(), salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+            const key = await this.deriveKey(pw, salt), encrypted = await crypto.subtle.encrypt({name:"AES-GCM", iv}, key, enc.encode(text));
+            const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
+            combined.set(salt, 0); combined.set(iv, 16); combined.set(new Uint8Array(encrypted), 28);
+            return uint8ToBase64(combined);
+        },
+        async decrypt(b64, pw) {
+            const s = atob(b64), c = new Uint8Array(s.length);
+            for(let i=0; i<s.length; i++) c[i] = s.charCodeAt(i);
+            const key = await this.deriveKey(pw, c.slice(0,16));
+            return new TextDecoder().decode(await crypto.subtle.decrypt({name:"AES-GCM", iv:c.slice(16,28)}, key, c.slice(28)));
+        }
+    };
+
+    async function encryptAndSaveKeys() {
+        const pwd = $('master-password').value, gemini = $('gemini-key').value, gh = $('gh-token').value;
+        if(!pwd) return alert("マスターパスワードを入力してください。");
+        if(!gemini && !gh) return alert("保存するキーが入力されていません。");
+        try {
+            localStorage.setItem('enc_gemini', gemini ? await SecureStore.encrypt(gemini, pwd) : "");
+            localStorage.setItem('enc_gh', gh ? await SecureStore.encrypt(gh, pwd) : "");
+            sessionStorage.setItem('geminiKey', gemini); sessionStorage.setItem('ghToken', gh);
+            alert("🔑 暗号化して安全に保存しました！\n次回起動時はマスターパスワードでロックを解除してください。");
+        } catch(e) { alert("暗号化エラー: " + e.message); }
+    }
+
+    async function unlockKeys() {
+        const pwd = $('master-password').value;
+        if(!pwd) return alert("マスターパスワードを入力してください。");
+        const eg = localStorage.getItem('enc_gemini'), et = localStorage.getItem('enc_gh');
+        if(!eg && !et) return alert("保存された暗号化キーが見つかりません。");
+        try {
+            if(eg) { const d = await SecureStore.decrypt(eg, pwd); $('gemini-key').value = d; sessionStorage.setItem('geminiKey', d); }
+            if(et) { const d = await SecureStore.decrypt(et, pwd); $('gh-token').value = d; sessionStorage.setItem('ghToken', d); }
+            alert("🔓 ロック解除成功！キーをメモリにロードしました。");
+            if(getToken()) document.querySelector('github-manager').fetchFiles();
+        } catch(e) { alert("❌ パスワードが間違っているか、復号に失敗しました。"); }
+    }
+
+    const getKey = () => sessionStorage.getItem('geminiKey') || $('gemini-key').value;
+    const getToken = () => sessionStorage.getItem('ghToken') || $('gh-token').value;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Data Binder (Declarative LocalStorage Sync)
+        document.querySelectorAll('[data-store-key]').forEach(el => {
+            const k = el.dataset.storeKey, def = el.dataset.default || '';
+            // 旧キーのマイグレーション
+            if (k === 'ghOwner' && localStorage.getItem('gh_owner')) { localStorage.setItem(k, localStorage.getItem('gh_owner')); localStorage.removeItem('gh_owner'); }
+            if (k === 'ghRepo' && localStorage.getItem('gh_repo')) { localStorage.setItem(k, localStorage.getItem('gh_repo')); localStorage.removeItem('gh_repo'); }
+            
+            el.value = localStorage.getItem(k) || def;
+            el.addEventListener('input', e => localStorage.setItem(k, e.target.value));
+        });
+        $('soundToggle').checked = localStorage.getItem('sound_toggle') !== 'false';
+        $('soundToggle').addEventListener('change', e => localStorage.setItem('sound_toggle', e.target.checked));
+        
+        if(sessionStorage.getItem('geminiKey')) $('gemini-key').value = sessionStorage.getItem('geminiKey');
+        if(sessionStorage.getItem('ghToken')) $('gh-token').value = sessionStorage.getItem('ghToken');
+        if(getToken() && $('gh-owner').value && $('gh-repo').value) document.querySelector('github-manager').fetchFiles();
+        
+        switchTab('edit');
+    });
+
+    function switchTab(name) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        const btn = $(`tab-${name}-btn`), panel = $(`panel-${name}`);
+        if(btn) btn.classList.add('active');
+        if(panel) panel.classList.add('active');
+        if(name === 'preview-full') $('preview-frame-full').srcdoc = $('code-editor').value;
+    }
+
+    function applyTemplate(num) {
+        const el = $('userInput'), tmpl = $(`tmpl-text-${num}`).value;
+        if(!tmpl.trim()) return alert(`定型${num}が未登録です。「せってい」タブで登録してください。`);
+        el.value = el.value.trim() ? el.value.trim() + "\n" + tmpl : tmpl;
+        el.scrollTop = el.scrollHeight; out().log(`定型${num}を追記しました。`);
+    }
+
+    function clearEditor() { if(confirm('書きかけのコードをすべて消去しますか？')) { $('code-editor').value = ''; localStorage.setItem('savedCode', ''); } }
+    function copyEditorOnly() {
+        const code = $('code-editor').value;
+        if(!code.trim() || code === "生成中...") return alert("コピーするコードがありません。");
+        navigator.clipboard.writeText(code).then(() => alert("コードをコピーしました！")).catch(e => alert("コピー失敗: " + e));
+    }
+
+    function initAudio() { if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if(audioCtx.state === 'suspended') audioCtx.resume(); }
+    function playBeep() {
+        if(!$('soundToggle').checked || !audioCtx) return;
+        try {
+            const o = audioCtx.createOscillator(), g = audioCtx.createGain(), t = audioCtx.currentTime;
+            o.type = ['square','sine'][Math.random()*2|0]; o.frequency.setValueAtTime(BEEP.base + Math.random()*BEEP.range, t);
+            g.gain.setValueAtTime(BEEP.gain, t); g.gain.exponentialRampToValueAtTime(.001, t + BEEP.dur);
+            o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(t + BEEP.dur);
+        } catch(e) { /* ignore */ }
+    }
+
+    /** ===================================================================
+     *  Gemini API 通信統合・コアロジック
+     *  =================================================================== */
+    const gHeaders = key => ({ 'Content-Type': 'application/json', 'x-goog-api-key': key });
+    const extractText = data => data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const step = (id, state, aMsg, cMsg) => { if(id) StoreActions.updateAgent(id, state, aMsg); if(cMsg) out().log(cMsg); };
+
+    const patchTool = {
+        functionDeclarations: [{
+            name: "apply_code_patch", description: "既存コードの一部を完全一致で検索し、新しいコードに置換します。",
+            parameters: { type: "OBJECT", properties: {
+                target_content: { type: "STRING", description: "置換対象の既存コード（完全に一致すること）" },
+                replacement_content: { type: "STRING", description: "新しいコードスニペット" }
+            }, required: ["target_content", "replacement_content"] }
+        }]
+    };
+
+    async function apiGemini({ prompt, key, json, tools, stream, onChunk, think = true }) {
+        const body = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: MAX_TOKENS, thinkingConfig: { thinkingLevel: think ? "HIGH" : "OFF" } } };
+        if (json) body.generationConfig.responseMimeType = "application/json";
+        if (tools) { body.tools = tools; body.toolConfig = { functionCallingConfig: { mode: "ANY" } }; }
+        
+        const r = await fetch(`${API}:${stream ? 'streamGenerateContent?alt=sse' : 'generateContent'}`, { method: 'POST', headers: gHeaders(key), body: JSON.stringify(body) });
+        if(!r.ok) throw new Error(`API Error: ${r.status}`);
+        
+        if (stream) {
+            const reader = r.body.getReader(), dec = new TextDecoder();
+            let full = "", buf = "";
+            while(true) {
+                const { done, value } = await reader.read(); if(done) break;
+                buf += dec.decode(value, { stream: true });
+                const lines = buf.split('\n'); buf = lines.pop() || "";
+                for(const l of lines) {
+                    if(!l.startsWith('data: ')) continue;
+                    const d = l.substring(6).trim(); if(!d) continue;
+                    try { const t = extractText(JSON.parse(d)); if(t) { full += t; onChunk(t); playBeep(); } } catch(e) {}
+                }
+            }
+            return full;
+        } else {
+            const j = await r.json();
+            if (tools) return j?.candidates?.[0]?.content?.parts?.find(p => p.functionCall)?.functionCall;
+            const t = extractText(j); if(!t) throw new Error('API Safety Filter Block');
+            return json ? JSON.parse(t) : t.trim();
+        }
+    }
+
+    function validateAndInit(mode) {
+        const input = $('userInput').value, key = getKey(), ctx = $('myContext').value || "特になし";
+        if(!key) { alert('API Keyを入力してください。'); switchTab('config'); return null; }
+        if(!input) { alert('要望を入力してください。'); return null; }
+        initAudio(); StoreActions.setProcessing(true, mode);
+        return { input, key, ctx };
+    }
+
+    async function runSwarms() {
+        const v = validateAndInit('swarms'); if(!v) return;
+        out().clear(); StoreActions.initBaseAgents();
+        step('sys', 'run', 'Swarmsプロセスを開始しました。');
+        step('pm', 'run', 'チーム編成中...', '3.5 Flash が超推論(HIGH)でマッピングとチーム召喚を精査中...');
+
+        try {
+            const spawnTool = { functionDeclarations: [{ name: "spawn_swarms", description: "タスク用エージェント編成",
+                parameters: { type: "OBJECT", properties: { design_constitution: { type: "STRING" }, agents: { type: "ARRAY", items: { type: "OBJECT", properties: { role: { type: "STRING" }, task: { type: "STRING" } } } } }, required: ["design_constitution", "agents"] }
+            }] };
+
+            const fc = await apiGemini({ prompt: `前提条件: ${v.ctx}\n要望: ${v.input}\nチームを自動編成し 'spawn_swarms' 実行。`, key: v.key, tools: [spawnTool] });
+            if(!fc) throw new Error("PM召喚失敗");
+
+            const constitution = fc.args.design_constitution, team = fc.args.agents;
+            step('pm', 'done', `憲法樹立。 ${team.length}名編成。`, `チーム編成: ${team.length}名`);
+            StoreActions.initSwarmAgents(team);
+
+            out().append(mkEl('div', 'section-title', '--- [ Design Constitution ] ---'), Object.assign(mkEl('div', 'constitution-text', constitution), {id:'constitution-text'}), mkEl('div', 'section-title', '=== SWARM OUTPUT ==='));
+            const sText = mkEl('div'); sText.id = 'swarm-text'; out().appendChild(sText);
+
+            const results = await Promise.all(team.map(async (agent, i) => {
+                const prompt = `[Constitution]:\n${constitution}\n\nRole: ${agent.role}\nConstraint: English strictly. Raw artifact only.\nTask: ${agent.task}`;
+                try {
+                    if(i > 0) { step(`child-${i}`, 'run', '時差分散待機中...'); await sleep(i * STAGGER); }
+                    step(`child-${i}`, 'run', '生成中...', `[${agent.role}] 処理中...`);
+                    const result = await apiGemini({ prompt, key: v.key });
+                    step(`child-${i}`, 'done', '完了！');
+                    return { role: agent.role, result, html: result.includes("<!DOCTYPE html>") || result.includes("<html") };
+                } catch(e) { step(`child-${i}`, 'err', '失敗'); return { role: agent.role, result: `Error: ${e.message}`, html: false }; }
+            }));
+
+            sText.textContent = results.map(r => `### [担当: ${r.role}]\n${r.result}\n\n`).join("");
+            const htmlR = results.filter(r => r.html).pop();
+            if(htmlR) { const c = htmlR.result.replace(/^```html|```$/gm, "").trim(); $('code-editor').value = c; localStorage.setItem('savedCode', c); out().log(`[${htmlR.role}] のコードを同期。`); }
+            step('sys', 'done', '正常終了'); switchTab('output');
+        } catch(e) { out().error(e.message); step('pm', 'err', e.message); step('sys', 'err', '異常停止'); }
+        finally { StoreActions.setProcessing(false); }
+    }
+
+    async function runMultiAgent(mode) {
+        const v = validateAndInit(mode); if(!v) return;
+        out().initLayout(); StoreActions.initBaseAgents();
+        step('sys', 'run', 'パイプライン起動'); step('pm', 'run', '憲法構築中...', "Step 1: 戦略決定中");
+        const constEl = $('constitution-text'), enEl = $('en-text'), auditEl = $('audit-text');
+        
+        function fuzzyPatch(code, target, repl) {
+            if (code.includes(target)) return code.replace(target, repl);
+            const tokens = target.trim().split(/\s+/);
+            if (!tokens.length) return code;
+            const rxStr = tokens.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/['"`]/g, "['\"`]")).join('\\s*');
+            try { const rx = new RegExp(rxStr); return rx.test(code) ? code.replace(rx, repl) : null; } catch(e) { return null; }
+        }
+
+        try {
+            const schema = `{\n  "design_constitution": "UIUXルール",\n  "strategy": "full or differential",\n  "english_prompt": "英語プロンプト"${mode === 'dev' ? ',\n  "core_logic": "コード仕様"' : ''}\n}`;
+            const pm = await apiGemini({ prompt: `前提条件: ${v.ctx}\n要望: ${v.input}\n\n${schema}`, key: v.key, json: true });
+            const strat = pm.strategy || 'full';
+            constEl.textContent = `[Strategy: ${strat}] ${pm.design_constitution}`;
+            step('pm', 'done', '戦略策定完了', `戦略: ${strat}`);
+
+            step('en', 'run', 'プロンプト生成中...', "Step 2: コンパイル開始");
+            let enRes = await apiGemini({ prompt: `[Constitution]: ${pm.design_constitution}\n[Strategy]: ${strat}\nConstraint: English strictly. Raw artifact only.\n【要件】:\n${pm.english_prompt}`, key: v.key, stream: true, think: false, onChunk: c => enEl.textContent += c });
+            step('en', 'done', '生成完了', `完了 (${enRes.length} bytes)`);
+
+            let cdRes = "";
+            if(mode === 'dev') {
+                const MAX_LOOPS = 3; let loopCount = 0;
+                let currentCode = $('code-editor').value, auditAnalysis = "";
+
+                while (loopCount < MAX_LOOPS) {
+                    if (loopCount === 0) {
+                        step('code', 'run', strat === 'differential' ? '差分パッチ適用中...' : 'コード生成中...', `Step 3: コード生成（${strat}）`);
+                        if (strat === 'differential') {
+                            const patchFc = await apiGemini({ prompt: `【既存のコード】\n${currentCode}\n\n【要件】\n${pm.core_logic}\n\nこの要件を満たすため、apply_code_patchで特定部分を置換せよ。`, key: v.key, tools: [patchTool] });
+                            if (patchFc?.args.target_content) {
+                                const patched = fuzzyPatch(currentCode, patchFc.args.target_content, patchFc.args.replacement_content);
+                                if (patched) { currentCode = patched; out().log("差分パッチ適用成功"); }
+                                else out().error("パッチ適用失敗: 対象コード不一致 (FuzzyMatch適用済)");
+                            }
+                        } else {
+                            $('code-editor').value = "";
+                            currentCode = await apiGemini({ prompt: `[Constitution]: ${pm.design_constitution}\n[Strategy]: ${strat}\nConstraint: Pure code only.\n【要件】:\n${pm.core_logic}`, key: v.key, stream: true, think: false, onChunk: c => {
+                                const ed = $('code-editor'); ed.value += c; if(ed.value.includes("```")) ed.value = ed.value.replace(/```html|```/g, "");
+                            }});
+                        }
+                    } else {
+                        step('code', 'run', `自己修復中 (${loopCount}/${MAX_LOOPS})...`, `修復ループ ${loopCount}: 差分パッチ生成開始`);
+                        const patchFc = await apiGemini({ prompt: `【既存コード】\n${currentCode}\n\n【AUエラー指摘】\n${auditAnalysis}\n\nこのエラーを解消するためapply_code_patchで修正せよ。`, key: v.key, tools: [patchTool] });
+                        if (patchFc?.args.target_content) {
+                            const patched = fuzzyPatch(currentCode, patchFc.args.target_content, patchFc.args.replacement_content);
+                            if (patched) { currentCode = patched; out().log("修復パッチ適用成功"); }
+                            else out().error("修復パッチ適用失敗: 対象コード不一致 (FuzzyMatch適用済)");
+                        }
+                    }
+
+                    const clean = currentCode.replace(/^```html|```$/gm, "").trim();
+                    $('code-editor').value = clean; localStorage.setItem('savedCode', clean);
+                    cdRes = clean;
+                    
+                    previewErrors = []; $('preview-frame-full').srcdoc = injectErrorCatcher(clean);
+                    out().log("プレビュー検証中 (1.5秒)..."); await sleep(1500);
+
+                    if (previewErrors.length > 0) {
+                        out().error(`ランタイムエラー検知: ${previewErrors.length}件`);
+                        $('audit-section').style.display = "block"; step('audit', 'run', 'エラー解析中...');
+                        auditAnalysis = await apiGemini({ prompt: `【JSエラー】\n${previewErrors.join('\n')}\n\nエラー原因と修正箇所を簡潔に分析せよ。`, key: v.key });
+                        auditEl.textContent += `\n[Loop ${loopCount}] Error Analysis:\n${auditAnalysis}\n`;
+                        out().log(`監査解析完了。再帰的修復に入ります`); loopCount++;
+                    } else { out().log("ランタイムエラーなし！"); step('code', 'done', '同期完了'); break; }
+                }
+                if (loopCount >= MAX_LOOPS) out().error("修復上限到達。手動で修正してください。");
+            }
+
+            step('audit', 'run', '適合性検証中...', "Step 4: 静的監査起動"); $('audit-section').style.display = "block";
+            await apiGemini({ prompt: `憲法と成果物のバグや未実装を指摘せよ。\n\n【憲法】\n${pm.design_constitution}\n\n【成果物】\n${cdRes || enRes}`, key: v.key, stream: true, think: true, onChunk: c => auditEl.textContent += c });
+            step('audit', 'done', '監査完了'); step('sys', 'done', '正常終了', "フィードバック完了"); switchTab('output');
+        } catch(e) { out().error(e.message); step('pm', 'err', 'エラー停止'); step('sys', 'err', `システムエラー: ${e.message}`); }
+        finally { StoreActions.setProcessing(false); }
+    }
+
+    function clipCopy(text, msg) { navigator.clipboard.writeText(text.trim()).then(() => alert(msg)).catch(e => alert('コピー失敗: ' + e)); }
+    function copyOutput() {
+        const sw = $('swarm-text')?.textContent, c = $('constitution-text')?.textContent, en = $('en-text')?.textContent, cd = $('code-editor').value;
+        const t = sw ? `=== SWARM OUTPUT ===\n${sw}\n` : [c && `--- [ Design Constitution ] ---\n${c}\n`, en && `--- [ Task / EN Prompt ] ---\n${en}\n`, cd && cd !== "生成中..." && `--- [ Code ] ---\n${cd}\n`].filter(Boolean).join('\n');
+        if(!t.trim()) return alert('コピーする成果物がありません。'); clipCopy(t, 'クリップボードにコピーしました！');
+    }
+    function copyPromptsOnly() {
+        const c = $('constitution-text')?.textContent, en = $('en-text')?.textContent;
+        const t = [c && c !== "思考中..." && `--- [ System Design Constitution ] ---\n${c}\n`, en && `--- [ Task / EN Prompt ] ---\n${en}\n`].filter(Boolean).join('\n');
+        if(!t.trim()) return alert('プロンプトがありません。'); clipCopy(t, 'プロンプトのみコピーしました！');
+    }
+</script>
+</body>
+</html>
