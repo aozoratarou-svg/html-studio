@@ -1,766 +1,1078 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MULTI AGENT STUDIO</title>
-    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Topping Symphony - Juicy Physics Engine</title>
     <style>
-        /* 全体のベース設定 */
-        body { 
-            background: #000000; 
-            color: #ffffff; 
-            font-family: 'DotGothic16', monospace; 
-            padding: 10px; 
-            margin: 0; 
-            box-sizing: border-box; 
-            height: 100vh; 
-            display: flex; 
-            flex-direction: column; 
-            overflow-x: hidden;
+        :root {
+            --bg-color: #1a0f0f;
+            --panel-bg: rgba(40, 20, 20, 0.85);
+            --accent-gold: #ffd700;
+            --tomato-red: #ff4d4d;
+            --cheese-gold: #ffb830;
+            --text-light: #fff5eb;
+            --font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         }
 
-        /* タイトル */
-        .header { 
-            text-align: center; 
-            font-size: 1.5rem; 
-            margin: 10px 0 15px 0; 
-            color: #E52521;
-            text-shadow: 2px 2px 0 #fff;
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-light);
+            font-family: var(--font-family);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: row;
+        }
+
+        #app-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        #canvas-container {
+            flex: 1;
+            height: 100%;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at center, #2d1515 0%, #120707 100%);
+        }
+
+        canvas {
+            display: block;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            border-radius: 20px;
+        }
+
+        /* UI Overlay Panels */
+        .ui-panel {
+            position: absolute;
+            background: var(--panel-bg);
+            border: 2px solid rgba(255, 184, 48, 0.2);
+            border-radius: 16px;
+            padding: 16px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            z-index: 10;
+        }
+
+        #dispenser-panel {
+            left: 24px;
+            top: 24px;
+            bottom: 24px;
+            width: 280px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        #encyclopedia-panel {
+            right: 24px;
+            top: 24px;
+            bottom: 24px;
+            width: 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .panel-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--cheese-gold);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 2px solid rgba(255, 184, 48, 0.2);
+            padding-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Dispenser UI */
+        .dispenser-slot {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px dashed rgba(255, 184, 48, 0.4);
+            border-radius: 12px;
+            height: 140px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            cursor: grab;
+            transition: transform 0.2s, border-color 0.2s;
+            overflow: hidden;
+        }
+
+        .dispenser-slot:active {
+            cursor: grabbing;
+            transform: scale(0.95);
+        }
+
+        .dispenser-slot::before {
+            content: 'DRAG ME';
+            position: absolute;
+            bottom: 8px;
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.4);
             letter-spacing: 2px;
         }
 
-        /* 上部：定型ボタンと設定ボタンの横一列 */
-        .top-row {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 10px;
-            width: 100%;
-        }
-
-        /* 汎用ボタン */
-        .btn {
-            background: #000;
-            color: #fff;
-            border: 2px solid #fff;
-            box-shadow: 2px 2px 0px #fff;
-            padding: 8px 5px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            text-align: center;
-            font-family: 'DotGothic16', monospace;
-            transition: all 0.1s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            user-select: none;
-        }
-        
-        .btn:active { 
-            transform: translate(2px, 2px); 
-            box-shadow: 0px 0px 0px #fff; 
-        }
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .btn-teikei { flex: 1; }
-        .btn-setting { width: 50px; font-size: 1.2rem; } 
-        
-        /* 1行高さのコンパクトボタン用 */
-        .btn-sm {
-            padding: 4px 5px;
-            font-size: 0.85rem;
-            height: 32px;
-        }
-
-        /* 共通テキストエリア設定 */
-        textarea {
-            width: 100%; 
-            background: #0000AA; 
-            color: #fff; 
-            border: 2px solid #fff; 
-            padding: 10px; 
-            box-sizing: border-box; 
-            resize: none;
-            font-family: 'DotGothic16', monospace;
-            font-size: 1rem;
-            line-height: 1.4;
-        }
-        textarea:focus { outline: none; border-color: #E52521; }
-        textarea::placeholder { color: #aaaaaa; }
-
-        #userInput { flex: 1; margin-bottom: 10px; }
-
-        /* エージェント進捗ステータスエリア */
-        #status-board {
-            display: none;
-            background: #000;
-            border: 2px dashed #fff;
-            padding: 8px;
-            margin-bottom: 10px;
-            font-size: 0.9rem;
-            max-height: 150px; 
-            overflow-y: auto;
-        }
-        .agent-status { margin: 4px 0; }
-        .status-wait { color: #aaaaaa; }
-        .status-run { color: #f39c12; animation: blink 1s infinite; }
-        .status-done { color: #2ecc71; }
-        .status-err { color: #e74c3c; }
-        .status-skip { color: #555555; text-decoration: line-through; }
-
-        @keyframes blink { 50% { opacity: 0.5; } }
-
-        /* アクションボタン（縦積み配置） */
-        .btn-action { 
-            width: 100%; 
-            padding: 12px; 
-            font-size: 1rem; 
-            margin-bottom: 10px;
-            letter-spacing: 1px;
-            flex-shrink: 0; 
-        }
-        .red { background: #E52521; color: #fff; border-color: #fff; box-shadow: 2px 2px 0px #fff;}
-        .blue { background: #0047BB; color: #fff; border-color: #fff; box-shadow: 2px 2px 0px #fff;}
-        .gray { background: #444444; color: #fff; border-color: #fff; box-shadow: 2px 2px 0px #fff;}
-
-        /* 出力コンソール */
-        .output-console { 
-            flex: 1.2; 
-            margin-bottom: 5px;
-            background: #000;
-            color: #fff;
-            border: 2px solid #fff;
-            padding: 10px;
-            box-sizing: border-box;
-            font-family: 'DotGothic16', monospace;
-            font-size: 0.95rem;
-            line-height: 1.5;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-        
-        .section-title {
-            color: #E52521;
-            margin-top: 15px;
-            margin-bottom: 5px;
+        .spawn-button {
+            background: linear-gradient(135deg, var(--tomato-red), #cc2929);
+            border: none;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
             font-weight: bold;
+            cursor: pointer;
+            transition: filter 0.2s;
+            text-transform: uppercase;
         }
-        .section-title:first-child { margin-top: 0; }
-        .audit-text { color: #2ecc71; }
 
-        /* モーダル */
-        .modal-overlay { 
-            display: none; 
-            position: fixed; 
-            top: 0; left: 0; 
-            width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.85); 
-            z-index: 10; 
-            justify-content: center;
-            align-items: center;
+        .spawn-button:hover {
+            filter: brightness(1.2);
         }
-        
-        .modal-content {
-            background: #000;
-            border: 4px solid #fff;
-            padding: 15px;
-            width: 90%;
-            max-width: 400px;
-            max-height: 90vh;
+
+        /* Encyclopedia UI */
+        .grid-container {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
             overflow-y: auto;
-            box-sizing: border-box;
+            padding-right: 4px;
         }
 
-        .modal-content h3 { 
-            color: #E52521; 
-            border-bottom: 2px dashed #fff;
-            padding-bottom: 5px; 
-            margin-top: 0; 
-            text-align: center; 
+        .grid-container::-webkit-scrollbar {
+            width: 6px;
         }
-        
-        .modal-content input, .modal-content textarea {
-            width: 100%; padding: 10px; margin-bottom: 15px; box-sizing: border-box;
-            background: #111; color: #fff; border: 2px solid #555; 
-            flex: none; font-family: 'DotGothic16', monospace;
+        .grid-container::-webkit-scrollbar-thumb {
+            background: rgba(255, 184, 48, 0.3);
+            border-radius: 3px;
         }
-        
-        .modal-content label { 
-            color: #fff; display: block; margin-bottom: 5px; font-size: 0.9rem;
+
+        .book-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 6px;
+            opacity: 0.4;
+            transition: all 0.3s ease;
         }
-        
-        .checkbox-label {
+
+        .book-item.unlocked {
+            opacity: 1;
+            background: rgba(255, 184, 48, 0.08);
+            border-color: rgba(255, 184, 48, 0.4);
+        }
+
+        .book-item.unlocked.rare {
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+            border-color: var(--accent-gold);
+        }
+
+        .book-icon {
+            width: 48px;
+            height: 48px;
+            position: relative;
+        }
+
+        .book-name {
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .book-count {
+            font-size: 0.7rem;
+            color: var(--cheese-gold);
+        }
+
+        /* Stats Panel */
+        #stats-panel {
+            margin-top: auto;
+            background: rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Toast Notification */
+        #toast {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            color: #1a0f0f;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-weight: 800;
+            font-size: 1.1rem;
+            box-shadow: 0 10px 25px rgba(255, 215, 0, 0.4);
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 100;
+            pointer-events: none;
             display: flex;
             align-items: center;
-            gap: 10px;
-            cursor: pointer;
-            margin-bottom: 15px;
+            gap: 8px;
         }
-        .checkbox-label input { width: auto; margin: 0; transform: scale(1.2); }
 
+        #toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
     </style>
 </head>
 <body>
 
-<div class="header">MULTI AGENT STUDIO</div>
-
-<div class="top-row">
-    <div class="btn btn-teikei" onclick="insertTeikei(1)">定型1</div>
-    <div class="btn btn-teikei" onclick="insertTeikei(2)">定型2</div>
-    <div class="btn btn-teikei" onclick="insertTeikei(3)">定型3</div>
-    <div class="btn btn-setting" onclick="openModal('modal-settings')">⚙️</div>
-</div>
-
-<textarea id="userInput" placeholder="▶AIニ 何ヲ サセマスカ？"></textarea>
-
-<div id="status-board">
-    <div id="status-pm" class="agent-status status-wait">🧠 親(PM) : 待機中...</div>
-    
-    <div id="status-en" class="agent-status status-wait" style="display:none;">🗣️ 子A(EN): 待機中...</div>
-    <div id="status-code" class="agent-status status-wait" style="display:none;">💻 子B(CD): 待機中...</div>
-    <div id="status-audit" class="agent-status status-wait" style="display:none;">🕵️ 監査(AU): 待機中...</div>
-    
-    <div id="swarm-status-container"></div>
-</div>
-
-<button id="startSwarmsBtn" class="btn btn-action red" onclick="runSwarms()">🕹️ Swarms開発スタート</button>
-<button id="startDevBtn" class="btn btn-action blue" onclick="runMultiAgent('dev')">🛠️ 開発スタート（コードあり）</button>
-<button id="startPromptBtn" class="btn btn-action blue" onclick="runMultiAgent('prompt')">📝 指示書スタート（コードなし）</button>
-
-<div style="display: flex; gap: 8px; margin-bottom: 10px;">
-    <button class="btn gray btn-sm" style="flex: 1;" onclick="alert('ページを選択します')">ページを選んでから開く</button>
-    <button id="gitUpdateBtn" class="btn gray btn-sm" style="width: 40px; flex: none; font-size: 1.1rem;" onclick="runGitUpdate()" title="Git更新">🔄</button>
-    <button class="btn gray btn-sm" style="flex: none; padding: 0 12px; white-space: nowrap;" onclick="alert('ひらきます')">📂 ひらく</button>
-</div>
-
-<button id="copyBtn" class="btn btn-action gray" onclick="copyOutput()">📋 COPY (最適化コピー)</button>
-
-<div id="output" class="output-console">
-    <div style="color:#aaaaaa;">▶ケッカガ ココニ ヒョウジサレマス</div>
-</div>
-
-<div id="modal-settings" class="modal-overlay">
-    <div class="modal-content">
-        <h3>SETTINGS</h3>
-        
-        <label>Gemini API Key (3.5 Flash用)</label>
-        <input type="password" id="apiKey" placeholder="Enter API Key">
-
-        <label>Git アクセストークン (GitHub Token 等)</label>
-        <input type="password" id="gitToken" placeholder="ghp_xxxxxxxxxxxx">
-        
-        <label>マイ・コンテキスト (前提条件/技術スタック)</label>
-        <textarea id="myContext" rows="3" placeholder="例: PythonとReactを好む。シンプルでモダンなUI設計。"></textarea>
-
-        <label class="checkbox-label">
-            <input type="checkbox" id="soundToggle" checked>
-            <span>タイピング音 (SOUND) 鳴らす</span>
-        </label>
-
-        <label>定型文 1</label>
-        <textarea id="teikei1" rows="2" placeholder="例：UIを作る時はモダンでシンプルなデザインに"></textarea>
-        
-        <label>定型文 2</label>
-        <textarea id="teikei2" rows="2" placeholder="例：エラーハンドリングも含めて"></textarea>
-        
-        <label>定型文 3</label>
-        <textarea id="teikei3" rows="2" placeholder="例：コアなロジック部分のみ"></textarea>
-        
-        <div style="display: flex; gap: 10px; margin-top: 10px;">
-            <button class="btn red" style="flex: 2;" onclick="saveSettings()">SAVE</button>
-            <button class="btn" style="flex: 1;" onclick="closeModal('modal-settings')">CLOSE</button>
+    <div id="app-container">
+        <!-- Left Panel: Dispenser -->
+        <div id="dispenser-panel" class="ui-panel">
+            <div class="panel-title">Dispenser</div>
+            <button class="spawn-button" id="btn-spawn">Order Next Topping</button>
+            <div class="dispenser-slot" id="dispenser-slot">
+                <!-- Canvas-based preview will render here dynamically -->
+            </div>
+            <div id="stats-panel">
+                <div class="stat-row"><span>Total Placed:</span><span id="stat-total">0</span></div>
+                <div class="stat-row"><span>Pity Counter:</span><span id="stat-pity">0/10</span></div>
+                <div class="stat-row"><span>Juiciness Index:</span><span id="stat-juicy">100%</span></div>
+            </div>
         </div>
+
+        <!-- Center: Physics Canvas -->
+        <div id="canvas-container">
+            <canvas id="physics-canvas"></canvas>
+        </div>
+
+        <!-- Right Panel: Pizza Encyclopedia -->
+        <div id="encyclopedia-panel" class="ui-panel">
+            <div class="panel-title">
+                <span>Pizza Index</span>
+                <span id="completion-rate" style="font-size: 0.9rem; color: #fff;">0%</span>
+            </div>
+            <div class="grid-container" id="encyclopedia-grid">
+                <!-- Dynamic Generation -->
+            </div>
+        </div>
+
+        <!-- Toast Notification -->
+        <div id="toast">✨ RARE FIND! ✨</div>
     </div>
-</div>
 
-<script>
-    // -------------------------------------------------------------------
-    // 設定と初期化
-    // -------------------------------------------------------------------
-    const MODEL_NAME = "gemini-3.5-flash";
-    const API_BASE_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}`;
-    
-    let audioCtx = null;
-    let currentAppMode = ''; // 'swarms', 'dev', 'prompt'
-
-    window.onload = () => {
-        document.getElementById('apiKey').value = localStorage.getItem('gemini_key') || '';
-        document.getElementById('gitToken').value = localStorage.getItem('git_token') || '';
-        document.getElementById('myContext').value = localStorage.getItem('my_context') || '';
-        document.getElementById('soundToggle').checked = localStorage.getItem('sound_toggle') !== 'false';
-        for(let i=1; i<=3; i++) {
-            document.getElementById('teikei'+i).value = localStorage.getItem('teikei'+i) || '';
-        }
-    };
-
-    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-
-    function saveSettings() {
-        localStorage.setItem('gemini_key', document.getElementById('apiKey').value);
-        localStorage.setItem('git_token', document.getElementById('gitToken').value);
-        localStorage.setItem('my_context', document.getElementById('myContext').value);
-        localStorage.setItem('sound_toggle', document.getElementById('soundToggle').checked);
-        for(let i=1; i<=3; i++) {
-            localStorage.setItem('teikei'+i, document.getElementById('teikei'+i).value);
-        }
-        closeModal('modal-settings');
-        alert('セッテイ ヲ ホゾンシマシタ。');
-    }
-
-    function insertTeikei(num) {
-        const val = localStorage.getItem('teikei'+num);
-        if(!val) {
-            alert(`テイケイ ${num} ガ ミセッテイ デス。⚙️ カラ セッテイシテクダサイ。`);
-            return;
-        }
-        const ta = document.getElementById('userInput');
-        ta.value = ta.value ? ta.value + '\n' + val : val;
-        ta.scrollTop = ta.scrollHeight;
-    }
-
-    function updateStatus(agentId, state, text) {
-        const el = document.getElementById(agentId);
-        if(el) {
-            el.className = `agent-status status-${state}`;
-            el.innerText = text;
-            el.style.display = 'block';
-        }
-    }
-
-    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-    function disableButtons(disable) {
-        document.getElementById('startSwarmsBtn').disabled = disable;
-        document.getElementById('startDevBtn').disabled = disable;
-        document.getElementById('startPromptBtn').disabled = disable;
-        document.getElementById('copyBtn').disabled = disable;
-        document.getElementById('gitUpdateBtn').disabled = disable;
-    }
-
-    function resetButtonsText() {
-        document.getElementById('startSwarmsBtn').innerText = "🕹️ Swarms開発スタート";
-        document.getElementById('startDevBtn').innerText = "🛠️ 開発スタート（コードあり）";
-        document.getElementById('startPromptBtn').innerText = "📝 指示書スタート（コードなし）";
-    }
-
-    // --- 音声演出 ---
-    function initAudio() {
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-    }
-
-    function playBeep() {
-        const soundOn = document.getElementById('soundToggle').checked;
-        if (!soundOn || !audioCtx) return;
-        try {
-            const osc = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(400 + Math.random()*200, audioCtx.currentTime); 
-            gainNode.gain.setValueAtTime(0.015, audioCtx.currentTime); 
-            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
-            osc.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.05);
-        } catch(e) {}
-    }
-
-    // -------------------------------------------------------------------
-    // Git連携処理 (🔄 ボタン時の挙動)
-    // -------------------------------------------------------------------
-    async function runGitUpdate() {
-        const token = localStorage.getItem('git_token');
-        if (!token) {
-            alert('⚙️ 設定画面を開き、Gitアクセストークンを入力してください。');
-            openModal('modal-settings');
-            return;
-        }
-
-        const outputConsole = document.getElementById('output');
-        outputConsole.innerHTML = `<div style="color: #f39c12;">🚀 Git連携処理を開始します...</div>`;
-        disableButtons(true);
-
-        try {
-            // ローカルサーバー側のエンドポイント、あるいはGitHub APIへの直接リクエスト等をここに構成します
-            outputConsole.innerHTML += `\n▶ トークン認証を確認中...`;
-            await sleep(1000); 
-
-            // サンプルとしての検証用文言（環境に合わせて変更してください）
-            outputConsole.innerHTML += `\n<div style="color: #2ecc71;">[SUCCESS] Git同期ロジックのベース呼び出しに成功しました。</div>`;
-            alert('Git同期ロジックを実行しました。');
-            
-        } catch (err) {
-            outputConsole.innerHTML += `\n<div style="color: #e74c3c;">[ERROR] Gitの更新処理に失敗しました: ${err.message}</div>`;
-        } finally {
-            disableButtons(false);
-        }
-    }
-
-    // -------------------------------------------------------------------
-    // API Callers
-    // -------------------------------------------------------------------
-    async function callGemini(prompt, apiKey, temp = 0.0) {
-        const res = await fetch(`${API_BASE_URL}:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ 
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { temperature: temp }
-            })
-        });
-        if (!res.ok) throw new Error(`API Error: ${res.status}`);
-        const data = await res.json();
-        return data.candidates[0].content.parts[0].text.trim();
-    }
-
-    async function callGeminiJSON(prompt, apiKey) {
-        const res = await fetch(`${API_BASE_URL}:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ 
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { 
-                    temperature: 0.1,
-                    responseMimeType: "application/json" 
-                }
-            })
-        });
-        if (!res.ok) throw new Error(`API Error: ${res.status}`);
-        const data = await res.json();
-        return JSON.parse(data.candidates[0].content.parts[0].text);
-    }
-
-    async function callGeminiStream(prompt, apiKey, onChunk) {
-        const res = await fetch(`${API_BASE_URL}:streamGenerateContent?alt=sse&key=${apiKey}`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ 
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { temperature: 0.2 }
-            })
-        });
-        
-        if (!res.ok) throw new Error(`API Error: ${res.status}`);
-        
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder("utf-8");
-        let fullText = "";
-        
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n');
-            
-            for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                    const dataStr = line.substring(6).trim();
-                    if (dataStr) {
-                        try {
-                            const dataObj = JSON.parse(dataStr);
-                            const parts = dataObj?.candidates?.[0]?.content?.parts;
-                            if (parts && parts[0] && parts[0].text) {
-                                const t = parts[0].text;
-                                fullText += t;
-                                onChunk(t); 
-                                playBeep(); 
-                            }
-                        } catch(e) {}
-                    }
-                }
-            }
-        }
-        return fullText;
-    }
-
-    // -------------------------------------------------------------------
-    // Swarms ワークフロー
-    // -------------------------------------------------------------------
-    async function runSwarms() {
-        const input = document.getElementById('userInput').value;
-        const key = localStorage.getItem('gemini_key');
-        if(!key) { alert('⚙️ カラ Gemini API Key ヲ ニュウリョクシテクダサイ。'); return; }
-        if(!input) { alert('ヨウボウ ヲ ニュウリョクシテクダサイ。'); return; }
-
-        currentAppMode = 'swarms';
-        initAudio();
-
-        const outputConsole = document.getElementById('output');
-        const statusBoard = document.getElementById('status-board');
-        const swarmContainer = document.getElementById('swarm-status-container');
-        
-        disableButtons(true);
-        document.getElementById('startSwarmsBtn').innerText = "⏳ ギョウムチュウ...";
-
-        outputConsole.innerHTML = "";
-        statusBoard.style.display = "block";
-        
-        document.getElementById('status-en').style.display = 'none';
-        document.getElementById('status-code').style.display = 'none';
-        document.getElementById('status-audit').style.display = 'none';
-        swarmContainer.innerHTML = ''; 
-
-        updateStatus('status-pm', 'run', '🧠 親(PM) : チーム編成中... (Function Calling)');
-
-        try {
-            const spawnTool = {
-                functionDeclarations: [{
-                    name: "spawn_agents",
-                    description: "ユーザーの要望を達成するために必要な専門エージェントのチームを編成します。",
-                    parameters: {
-                        type: "OBJECT",
-                        properties: {
-                            agents: {
-                                type: "ARRAY",
-                                description: "必要な子エージェントのリスト",
-                                items: {
-                                    type: "OBJECT",
-                                    properties: {
-                                        role: { type: "STRING", description: "役割 (例: 'Backend Developer', 'Frontend UI', 'Database Expert')" },
-                                        task: { type: "STRING", description: "この子エージェントが実行すべき具体的なタスク指示" }
-                                    }
-                                }
-                            }
-                        },
-                        required: ["agents"]
-                    }
-                }]
-            };
-
-            const pmPrompt = `あなたは優秀なオーケストレーターです。要望を分析しタスクを分解して 'spawn_agents' を実行してください。\n\n【トークン節約ルール】\n子エージェントへのタスク指示(task)は、トークン消費を抑えるため「極限まで短い英語(English)」で記述してください。\n\n要望: ${input}`;
-            
-            const pmRes = await fetch(`${API_BASE_URL}:generateContent?key=${key}`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ 
-                    contents: [{ parts: [{ text: pmPrompt }] }],
-                    tools: [spawnTool],
-                    toolConfig: { functionCallingConfig: { mode: "ANY" } }, 
-                    generationConfig: { temperature: 0.2 }
-                })
-            });
-            
-            if (!pmRes.ok) throw new Error(`API Error: ${pmRes.status}`);
-            const pmData = await pmRes.json();
-
-            const parts = pmData.candidates[0].content.parts;
-            const functionCall = parts.find(p => p.functionCall)?.functionCall;
-
-            if (!functionCall || functionCall.name !== "spawn_agents") {
-                throw new Error("PMがチーム編成ツールを使用しませんでした。");
-            }
-
-            const agentTeam = functionCall.args.agents;
-            updateStatus('status-pm', 'done', `🧠 親(PM) : 編成完了！ ${agentTeam.length}名のエージェントを召喚します。`);
-
-            agentTeam.forEach((agent, index) => {
-                swarmContainer.innerHTML += `<div id="status-child-${index}" class="agent-status status-wait">🤖 子[${agent.role}]: 待機中...</div>`;
-            });
-
-            const childPromises = agentTeam.map(async (agent, index) => {
-                const childPrompt = `Role: Expert ${agent.role}\nConstraint: English strictly. NO greetings. NO explanations. Provide raw artifact only.\nTask: ${agent.task}`;
+    <script>
+        // ============================================================================
+        // AUDIO SYNTHESIZER (Web Audio API for Juicy UX Sound Effects)
+        // ============================================================================
+        const AudioSynth = {
+            ctx: null,
+            init() {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            },
+            playPlop(frequency = 150, duration = 0.15) {
+                if (!this.ctx) this.init();
+                if (this.ctx.state === 'suspended') this.ctx.resume();
                 
-                try {
-                    if (index > 0) {
-                        updateStatus(`status-child-${index}`, 'run', `🤖 子[${agent.role}]: 時差待機中(${index * 2}秒)...`);
-                        await sleep(index * 2000);
-                    }
-                    
-                    updateStatus(`status-child-${index}`, 'run', `🤖 子[${agent.role}]: タスク実行中...`);
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(frequency, this.ctx.currentTime);
+                // Pitch slide down for "juicy/mochi" feel
+                osc.frequency.exponentialRampToValueAtTime(frequency * 0.4, this.ctx.currentTime + duration);
+                
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+                
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            },
+            playChime() {
+                if (!this.ctx) this.init();
+                if (this.ctx.state === 'suspended') this.ctx.resume();
 
-                    let result = null;
-                    let lastErrorMsg = "";
-                    for (let attempt = 1; attempt <= 2; attempt++) {
-                        try {
-                            result = await callGemini(childPrompt, key, 0.0);
-                            break; 
-                        } catch (err) {
-                            lastErrorMsg = err.message; 
-                            if (attempt < 2) {
-                                updateStatus(`status-child-${index}`, 'err', `🤖 子[${agent.role}]: サーバー混雑(${lastErrorMsg})。5秒後に再試行...`);
-                                await sleep(5000); 
-                                updateStatus(`status-child-${index}`, 'run', `🤖 子[${agent.role}]: タスク再実行中(2回目)...`);
+                const now = this.ctx.currentTime;
+                const freqs = [523.25, 659.25, 783.99, 1046.50]; // C Major Arpeggio
+                
+                freqs.forEach((f, index) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(f, now + index * 0.08);
+                    
+                    gain.gain.setValueAtTime(0.15, now + index * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + index * 0.08 + 0.4);
+                    
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    
+                    osc.start(now + index * 0.08);
+                    osc.stop(now + index * 0.08 + 0.4);
+                });
+            }
+        };
+
+        // ============================================================================
+        // TOPPING DEFINITIONS & SPAWN ALGORITHM (Pity System)
+        // ============================================================================
+        const RARITY = {
+            COMMON: { name: 'Common', weight: 75, color: '#ffffff' },
+            RARE: { name: 'Rare', weight: 20, color: '#00e5ff' },
+            ULTRA: { name: 'Ultra Rare', weight: 5, color: '#ffd700' }
+        };
+
+        const TOPPING_DATABASE = [
+            { id: 'pepperoni', name: 'Mochi Pepperoni', rarity: RARITY.COMMON, baseColor: '#e63946', secondaryColor: '#b5179e', radius: 24 },
+            { id: 'mushroom', name: 'Plump Shroom', rarity: RARITY.COMMON, baseColor: '#f1faee', secondaryColor: '#a8dadc', radius: 22 },
+            { id: 'olive', name: 'Juicy Olive', rarity: RARITY.COMMON, baseColor: '#2a9d8f', secondaryColor: '#264653', radius: 16 },
+            { id: 'basil', name: 'Fresh Basil', rarity: RARITY.COMMON, baseColor: '#4ad66d', secondaryColor: '#1b4332', radius: 20 },
+            { id: 'gold_pineapple', name: 'Golden Pineapple', rarity: RARITY.RARE, baseColor: '#ffd166', secondaryColor: '#f77f00', radius: 25, glow: true },
+            { id: 'jewel_tomato', name: 'Jewel Tomato', rarity: RARITY.RARE, baseColor: '#ff4d6d', secondaryColor: '#ff758f', radius: 23, glow: true },
+            { id: 'star_anchovy', name: 'Star Anchovy', rarity: RARITY.ULTRA, baseColor: '#7209b7', secondaryColor: '#4cc9f0', radius: 28, glow: true, sparkle: true }
+        ];
+
+        const SpawnSystem = {
+            pityCounter: 0,
+            pityThreshold: 10, // Guaranteed Rare/Ultra Rare at 10
+
+            getNextTopping() {
+                this.pityCounter++;
+                let pool = [...TOPPING_DATABASE];
+                
+                // Apply Pity Logic
+                if (this.pityCounter >= this.pityThreshold) {
+                    // Filter only Rare and Ultra Rare
+                    pool = TOPPING_DATABASE.filter(t => t.rarity === RARITY.RARE || t.rarity === RARITY.ULTRA);
+                    this.pityCounter = 0; // Reset
+                }
+
+                // Weighted Random Selection
+                const totalWeight = pool.reduce((sum, t) => sum + t.rarity.weight, 0);
+                let random = Math.random() * totalWeight;
+                
+                for (const topping of pool) {
+                    if (random < topping.rarity.weight) {
+                        // If naturally rolled a rare/ultra, reset pity anyway
+                        if (topping.rarity === RARITY.RARE || topping.rarity === RARITY.ULTRA) {
+                            this.pityCounter = 0;
+                        }
+                        return { ...topping };
+                    }
+                    random -= topping.rarity.weight;
+                }
+                return { ...TOPPING_DATABASE[0] }; // Fallback
+            }
+        };
+
+        // ============================================================================
+        // PHYSICS & LOGIC ENGINE (Vector Math, Verlet Integration, Spring-Mass)
+        // ============================================================================
+        class Vector2D {
+            constructor(x = 0, y = 0) { this.x = x; this.y = y; }
+            add(v) { return new Vector2D(this.x + v.x, this.y + v.y); }
+            sub(v) { return new Vector2D(this.x - v.x, this.y - v.y); }
+            mult(n) { return new Vector2D(this.x * n, this.y * n); }
+            div(n) { return new Vector2D(this.x / n, this.y / n); }
+            mag() { return Math.hypot(this.x, this.y); }
+            normalize() { const m = this.mag(); return m === 0 ? new Vector2D() : this.div(m); }
+            dist(v) { return Math.hypot(this.x - v.x, this.y - v.y); }
+            dot(v) { return this.x * v.x + this.y * v.y; }
+        }
+
+        // Soft-body Spring Point for Pizza Crust
+        class CrustPoint {
+            constructor(x, y, angle) {
+                this.baseX = x;
+                this.baseY = y;
+                this.x = x;
+                this.y = y;
+                this.vx = 0;
+                this.vy = 0;
+                this.angle = angle;
+                this.mass = 1.0;
+            }
+
+            update(springK, damping, center, targetRadius) {
+                // Spring force pulling back to ideal circular shape
+                const targetX = center.x + Math.cos(this.angle) * targetRadius;
+                const targetY = center.y + Math.sin(this.angle) * targetRadius;
+                
+                const fx = (targetX - this.x) * springK;
+                const fy = (targetY - this.y) * springK;
+                
+                this.vx += fx;
+                this.vy += fy;
+                this.vx *= damping;
+                this.vy *= damping;
+                
+                this.x += this.vx;
+                this.y += this.vy;
+            }
+        }
+
+        class PizzaDough {
+            constructor(x, y, radius) {
+                this.center = new Vector2D(x, y);
+                this.radius = radius;
+                this.points = [];
+                this.numPoints = 40;
+                this.springK = 0.08;
+                this.damping = 0.85;
+                
+                for (let i = 0; i < this.numPoints; i++) {
+                    const angle = (i / this.numPoints) * Math.PI * 2;
+                    const px = x + Math.cos(angle) * radius;
+                    const py = y + Math.sin(angle) * radius;
+                    this.points.push(new CrustPoint(px, py, angle));
+                }
+            }
+
+            deform(impactPoint, force) {
+                this.points.forEach(pt => {
+                    const dist = Math.hypot(pt.x - impactPoint.x, pt.y - impactPoint.y);
+                    if (dist < 120) {
+                        const influence = (1 - dist / 120) * force;
+                        pt.vx += Math.cos(pt.angle) * influence;
+                        pt.vy += Math.sin(pt.angle) * influence;
+                    }
+                });
+            }
+
+            update() {
+                this.points.forEach(pt => pt.update(this.springK, this.damping, this.center, this.radius));
+            }
+
+            draw(ctx) {
+                // Draw Crust Shadow
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+                ctx.shadowBlur = 25;
+                ctx.shadowOffsetY = 15;
+
+                // Draw Outer Crust
+                ctx.beginPath();
+                ctx.moveTo(this.points[0].x, this.points[0].y);
+                for (let i = 1; i < this.numPoints; i++) {
+                    ctx.lineTo(this.points[i].x, this.points[i].y);
+                }
+                ctx.closePath();
+                ctx.fillStyle = '#e9c46a'; // Golden Crust
+                ctx.fill();
+
+                // Reset Shadow
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+                ctx.shadowOffsetY = 0;
+
+                // Draw Inner Sauce Area (Tomato Red)
+                ctx.beginPath();
+                ctx.moveTo(this.points[0].x, this.points[0].y);
+                for (let i = 1; i < this.numPoints; i++) {
+                    // Slightly smaller radius for sauce
+                    const pt = this.points[i];
+                    const sx = this.center.x + (pt.x - this.center.x) * 0.88;
+                    const sy = this.center.y + (pt.y - this.center.y) * 0.88;
+                    ctx.lineTo(sx, sy);
+                }
+                ctx.closePath();
+                ctx.fillStyle = '#e76f51'; 
+                ctx.fill();
+
+                // Draw Cheese Layer (Melted Cheese Gold)
+                ctx.beginPath();
+                ctx.moveTo(this.points[0].x, this.points[0].y);
+                for (let i = 1; i < this.numPoints; i++) {
+                    const pt = this.points[i];
+                    const sx = this.center.x + (pt.x - this.center.x) * 0.82;
+                    const sy = this.center.y + (pt.y - this.center.y) * 0.82;
+                    ctx.lineTo(sx, sy);
+                }
+                ctx.closePath();
+                ctx.fillStyle = '#f4a261'; 
+                ctx.fill();
+            }
+        }
+
+        class ToppingInstance {
+            constructor(x, y, config) {
+                this.pos = new Vector2D(x, y);
+                this.prevPos = new Vector2D(x, y);
+                this.vel = new Vector2D(0, 0);
+                this.config = config;
+                this.radius = config.radius;
+                this.isDragging = false;
+                
+                // Squish & Jiggle Physics Parameters
+                this.scaleX = 1.0;
+                this.scaleY = 1.0;
+                this.scaleX_vel = 0;
+                this.scaleY_vel = 0;
+                this.jiggleK = 0.15;
+                this.jiggleDamping = 0.82;
+                
+                this.rotation = Math.random() * Math.PI * 2;
+                this.rotVel = 0;
+
+                // Sparkle particles timer
+                this.sparkleTimer = 0;
+            }
+
+            applyForce(f) {
+                this.vel = this.vel.add(f);
+            }
+
+            triggerJiggle(sx, sy) {
+                this.scaleX_vel += sx;
+                this.scaleY_vel += sy;
+            }
+
+            update(gravity, friction) {
+                if (this.isDragging) return;
+
+                // Apply Physics
+                this.applyForce(gravity);
+                this.vel = this.vel.mult(friction);
+                this.pos = this.pos.add(this.vel);
+
+                // Jiggle Spring Integration
+                const targetScaleX = 1.0;
+                const targetScaleY = 1.0;
+                
+                const forceX = (targetScaleX - this.scaleX) * this.jiggleK;
+                this.scaleX_vel += forceX;
+                this.scaleX_vel *= this.jiggleDamping;
+                this.scaleX += this.scaleX_vel;
+
+                const forceY = (targetScaleY - this.scaleY) * this.jiggleK;
+                this.scaleY_vel += forceY;
+                this.scaleY_vel *= this.jiggleDamping;
+                this.scaleY += this.scaleY_vel;
+
+                // Rotation damping
+                this.rotation += this.rotVel;
+                this.rotVel *= 0.95;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.pos.x, this.pos.y);
+                ctx.rotate(this.rotation);
+                ctx.scale(this.scaleX, this.scaleY);
+
+                // Rare Aura Glow
+                if (this.config.glow) {
+                    ctx.shadowColor = this.config.rarity === RARITY.ULTRA ? '#e0aaff' : '#ffd700';
+                    ctx.shadowBlur = 15 + Math.sin(Date.now() * 0.01) * 5;
+                }
+
+                // Draw Base Topping Shape (Mochi/Juicy 3D look)
+                const grad = ctx.createRadialGradient(-this.radius*0.2, -this.radius*0.2, this.radius * 0.1, 0, 0, this.radius);
+                grad.addColorStop(0, this.config.baseColor);
+                grad.addColorStop(0.8, this.config.secondaryColor);
+                grad.addColorStop(1, 'rgba(0,0,0,0.3)');
+
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = grad;
+                ctx.fill();
+
+                // Highlight (Juicy UX Glossy Overlay)
+                ctx.beginPath();
+                ctx.ellipse(-this.radius * 0.3, -this.radius * 0.3, this.radius * 0.3, this.radius * 0.15, Math.PI / 4, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.fill();
+
+                // Specific topping details
+                if (this.config.id === 'pepperoni') {
+                    // Pepperoni Specks
+                    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+                    for (let i = 0; i < 5; i++) {
+                        const angle = (i / 5) * Math.PI * 2;
+                        ctx.beginPath();
+                        ctx.arc(Math.cos(angle) * (this.radius * 0.5), Math.sin(angle) * (this.radius * 0.5), 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                } else if (this.config.id === 'mushroom') {
+                    // Mushroom Stem Overlay
+                    ctx.fillStyle = this.config.secondaryColor;
+                    ctx.fillRect(-this.radius * 0.2, 0, this.radius * 0.4, this.radius * 0.8);
+                } else if (this.config.id === 'star_anchovy') {
+                    // Draw Star Eyes
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.arc(-this.radius*0.3, -2, 3, 0, Math.PI*2);
+                    ctx.arc(this.radius*0.3, -2, 3, 0, Math.PI*2);
+                    ctx.fill();
+                    ctx.fillStyle = '#000';
+                    ctx.beginPath();
+                    ctx.arc(-this.radius*0.3, -2, 1.5, 0, Math.PI*2);
+                    ctx.arc(this.radius*0.3, -2, 1.5, 0, Math.PI*2);
+                    ctx.fill();
+                }
+
+                ctx.restore();
+            }
+        }
+
+        // Particle System for Splatters and Glitter
+        class Particle {
+            constructor(x, y, color, isGlitter = false) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 8;
+                this.vy = (Math.random() - 0.5) * 8 - (isGlitter ? 3 : 0);
+                this.color = color;
+                this.alpha = 1.0;
+                this.decay = Math.random() * 0.03 + 0.02;
+                this.size = isGlitter ? Math.random() * 4 + 2 : Math.random() * 6 + 4;
+                this.isGlitter = isGlitter;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if (!this.isGlitter) this.vy += 0.2; // Gravity for juice
+                this.alpha -= this.decay;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                if (this.isGlitter) {
+                    // Draw Star/Diamond for glitter
+                    ctx.translate(this.x, this.y);
+                    ctx.beginPath();
+                    for (let i = 0; i < 5; i++) {
+                        ctx.lineTo(Math.cos((18 + i * 72) * Math.PI / 180) * this.size, Math.sin((18 + i * 72) * Math.PI / 180) * this.size);
+                        ctx.lineTo(Math.cos((54 + i * 72) * Math.PI / 180) * (this.size/2), Math.sin((54 + i * 72) * Math.PI / 180) * (this.size/2));
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+        }
+
+        // ============================================================================
+        // MAIN GAME CONTROLLER & UI BINDINGS
+        // ============================================================================
+        const Game = {
+            canvas: null,
+            ctx: null,
+            pizza: null,
+            toppings: [],
+            particles: [],
+            draggedTopping: null,
+            dispenserTopping: null,
+            
+            // Physics Constants
+            gravity: new Vector2D(0, 0.15),
+            friction: 0.98,
+            
+            // State
+            unlockedToppings: {},
+            totalPlacedCount: 0,
+
+            init() {
+                this.canvas = document.getElementById('physics-canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.resizeCanvas();
+
+                // Initialize Pizza Dough in Center
+                this.pizza = new PizzaDough(this.canvas.width / 2, this.canvas.height / 2, 220);
+
+                // Initialize Dispenser Slot
+                this.setupDispenser();
+
+                // Setup Event Listeners
+                window.addEventListener('resize', () => this.resizeCanvas());
+                this.setupInteractions();
+                
+                // Initialize UI
+                this.buildEncyclopedia();
+                this.updateUI();
+
+                // Start Loop
+                requestAnimationFrame((t) => this.loop(t));
+            },
+
+            resizeCanvas() {
+                const container = document.getElementById('canvas-container');
+                this.canvas.width = container.clientWidth - 40;
+                this.canvas.height = container.clientHeight - 40;
+                if (this.pizza) {
+                    this.pizza.center = new Vector2D(this.canvas.width / 2, this.canvas.height / 2);
+                }
+            },
+
+            setupDispenser() {
+                this.dispenserTopping = SpawnSystem.getNextTopping();
+                this.renderDispenserPreview();
+                
+                document.getElementById('btn-spawn').addEventListener('click', () => {
+                    this.dispenserTopping = SpawnSystem.getNextTopping();
+                    this.renderDispenserPreview();
+                    AudioSynth.playPlop(300, 0.1);
+                });
+            },
+
+            renderDispenserPreview() {
+                const slot = document.getElementById('dispenser-slot');
+                slot.innerHTML = ''; // Clear
+                
+                const previewCanvas = document.createElement('canvas');
+                previewCanvas.width = 120;
+                previewCanvas.height = 120;
+                slot.appendChild(previewCanvas);
+                
+                const pCtx = previewCanvas.getContext('2d');
+                const tempTopping = new ToppingInstance(60, 60, this.dispenserTopping);
+                
+                // Draw loop for preview
+                const drawPreview = () => {
+                    pCtx.clearRect(0, 0, 120, 120);
+                    // Pulsing scale for preview
+                    tempTopping.scaleX = 1.0 + Math.sin(Date.now() * 0.005) * 0.05;
+                    tempTopping.scaleY = 1.0 + Math.sin(Date.now() * 0.005) * 0.05;
+                    tempTopping.draw(pCtx);
+                    if (slot.contains(previewCanvas)) {
+                        requestAnimationFrame(drawPreview);
+                    }
+                };
+                drawPreview();
+            },
+
+            buildEncyclopedia() {
+                const grid = document.getElementById('encyclopedia-grid');
+                grid.innerHTML = '';
+                
+                TOPPING_DATABASE.forEach(topping => {
+                    const item = document.createElement('div');
+                    item.className = `book-item ${topping.rarity === RARITY.ULTRA ? 'rare' : ''}`;
+                    item.id = `book-${topping.id}`;
+                    
+                    // Create a mini canvas for the icon
+                    const iconCanvas = document.createElement('canvas');
+                    iconCanvas.width = 48;
+                    iconCanvas.height = 48;
+                    iconCanvas.className = 'book-icon';
+                    
+                    const iCtx = iconCanvas.getContext('2d');
+                    const temp = new ToppingInstance(24, 24, topping);
+                    temp.draw(iCtx);
+
+                    item.appendChild(iconCanvas);
+                    
+                    const name = document.createElement('div');
+                    name.className = 'book-name';
+                    name.innerText = topping.name;
+                    item.appendChild(name);
+
+                    const count = document.createElement('div');
+                    count.className = 'book-count';
+                    count.id = `count-${topping.id}`;
+                    count.innerText = 'Locked';
+                    item.appendChild(count);
+
+                    grid.appendChild(item);
+                });
+            },
+
+            updateUI() {
+                document.getElementById('stat-total').innerText = this.totalPlacedCount;
+                document.getElementById('stat-pity').innerText = `${SpawnSystem.pityCounter}/${SpawnSystem.pityThreshold}`;
+                
+                // Calculate completion rate
+                const totalTypes = TOPPING_DATABASE.length;
+                const unlockedTypes = Object.keys(this.unlockedToppings).length;
+                const rate = Math.round((unlockedTypes / totalTypes) * 100);
+                document.getElementById('completion-rate').innerText = `${rate}%`;
+
+                // Update Encyclopedia Items
+                TOPPING_DATABASE.forEach(topping => {
+                    const count = this.unlockedToppings[topping.id] || 0;
+                    const item = document.getElementById(`book-${topping.id}`);
+                    const countLabel = document.getElementById(`count-${topping.id}`);
+                    if (count > 0) {
+                        item.classList.add('unlocked');
+                        countLabel.innerText = `x${count}`;
+                    }
+                });
+            },
+
+            triggerToast(message) {
+                const toast = document.getElementById('toast');
+                toast.innerText = message;
+                toast.classList.add('show');
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 2500);
+            },
+
+            setupInteractions() {
+                let isMouseDown = false;
+                let dragOffset = new Vector2D();
+
+                const getMousePos = (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    return new Vector2D(clientX - rect.left, clientY - rect.top);
+                };
+
+                // Drag from Dispenser Slot
+                const slot = document.getElementById('dispenser-slot');
+                
+                const initiateDragFromDispenser = (e) => {
+                    AudioSynth.playPlop(200, 0.15);
+                    const rect = this.canvas.getBoundingClientRect();
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    
+                    const spawnPos = new Vector2D(clientX - rect.left, clientY - rect.top);
+                    
+                    const newTopping = new ToppingInstance(spawnPos.x, spawnPos.y, this.dispenserTopping);
+                    newTopping.isDragging = true;
+                    this.draggedTopping = newTopping;
+                    this.toppings.push(newTopping);
+                    
+                    // Cycle dispenser
+                    this.dispenserTopping = SpawnSystem.getNextTopping();
+                    this.renderDispenserPreview();
+                    this.updateUI();
+                };
+
+                slot.addEventListener('mousedown', initiateDragFromDispenser);
+                slot.addEventListener('touchstart', initiateDragFromDispenser);
+
+                // Canvas Interactions
+                const onStart = (e) => {
+                    const mPos = getMousePos(e);
+                    // Check if clicked on existing topping
+                    for (let i = this.toppings.length - 1; i >= 0; i--) {
+                        const t = this.toppings[i];
+                        if (mPos.dist(t.pos) < t.radius) {
+                            this.draggedTopping = t;
+                            t.isDragging = true;
+                            dragOffset = t.pos.sub(mPos);
+                            AudioSynth.playPlop(250, 0.08);
+                            break;
+                        }
+                    }
+                };
+
+                const onMove = (e) => {
+                    if (!this.draggedTopping) return;
+                    const mPos = getMousePos(e);
+                    
+                    // Calculate velocity while dragging for juicy stretch
+                    const targetPos = mPos.add(dragOffset);
+                    const dragVel = targetPos.sub(this.draggedTopping.pos);
+                    
+                    this.draggedTopping.pos = targetPos;
+                    
+                    // Apply dynamic squish based on drag speed
+                    const speed = dragVel.mag();
+                    if (speed > 1) {
+                        const stretch = Math.min(speed * 0.02, 0.4);
+                        this.draggedTopping.scaleX = 1.0 + stretch;
+                        this.draggedTopping.scaleY = 1.0 - stretch;
+                        this.draggedTopping.rotation = Math.atan2(dragVel.y, dragVel.x);
+                    }
+                };
+
+                const onEnd = () => {
+                    if (!this.draggedTopping) return;
+                    
+                    this.draggedTopping.isDragging = false;
+                    
+                    // Trigger juicy bounce on release
+                    this.draggedTopping.triggerJiggle(-0.3, 0.3);
+                    
+                    // Check if dropped on Pizza
+                    const distToCenter = this.draggedTopping.pos.dist(this.pizza.center);
+                    if (distToCenter < this.pizza.radius) {
+                        // Successful Placement!
+                        this.totalPlacedCount++;
+                        const id = this.draggedTopping.config.id;
+                        this.unlockedToppings[id] = (this.unlockedToppings[id] || 0) + 1;
+                        
+                        // Deform Pizza Crust based on impact
+                        this.pizza.deform(this.draggedTopping.pos, 15);
+                        
+                        // Spawn Juice Splatters
+                        for (let i = 0; i < 8; i++) {
+                            this.particles.push(new Particle(
+                                this.draggedTopping.pos.x, 
+                                this.draggedTopping.pos.y, 
+                                this.draggedTopping.config.baseColor
+                            ));
+                        }
+
+                        // Rare Topping Effects
+                        if (this.draggedTopping.config.glow) {
+                            AudioSynth.playChime();
+                            this.triggerToast(`✨ UNLOCKED: ${this.draggedTopping.config.name}! ✨`);
+                            // Spawn Glitter
+                            for (let i = 0; i < 15; i++) {
+                                this.particles.push(new Particle(
+                                    this.draggedTopping.pos.x, 
+                                    this.draggedTopping.pos.y, 
+                                    '#ffd700',
+                                    true
+                                ));
+                            }
+                        } else {
+                            AudioSynth.playPlop(120, 0.2);
+                        }
+                    } else {
+                        // Dropped off pizza - slide away or fall off
+                        this.draggedTopping.applyForce(new Vector2D((Math.random() - 0.5) * 5, 5));
+                    }
+
+                    this.draggedTopping = null;
+                    this.updateUI();
+                };
+
+                this.canvas.addEventListener('mousedown', onStart);
+                this.canvas.addEventListener('mousemove', onMove);
+                window.addEventListener('mouseup', onEnd);
+
+                this.canvas.addEventListener('touchstart', onStart);
+                this.canvas.addEventListener('touchmove', onMove);
+                window.addEventListener('touchend', onEnd);
+            },
+
+            resolveCollisions() {
+                // Topping vs Topping Collisions (Elastic Circle Collision)
+                for (let i = 0; i < this.toppings.length; i++) {
+                    const a = this.toppings[i];
+                    for (let j = i + 1; j < this.toppings.length; j++) {
+                        const b = this.toppings[j];
+                        
+                        const dist = a.pos.dist(b.pos);
+                        const minDist = a.radius + b.radius;
+                        
+                        if (dist < minDist) {
+                            const overlap = minDist - dist;
+                            const normal = b.pos.sub(a.pos).normalize();
+                            
+                            // Positional correction (prevent sinking into each other)
+                            if (!a.isDragging && !b.isDragging) {
+                                a.pos = a.pos.sub(normal.mult(overlap * 0.5));
+                                b.pos = b.pos.add(normal.mult(overlap * 0.5));
+                                
+                                // Elastic bounce math
+                                const kx = a.vel.x - b.vel.x;
+                                const ky = a.vel.y - b.vel.y;
+                                const p = 2 * (normal.x * kx + normal.y * ky) / 2; // assuming equal mass
+                                
+                                a.vel.x -= p * normal.x;
+                                a.vel.y -= p * normal.y;
+                                b.vel.x += p * normal.x;
+                                b.vel.y += p * normal.y;
+
+                                // Trigger squish on impact
+                                a.triggerJiggle(-0.15, 0.15);
+                                b.triggerJiggle(-0.15, 0.15);
                             }
                         }
                     }
 
-                    if (!result) throw new Error(lastErrorMsg);
-                    updateStatus(`status-child-${index}`, 'done', `🤖 子[${agent.role}]: 完了！`);
-                    return `### [担当: ${agent.role}]\n${result}\n\n`;
-
-                } catch (err) {
-                    updateStatus(`status-child-${index}`, 'err', `🤖 子[${agent.role}]: 取得失敗`);
-                    return `### [担当: ${agent.role}]\n⚠️ APIエラーにより取得失敗 (Error: ${err.message})\n\n`;
+                    // Topping vs Pizza Boundary Constraint (Keep toppings on pizza)
+                    if (!a.isDragging) {
+                        const distToCenter = a.pos.dist(this.pizza.center);
+                        const maxDist = this.pizza.radius - a.radius;
+                        if (distToCenter > maxDist) {
+                            const normal = a.pos.sub(this.pizza.center).normalize();
+                            // Push back inside
+                            a.pos = this.pizza.center.add(normal.mult(maxDist));
+                            // Bounce off boundary
+                            a.vel = a.vel.sub(normal.mult(2 * a.vel.dot(normal)));
+                            a.vel = a.vel.mult(0.5); // Lose energy
+                            a.triggerJiggle(0.2, -0.2);
+                        }
+                    }
                 }
-            });
+            },
 
-            const results = await Promise.all(childPromises);
+            loop(timestamp) {
+                // Clear Canvas
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-            outputConsole.innerHTML = `
-                <div class="section-title">=== SWARM OUTPUT ===</div>
-                <div id="swarm-text">${results.join("")}</div>
-            `;
+                // Update & Draw Pizza Dough
+                this.pizza.update();
+                this.pizza.draw(this.ctx);
 
-        } catch(e) {
-            outputConsole.innerHTML += `<div style="color:#e74c3c; margin-top:10px;">ERROR: 通信エラー発生。\n${e.message}</div>`;
-            updateStatus('status-pm', 'err', `🧠 親(PM) : エラー停止 (${e.message})`);
-        } finally {
-            disableButtons(false);
-            resetButtonsText();
-        }
-    }
-
-    // -------------------------------------------------------------------
-    // 開発 / 指示書 ワークフロー
-    // -------------------------------------------------------------------
-    async function runMultiAgent(mode) {
-        const input = document.getElementById('userInput').value;
-        const key = localStorage.getItem('gemini_key');
-        const myContext = localStorage.getItem('my_context') || "特になし";
-        
-        if(!key) { alert('⚙️ カラ Gemini API Key (3.5 Flash) ヲ ニュウリョクシテクダサイ。'); return; }
-        if(!input) { alert('ヨウボウ ヲ ニュウリョクシテクダサイ。'); return; }
-
-        currentAppMode = mode;
-        initAudio(); 
-
-        const outputConsole = document.getElementById('output');
-        const statusBoard = document.getElementById('status-board');
-        
-        disableButtons(true);
-        if(mode === 'dev') {
-            document.getElementById('startDevBtn').innerText = "⏳ ギョウムチュウ...";
-        } else {
-            document.getElementById('startPromptBtn').innerText = "⏳ ギョウムチュウ...";
-        }
-
-        const codeSectionHTML = currentAppMode === 'dev' ? `
-            <div id="cd-section">
-                <div class="section-title">--- [ Core Logic Code ] ---</div>
-                <div id="cd-text"></div>
-            </div>` : '';
-
-        outputConsole.innerHTML = `
-            <div id="en-section">
-                <div class="section-title">--- [ Task / EN Prompt ] ---</div>
-                <div id="en-text"></div>
-            </div>
-            ${codeSectionHTML}
-            <div id="audit-section" style="display:none;">
-                <div class="section-title">--- [ AUDIT REFLECTION ] ---</div>
-                <div id="audit-text" class="audit-text"></div>
-            </div>
-        `;
-        
-        const enTextEl = document.getElementById('en-text');
-        const cdTextEl = document.getElementById('cd-text');
-        const auditTextEl = document.getElementById('audit-text');
-        const auditSection = document.getElementById('audit-section');
-
-        const scrollToBottom = () => { outputConsole.scrollTop = outputConsole.scrollHeight; };
-
-        statusBoard.style.display = "block";
-        document.getElementById('swarm-status-container').innerHTML = '';
-        
-        updateStatus('status-pm', 'run', '🧠 親(PM) : コンテキスト適用＆JSON要件設計中...');
-        updateStatus('status-en', 'wait', '🗣️ 子A(EN): 待機中...');
-        
-        if(currentAppMode === 'dev') {
-            updateStatus('status-code', 'wait', '💻 子B(CD): 待機中...');
-        } else {
-            updateStatus('status-code', 'skip', '💻 子B(CD): 休止中 (指示書モードのためスキップ)');
-        }
-        updateStatus('status-audit', 'wait', '🕵️ 監査(AU): 待機中...');
-
-        try {
-            const jsonSchema = currentAppMode === 'dev' 
-                ? `{\n  "english_prompt": "AIにタスクを指示するための極限まで短い英語の要件定義(Keywords only)",\n  "core_logic": "システムのコア機能を作成するための技術的な要件定義"\n}`
-                : `{\n  "english_prompt": "AIにタスクを指示するための極限まで短い英語の要件定義(Keywords only)"\n}`;
-
-            const pmPrompt = `あなたは優秀なPMです。以下の【前提条件】と【ユーザー要望】を分析し、JSONフォーマットのみを出力してください。挨拶や解説は一切不要です。\n【前提条件】: ${myContext}\n【ユーザー要望】: ${input}\n\n${jsonSchema}`;
-            
-            const pmJson = await callGeminiJSON(pmPrompt, key);
-            updateStatus('status-pm', 'done', '🧠 親(PM) : JSON要件定義 完了！');
-
-            // 1. 子A (EN Prompt) のストリーミング実行
-            updateStatus('status-en', 'run', '🗣️ 子A(EN): 英文プロンプト ストリーミング中...');
-            const enPrompt = `あなたはプロンプトエンジニアです。以下の【要件】を元に、他のAIに渡すための、極限までトークンを節約した英語の指示文を作成してください。\nConstraint: English strictly. Provide raw artifact only.\n【要件】:\n${pmJson.english_prompt}`;
-            
-            let enResult = await callGeminiStream(enPrompt, key, (chunk) => {
-                enTextEl.innerText += chunk;
-                scrollToBottom();
-            });
-            updateStatus('status-en', 'done', '🗣️ 子A(EN): 出力完了！');
-
-            let cdResult = "";
-            // 2. 子B (Core Code) のストリーミング実行（devモードのみ）
-            if (currentAppMode === 'dev') {
-                updateStatus('status-code', 'run', '💻 子B(CD): コアコード ストリーミング中...');
-                const cdPrompt = `あなたはシニアアーキテクトです。以下の【要件】を元に、最も重要となる「コア機能」のコードのみを作成してください。\nConstraint: Code only. No explanations.\n【要件】:\n${pmJson.core_logic}`;
-                
-                cdResult = await callGeminiStream(cdPrompt, key, (chunk) => {
-                    cdTextEl.innerText += chunk;
-                    scrollToBottom();
+                // Update & Draw Toppings
+                this.toppings.forEach(topping => {
+                    topping.update(this.gravity, this.friction);
+                    topping.draw(this.ctx);
+                    
+                    // Ambient sparkles for ultra rare
+                    if (topping.config.sparkle && Math.random() < 0.05) {
+                        this.particles.push(new Particle(
+                            topping.pos.x + (Math.random() - 0.5) * topping.radius,
+                            topping.pos.y + (Math.random() - 0.5) * topping.radius,
+                            '#e0aaff',
+                            true
+                        ));
+                    }
                 });
-                updateStatus('status-code', 'done', '💻 子B(CD): 出力完了！');
+
+                // Resolve Collisions
+                this.resolveCollisions();
+
+                // Update & Draw Particles
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+                    p.update();
+                    p.draw(this.ctx);
+                    if (p.alpha <= 0) {
+                        this.particles.splice(i, 1);
+                    }
+                }
+
+                requestAnimationFrame((t) => this.loop(t));
             }
+        };
 
-            // 3. 監査 (Audit) の実行
-            updateStatus('status-audit', 'run', '🕵️ 監査(AU): 成果物の検証＆リフレクション中...');
-            auditSection.style.display = "block";
-
-            const auditPrompt = `あなたは厳格な監査官（兼デバッカー）です。これまでのユーザーの要望、および生成された成果物（英文プロンプト、必要であればコード）を比較検証し、不足している要素、バグの懸念、改善点を日本語で簡潔に箇条書きで指摘してください。\n\n【ユーザー要望】:\n${input}\n\n【生成された英文プロンプト】:\n${enResult}\n\n【生成されたコード】:\n${cdResult || 'なし（指示書モード）'}`;
-
-            await callGeminiStream(auditPrompt, key, (chunk) => {
-                auditTextEl.innerText += chunk;
-                scrollToBottom();
-            });
-            updateStatus('status-audit', 'done', '🕵️ 監査(AU): 監査完了！');
-
-        } catch(e) {
-            outputConsole.innerHTML += `<div style="color:#e74c3c; margin-top:10px;">ERROR: 処理中にエラーが発生しました。\n${e.message}</div>`;
-            updateStatus('status-pm', 'err', '🧠 親(PM) : エラー停止');
-        } finally {
-            disableButtons(false);
-            resetButtonsText();
-        }
-    }
-
-    // -------------------------------------------------------------------
-    // 便利機能
-    // -------------------------------------------------------------------
-    function copyOutput() {
-        let text = "";
-        const enText = document.getElementById('en-text')?.innerText;
-        const cdText = document.getElementById('cd-text')?.innerText;
-        const swarmText = document.getElementById('swarm-text')?.innerText;
-
-        if (swarmText) {
-            text += `=== SWARM OUTPUT ===\n${swarmText}\n`;
-        } else {
-            if (enText) text += `--- [ Task / EN Prompt ] ---\n${enText}\n\n`;
-            if (cdText) text += `--- [ Core Logic Code ] ---\n${cdText}\n\n`;
-        }
-
-        if (!text.trim()) {
-            alert('コピーするコンテンツがありません。');
-            return;
-        }
-
-        navigator.clipboard.writeText(text.trim()).then(() => {
-            alert('成果物（プロンプト/コード）をクリップボードにコピーしました！ (監査テキストは除外)');
-        }).catch(err => {
-            alert('コピーに失敗しました: ' + err);
-        });
-    }
-</script>
+        // Start the application
+        window.onload = () => Game.init();
+    </script>
 </body>
 </html>
