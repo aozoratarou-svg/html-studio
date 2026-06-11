@@ -1,1078 +1,465 @@
-<!DOCTYPE html>
+jsx
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Code2, 
+  Play, 
+  Terminal, 
+  Eye, 
+  RotateCcw, 
+  Copy, 
+  Check, 
+  Sparkles, 
+  Settings, 
+  ChevronRight,
+  Trash2
+} from 'lucide-react';
+
+// Default template to showcase the playground's capabilities
+const DEFAULT_CODE = `<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Topping Symphony - Juicy Physics Engine</title>
-    <style>
-        :root {
-            --bg-color: #1a0f0f;
-            --panel-bg: rgba(40, 20, 20, 0.85);
-            --accent-gold: #ffd700;
-            --tomato-red: #ff4d4d;
-            --cheese-gold: #ffb830;
-            --text-light: #fff5eb;
-            --font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #0a0a0f;
+      color: #f3f4f6;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 90vh;
+      overflow-hidden: x;
+    }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            user-select: none;
-            -webkit-user-drag: none;
-        }
+    .card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(0, 242, 254, 0.2);
+      border-radius: 24px;
+      padding: 32px;
+      max-width: 340px;
+      width: 100%;
+      text-align: center;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3),
+                  0 0 40px rgba(0, 242, 254, 0.1);
+      transform: translateY(0);
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
 
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-light);
-            font-family: var(--font-family);
-            overflow: hidden;
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            flex-direction: row;
-        }
+    .card:hover {
+      transform: translateY(-8px);
+      border-color: rgba(155, 81, 224, 0.4);
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4),
+                  0 0 50px rgba(155, 81, 224, 0.15);
+    }
 
-        #app-container {
-            display: flex;
-            width: 100%;
-            height: 100%;
-            position: relative;
-        }
+    .glow-orb {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+      border-radius: 50%;
+      margin: 0 auto 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      box-shadow: 0 0 30px rgba(0, 242, 254, 0.6);
+      animation: pulse 3s infinite alternate;
+    }
 
-        #canvas-container {
-            flex: 1;
-            height: 100%;
-            position: relative;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: radial-gradient(circle at center, #2d1515 0%, #120707 100%);
-        }
+    h1 {
+      font-size: 24px;
+      margin: 0 0 8px;
+      background: linear-gradient(to right, #00f2fe, #9b51e0);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
 
-        canvas {
-            display: block;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-            border-radius: 20px;
-        }
+    p {
+      color: #9ca3af;
+      font-size: 14px;
+      line-height: 1.6;
+      margin: 0 0 24px;
+    }
 
-        /* UI Overlay Panels */
-        .ui-panel {
-            position: absolute;
-            background: var(--panel-bg);
-            border: 2px solid rgba(255, 184, 48, 0.2);
-            border-radius: 16px;
-            padding: 16px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            z-index: 10;
-        }
+    button {
+      background: linear-gradient(135deg, #00f2fe 0%, #9b51e0 100%);
+      border: none;
+      color: white;
+      padding: 14px 28px;
+      border-radius: 14px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      width: 100%;
+      box-shadow: 0 4px 15px rgba(0, 242, 254, 0.3);
+      transition: all 0.2s;
+    }
 
-        #dispenser-panel {
-            left: 24px;
-            top: 24px;
-            bottom: 24px;
-            width: 280px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
+    button:active {
+      transform: scale(0.96);
+      opacity: 0.9;
+    }
 
-        #encyclopedia-panel {
-            right: 24px;
-            top: 24px;
-            bottom: 24px;
-            width: 320px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .panel-title {
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: var(--cheese-gold);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            border-bottom: 2px solid rgba(255, 184, 48, 0.2);
-            padding-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        /* Dispenser UI */
-        .dispenser-slot {
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px dashed rgba(255, 184, 48, 0.4);
-            border-radius: 12px;
-            height: 140px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-            cursor: grab;
-            transition: transform 0.2s, border-color 0.2s;
-            overflow: hidden;
-        }
-
-        .dispenser-slot:active {
-            cursor: grabbing;
-            transform: scale(0.95);
-        }
-
-        .dispenser-slot::before {
-            content: 'DRAG ME';
-            position: absolute;
-            bottom: 8px;
-            font-size: 0.7rem;
-            color: rgba(255, 255, 255, 0.4);
-            letter-spacing: 2px;
-        }
-
-        .spawn-button {
-            background: linear-gradient(135deg, var(--tomato-red), #cc2929);
-            border: none;
-            color: white;
-            padding: 12px;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: filter 0.2s;
-            text-transform: uppercase;
-        }
-
-        .spawn-button:hover {
-            filter: brightness(1.2);
-        }
-
-        /* Encyclopedia UI */
-        .grid-container {
-            flex: 1;
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            overflow-y: auto;
-            padding-right: 4px;
-        }
-
-        .grid-container::-webkit-scrollbar {
-            width: 6px;
-        }
-        .grid-container::-webkit-scrollbar-thumb {
-            background: rgba(255, 184, 48, 0.3);
-            border-radius: 3px;
-        }
-
-        .book-item {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 12px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            gap: 6px;
-            opacity: 0.4;
-            transition: all 0.3s ease;
-        }
-
-        .book-item.unlocked {
-            opacity: 1;
-            background: rgba(255, 184, 48, 0.08);
-            border-color: rgba(255, 184, 48, 0.4);
-        }
-
-        .book-item.unlocked.rare {
-            box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
-            border-color: var(--accent-gold);
-        }
-
-        .book-icon {
-            width: 48px;
-            height: 48px;
-            position: relative;
-        }
-
-        .book-name {
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-
-        .book-count {
-            font-size: 0.7rem;
-            color: var(--cheese-gold);
-        }
-
-        /* Stats Panel */
-        #stats-panel {
-            margin-top: auto;
-            background: rgba(0,0,0,0.2);
-            padding: 10px;
-            border-radius: 8px;
-            font-size: 0.8rem;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .stat-row {
-            display: flex;
-            justify-content: space-between;
-        }
-
-        /* Toast Notification */
-        #toast {
-            position: absolute;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%) translateY(100px);
-            background: linear-gradient(135deg, #ffd700, #ff8c00);
-            color: #1a0f0f;
-            padding: 12px 24px;
-            border-radius: 30px;
-            font-weight: 800;
-            font-size: 1.1rem;
-            box-shadow: 0 10px 25px rgba(255, 215, 0, 0.4);
-            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            z-index: 100;
-            pointer-events: none;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        #toast.show {
-            transform: translateX(-50%) translateY(0);
-        }
-    </style>
+    @keyframes pulse {
+      0% { transform: scale(1); box-shadow: 0 0 20px rgba(0, 242, 254, 0.4); }
+      100% { transform: scale(1.05); box-shadow: 0 0 40px rgba(0, 242, 254, 0.8); }
+    }
+  </style>
 </head>
 <body>
 
-    <div id="app-container">
-        <!-- Left Panel: Dispenser -->
-        <div id="dispenser-panel" class="ui-panel">
-            <div class="panel-title">Dispenser</div>
-            <button class="spawn-button" id="btn-spawn">Order Next Topping</button>
-            <div class="dispenser-slot" id="dispenser-slot">
-                <!-- Canvas-based preview will render here dynamically -->
-            </div>
-            <div id="stats-panel">
-                <div class="stat-row"><span>Total Placed:</span><span id="stat-total">0</span></div>
-                <div class="stat-row"><span>Pity Counter:</span><span id="stat-pity">0/10</span></div>
-                <div class="stat-row"><span>Juiciness Index:</span><span id="stat-juicy">100%</span></div>
-            </div>
-        </div>
-
-        <!-- Center: Physics Canvas -->
-        <div id="canvas-container">
-            <canvas id="physics-canvas"></canvas>
-        </div>
-
-        <!-- Right Panel: Pizza Encyclopedia -->
-        <div id="encyclopedia-panel" class="ui-panel">
-            <div class="panel-title">
-                <span>Pizza Index</span>
-                <span id="completion-rate" style="font-size: 0.9rem; color: #fff;">0%</span>
-            </div>
-            <div class="grid-container" id="encyclopedia-grid">
-                <!-- Dynamic Generation -->
-            </div>
-        </div>
-
-        <!-- Toast Notification -->
-        <div id="toast">✨ RARE FIND! ✨</div>
-    </div>
-
-    <script>
-        // ============================================================================
-        // AUDIO SYNTHESIZER (Web Audio API for Juicy UX Sound Effects)
-        // ============================================================================
-        const AudioSynth = {
-            ctx: null,
-            init() {
-                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-            },
-            playPlop(frequency = 150, duration = 0.15) {
-                if (!this.ctx) this.init();
-                if (this.ctx.state === 'suspended') this.ctx.resume();
-                
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(frequency, this.ctx.currentTime);
-                // Pitch slide down for "juicy/mochi" feel
-                osc.frequency.exponentialRampToValueAtTime(frequency * 0.4, this.ctx.currentTime + duration);
-                
-                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
-                
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                
-                osc.start();
-                osc.stop(this.ctx.currentTime + duration);
-            },
-            playChime() {
-                if (!this.ctx) this.init();
-                if (this.ctx.state === 'suspended') this.ctx.resume();
-
-                const now = this.ctx.currentTime;
-                const freqs = [523.25, 659.25, 783.99, 1046.50]; // C Major Arpeggio
-                
-                freqs.forEach((f, index) => {
-                    const osc = this.ctx.createOscillator();
-                    const gain = this.ctx.createGain();
-                    
-                    osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(f, now + index * 0.08);
-                    
-                    gain.gain.setValueAtTime(0.15, now + index * 0.08);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + index * 0.08 + 0.4);
-                    
-                    osc.connect(gain);
-                    gain.connect(this.ctx.destination);
-                    
-                    osc.start(now + index * 0.08);
-                    osc.stop(now + index * 0.08 + 0.4);
-                });
-            }
-        };
-
-        // ============================================================================
-        // TOPPING DEFINITIONS & SPAWN ALGORITHM (Pity System)
-        // ============================================================================
-        const RARITY = {
-            COMMON: { name: 'Common', weight: 75, color: '#ffffff' },
-            RARE: { name: 'Rare', weight: 20, color: '#00e5ff' },
-            ULTRA: { name: 'Ultra Rare', weight: 5, color: '#ffd700' }
-        };
-
-        const TOPPING_DATABASE = [
-            { id: 'pepperoni', name: 'Mochi Pepperoni', rarity: RARITY.COMMON, baseColor: '#e63946', secondaryColor: '#b5179e', radius: 24 },
-            { id: 'mushroom', name: 'Plump Shroom', rarity: RARITY.COMMON, baseColor: '#f1faee', secondaryColor: '#a8dadc', radius: 22 },
-            { id: 'olive', name: 'Juicy Olive', rarity: RARITY.COMMON, baseColor: '#2a9d8f', secondaryColor: '#264653', radius: 16 },
-            { id: 'basil', name: 'Fresh Basil', rarity: RARITY.COMMON, baseColor: '#4ad66d', secondaryColor: '#1b4332', radius: 20 },
-            { id: 'gold_pineapple', name: 'Golden Pineapple', rarity: RARITY.RARE, baseColor: '#ffd166', secondaryColor: '#f77f00', radius: 25, glow: true },
-            { id: 'jewel_tomato', name: 'Jewel Tomato', rarity: RARITY.RARE, baseColor: '#ff4d6d', secondaryColor: '#ff758f', radius: 23, glow: true },
-            { id: 'star_anchovy', name: 'Star Anchovy', rarity: RARITY.ULTRA, baseColor: '#7209b7', secondaryColor: '#4cc9f0', radius: 28, glow: true, sparkle: true }
-        ];
-
-        const SpawnSystem = {
-            pityCounter: 0,
-            pityThreshold: 10, // Guaranteed Rare/Ultra Rare at 10
-
-            getNextTopping() {
-                this.pityCounter++;
-                let pool = [...TOPPING_DATABASE];
-                
-                // Apply Pity Logic
-                if (this.pityCounter >= this.pityThreshold) {
-                    // Filter only Rare and Ultra Rare
-                    pool = TOPPING_DATABASE.filter(t => t.rarity === RARITY.RARE || t.rarity === RARITY.ULTRA);
-                    this.pityCounter = 0; // Reset
-                }
-
-                // Weighted Random Selection
-                const totalWeight = pool.reduce((sum, t) => sum + t.rarity.weight, 0);
-                let random = Math.random() * totalWeight;
-                
-                for (const topping of pool) {
-                    if (random < topping.rarity.weight) {
-                        // If naturally rolled a rare/ultra, reset pity anyway
-                        if (topping.rarity === RARITY.RARE || topping.rarity === RARITY.ULTRA) {
-                            this.pityCounter = 0;
-                        }
-                        return { ...topping };
-                    }
-                    random -= topping.rarity.weight;
-                }
-                return { ...TOPPING_DATABASE[0] }; // Fallback
-            }
-        };
-
-        // ============================================================================
-        // PHYSICS & LOGIC ENGINE (Vector Math, Verlet Integration, Spring-Mass)
-        // ============================================================================
-        class Vector2D {
-            constructor(x = 0, y = 0) { this.x = x; this.y = y; }
-            add(v) { return new Vector2D(this.x + v.x, this.y + v.y); }
-            sub(v) { return new Vector2D(this.x - v.x, this.y - v.y); }
-            mult(n) { return new Vector2D(this.x * n, this.y * n); }
-            div(n) { return new Vector2D(this.x / n, this.y / n); }
-            mag() { return Math.hypot(this.x, this.y); }
-            normalize() { const m = this.mag(); return m === 0 ? new Vector2D() : this.div(m); }
-            dist(v) { return Math.hypot(this.x - v.x, this.y - v.y); }
-            dot(v) { return this.x * v.x + this.y * v.y; }
-        }
-
-        // Soft-body Spring Point for Pizza Crust
-        class CrustPoint {
-            constructor(x, y, angle) {
-                this.baseX = x;
-                this.baseY = y;
-                this.x = x;
-                this.y = y;
-                this.vx = 0;
-                this.vy = 0;
-                this.angle = angle;
-                this.mass = 1.0;
-            }
-
-            update(springK, damping, center, targetRadius) {
-                // Spring force pulling back to ideal circular shape
-                const targetX = center.x + Math.cos(this.angle) * targetRadius;
-                const targetY = center.y + Math.sin(this.angle) * targetRadius;
-                
-                const fx = (targetX - this.x) * springK;
-                const fy = (targetY - this.y) * springK;
-                
-                this.vx += fx;
-                this.vy += fy;
-                this.vx *= damping;
-                this.vy *= damping;
-                
-                this.x += this.vx;
-                this.y += this.vy;
-            }
-        }
-
-        class PizzaDough {
-            constructor(x, y, radius) {
-                this.center = new Vector2D(x, y);
-                this.radius = radius;
-                this.points = [];
-                this.numPoints = 40;
-                this.springK = 0.08;
-                this.damping = 0.85;
-                
-                for (let i = 0; i < this.numPoints; i++) {
-                    const angle = (i / this.numPoints) * Math.PI * 2;
-                    const px = x + Math.cos(angle) * radius;
-                    const py = y + Math.sin(angle) * radius;
-                    this.points.push(new CrustPoint(px, py, angle));
-                }
-            }
-
-            deform(impactPoint, force) {
-                this.points.forEach(pt => {
-                    const dist = Math.hypot(pt.x - impactPoint.x, pt.y - impactPoint.y);
-                    if (dist < 120) {
-                        const influence = (1 - dist / 120) * force;
-                        pt.vx += Math.cos(pt.angle) * influence;
-                        pt.vy += Math.sin(pt.angle) * influence;
-                    }
-                });
-            }
-
-            update() {
-                this.points.forEach(pt => pt.update(this.springK, this.damping, this.center, this.radius));
-            }
-
-            draw(ctx) {
-                // Draw Crust Shadow
-                ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
-                ctx.shadowBlur = 25;
-                ctx.shadowOffsetY = 15;
-
-                // Draw Outer Crust
-                ctx.beginPath();
-                ctx.moveTo(this.points[0].x, this.points[0].y);
-                for (let i = 1; i < this.numPoints; i++) {
-                    ctx.lineTo(this.points[i].x, this.points[i].y);
-                }
-                ctx.closePath();
-                ctx.fillStyle = '#e9c46a'; // Golden Crust
-                ctx.fill();
-
-                // Reset Shadow
-                ctx.shadowColor = 'transparent';
-                ctx.shadowBlur = 0;
-                ctx.shadowOffsetY = 0;
-
-                // Draw Inner Sauce Area (Tomato Red)
-                ctx.beginPath();
-                ctx.moveTo(this.points[0].x, this.points[0].y);
-                for (let i = 1; i < this.numPoints; i++) {
-                    // Slightly smaller radius for sauce
-                    const pt = this.points[i];
-                    const sx = this.center.x + (pt.x - this.center.x) * 0.88;
-                    const sy = this.center.y + (pt.y - this.center.y) * 0.88;
-                    ctx.lineTo(sx, sy);
-                }
-                ctx.closePath();
-                ctx.fillStyle = '#e76f51'; 
-                ctx.fill();
-
-                // Draw Cheese Layer (Melted Cheese Gold)
-                ctx.beginPath();
-                ctx.moveTo(this.points[0].x, this.points[0].y);
-                for (let i = 1; i < this.numPoints; i++) {
-                    const pt = this.points[i];
-                    const sx = this.center.x + (pt.x - this.center.x) * 0.82;
-                    const sy = this.center.y + (pt.y - this.center.y) * 0.82;
-                    ctx.lineTo(sx, sy);
-                }
-                ctx.closePath();
-                ctx.fillStyle = '#f4a261'; 
-                ctx.fill();
-            }
-        }
-
-        class ToppingInstance {
-            constructor(x, y, config) {
-                this.pos = new Vector2D(x, y);
-                this.prevPos = new Vector2D(x, y);
-                this.vel = new Vector2D(0, 0);
-                this.config = config;
-                this.radius = config.radius;
-                this.isDragging = false;
-                
-                // Squish & Jiggle Physics Parameters
-                this.scaleX = 1.0;
-                this.scaleY = 1.0;
-                this.scaleX_vel = 0;
-                this.scaleY_vel = 0;
-                this.jiggleK = 0.15;
-                this.jiggleDamping = 0.82;
-                
-                this.rotation = Math.random() * Math.PI * 2;
-                this.rotVel = 0;
-
-                // Sparkle particles timer
-                this.sparkleTimer = 0;
-            }
-
-            applyForce(f) {
-                this.vel = this.vel.add(f);
-            }
-
-            triggerJiggle(sx, sy) {
-                this.scaleX_vel += sx;
-                this.scaleY_vel += sy;
-            }
-
-            update(gravity, friction) {
-                if (this.isDragging) return;
-
-                // Apply Physics
-                this.applyForce(gravity);
-                this.vel = this.vel.mult(friction);
-                this.pos = this.pos.add(this.vel);
-
-                // Jiggle Spring Integration
-                const targetScaleX = 1.0;
-                const targetScaleY = 1.0;
-                
-                const forceX = (targetScaleX - this.scaleX) * this.jiggleK;
-                this.scaleX_vel += forceX;
-                this.scaleX_vel *= this.jiggleDamping;
-                this.scaleX += this.scaleX_vel;
-
-                const forceY = (targetScaleY - this.scaleY) * this.jiggleK;
-                this.scaleY_vel += forceY;
-                this.scaleY_vel *= this.jiggleDamping;
-                this.scaleY += this.scaleY_vel;
-
-                // Rotation damping
-                this.rotation += this.rotVel;
-                this.rotVel *= 0.95;
-            }
-
-            draw(ctx) {
-                ctx.save();
-                ctx.translate(this.pos.x, this.pos.y);
-                ctx.rotate(this.rotation);
-                ctx.scale(this.scaleX, this.scaleY);
-
-                // Rare Aura Glow
-                if (this.config.glow) {
-                    ctx.shadowColor = this.config.rarity === RARITY.ULTRA ? '#e0aaff' : '#ffd700';
-                    ctx.shadowBlur = 15 + Math.sin(Date.now() * 0.01) * 5;
-                }
-
-                // Draw Base Topping Shape (Mochi/Juicy 3D look)
-                const grad = ctx.createRadialGradient(-this.radius*0.2, -this.radius*0.2, this.radius * 0.1, 0, 0, this.radius);
-                grad.addColorStop(0, this.config.baseColor);
-                grad.addColorStop(0.8, this.config.secondaryColor);
-                grad.addColorStop(1, 'rgba(0,0,0,0.3)');
-
-                ctx.beginPath();
-                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = grad;
-                ctx.fill();
-
-                // Highlight (Juicy UX Glossy Overlay)
-                ctx.beginPath();
-                ctx.ellipse(-this.radius * 0.3, -this.radius * 0.3, this.radius * 0.3, this.radius * 0.15, Math.PI / 4, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-                ctx.fill();
-
-                // Specific topping details
-                if (this.config.id === 'pepperoni') {
-                    // Pepperoni Specks
-                    ctx.fillStyle = 'rgba(0,0,0,0.15)';
-                    for (let i = 0; i < 5; i++) {
-                        const angle = (i / 5) * Math.PI * 2;
-                        ctx.beginPath();
-                        ctx.arc(Math.cos(angle) * (this.radius * 0.5), Math.sin(angle) * (this.radius * 0.5), 2, 0, Math.PI * 2);
-                        ctx.fill();
-                    }
-                } else if (this.config.id === 'mushroom') {
-                    // Mushroom Stem Overlay
-                    ctx.fillStyle = this.config.secondaryColor;
-                    ctx.fillRect(-this.radius * 0.2, 0, this.radius * 0.4, this.radius * 0.8);
-                } else if (this.config.id === 'star_anchovy') {
-                    // Draw Star Eyes
-                    ctx.fillStyle = '#fff';
-                    ctx.beginPath();
-                    ctx.arc(-this.radius*0.3, -2, 3, 0, Math.PI*2);
-                    ctx.arc(this.radius*0.3, -2, 3, 0, Math.PI*2);
-                    ctx.fill();
-                    ctx.fillStyle = '#000';
-                    ctx.beginPath();
-                    ctx.arc(-this.radius*0.3, -2, 1.5, 0, Math.PI*2);
-                    ctx.arc(this.radius*0.3, -2, 1.5, 0, Math.PI*2);
-                    ctx.fill();
-                }
-
-                ctx.restore();
-            }
-        }
-
-        // Particle System for Splatters and Glitter
-        class Particle {
-            constructor(x, y, color, isGlitter = false) {
-                this.x = x;
-                this.y = y;
-                this.vx = (Math.random() - 0.5) * 8;
-                this.vy = (Math.random() - 0.5) * 8 - (isGlitter ? 3 : 0);
-                this.color = color;
-                this.alpha = 1.0;
-                this.decay = Math.random() * 0.03 + 0.02;
-                this.size = isGlitter ? Math.random() * 4 + 2 : Math.random() * 6 + 4;
-                this.isGlitter = isGlitter;
-            }
-
-            update() {
-                this.x += this.vx;
-                this.y += this.vy;
-                if (!this.isGlitter) this.vy += 0.2; // Gravity for juice
-                this.alpha -= this.decay;
-            }
-
-            draw(ctx) {
-                ctx.save();
-                ctx.globalAlpha = this.alpha;
-                ctx.fillStyle = this.color;
-                if (this.isGlitter) {
-                    // Draw Star/Diamond for glitter
-                    ctx.translate(this.x, this.y);
-                    ctx.beginPath();
-                    for (let i = 0; i < 5; i++) {
-                        ctx.lineTo(Math.cos((18 + i * 72) * Math.PI / 180) * this.size, Math.sin((18 + i * 72) * Math.PI / 180) * this.size);
-                        ctx.lineTo(Math.cos((54 + i * 72) * Math.PI / 180) * (this.size/2), Math.sin((54 + i * 72) * Math.PI / 180) * (this.size/2));
-                    }
-                    ctx.closePath();
-                    ctx.fill();
-                } else {
-                    ctx.beginPath();
-                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-                ctx.restore();
-            }
-        }
-
-        // ============================================================================
-        // MAIN GAME CONTROLLER & UI BINDINGS
-        // ============================================================================
-        const Game = {
-            canvas: null,
-            ctx: null,
-            pizza: null,
-            toppings: [],
-            particles: [],
-            draggedTopping: null,
-            dispenserTopping: null,
-            
-            // Physics Constants
-            gravity: new Vector2D(0, 0.15),
-            friction: 0.98,
-            
-            // State
-            unlockedToppings: {},
-            totalPlacedCount: 0,
-
-            init() {
-                this.canvas = document.getElementById('physics-canvas');
-                this.ctx = this.canvas.getContext('2d');
-                this.resizeCanvas();
-
-                // Initialize Pizza Dough in Center
-                this.pizza = new PizzaDough(this.canvas.width / 2, this.canvas.height / 2, 220);
-
-                // Initialize Dispenser Slot
-                this.setupDispenser();
-
-                // Setup Event Listeners
-                window.addEventListener('resize', () => this.resizeCanvas());
-                this.setupInteractions();
-                
-                // Initialize UI
-                this.buildEncyclopedia();
-                this.updateUI();
-
-                // Start Loop
-                requestAnimationFrame((t) => this.loop(t));
-            },
-
-            resizeCanvas() {
-                const container = document.getElementById('canvas-container');
-                this.canvas.width = container.clientWidth - 40;
-                this.canvas.height = container.clientHeight - 40;
-                if (this.pizza) {
-                    this.pizza.center = new Vector2D(this.canvas.width / 2, this.canvas.height / 2);
-                }
-            },
-
-            setupDispenser() {
-                this.dispenserTopping = SpawnSystem.getNextTopping();
-                this.renderDispenserPreview();
-                
-                document.getElementById('btn-spawn').addEventListener('click', () => {
-                    this.dispenserTopping = SpawnSystem.getNextTopping();
-                    this.renderDispenserPreview();
-                    AudioSynth.playPlop(300, 0.1);
-                });
-            },
-
-            renderDispenserPreview() {
-                const slot = document.getElementById('dispenser-slot');
-                slot.innerHTML = ''; // Clear
-                
-                const previewCanvas = document.createElement('canvas');
-                previewCanvas.width = 120;
-                previewCanvas.height = 120;
-                slot.appendChild(previewCanvas);
-                
-                const pCtx = previewCanvas.getContext('2d');
-                const tempTopping = new ToppingInstance(60, 60, this.dispenserTopping);
-                
-                // Draw loop for preview
-                const drawPreview = () => {
-                    pCtx.clearRect(0, 0, 120, 120);
-                    // Pulsing scale for preview
-                    tempTopping.scaleX = 1.0 + Math.sin(Date.now() * 0.005) * 0.05;
-                    tempTopping.scaleY = 1.0 + Math.sin(Date.now() * 0.005) * 0.05;
-                    tempTopping.draw(pCtx);
-                    if (slot.contains(previewCanvas)) {
-                        requestAnimationFrame(drawPreview);
-                    }
-                };
-                drawPreview();
-            },
-
-            buildEncyclopedia() {
-                const grid = document.getElementById('encyclopedia-grid');
-                grid.innerHTML = '';
-                
-                TOPPING_DATABASE.forEach(topping => {
-                    const item = document.createElement('div');
-                    item.className = `book-item ${topping.rarity === RARITY.ULTRA ? 'rare' : ''}`;
-                    item.id = `book-${topping.id}`;
-                    
-                    // Create a mini canvas for the icon
-                    const iconCanvas = document.createElement('canvas');
-                    iconCanvas.width = 48;
-                    iconCanvas.height = 48;
-                    iconCanvas.className = 'book-icon';
-                    
-                    const iCtx = iconCanvas.getContext('2d');
-                    const temp = new ToppingInstance(24, 24, topping);
-                    temp.draw(iCtx);
-
-                    item.appendChild(iconCanvas);
-                    
-                    const name = document.createElement('div');
-                    name.className = 'book-name';
-                    name.innerText = topping.name;
-                    item.appendChild(name);
-
-                    const count = document.createElement('div');
-                    count.className = 'book-count';
-                    count.id = `count-${topping.id}`;
-                    count.innerText = 'Locked';
-                    item.appendChild(count);
-
-                    grid.appendChild(item);
-                });
-            },
-
-            updateUI() {
-                document.getElementById('stat-total').innerText = this.totalPlacedCount;
-                document.getElementById('stat-pity').innerText = `${SpawnSystem.pityCounter}/${SpawnSystem.pityThreshold}`;
-                
-                // Calculate completion rate
-                const totalTypes = TOPPING_DATABASE.length;
-                const unlockedTypes = Object.keys(this.unlockedToppings).length;
-                const rate = Math.round((unlockedTypes / totalTypes) * 100);
-                document.getElementById('completion-rate').innerText = `${rate}%`;
-
-                // Update Encyclopedia Items
-                TOPPING_DATABASE.forEach(topping => {
-                    const count = this.unlockedToppings[topping.id] || 0;
-                    const item = document.getElementById(`book-${topping.id}`);
-                    const countLabel = document.getElementById(`count-${topping.id}`);
-                    if (count > 0) {
-                        item.classList.add('unlocked');
-                        countLabel.innerText = `x${count}`;
-                    }
-                });
-            },
-
-            triggerToast(message) {
-                const toast = document.getElementById('toast');
-                toast.innerText = message;
-                toast.classList.add('show');
-                setTimeout(() => {
-                    toast.classList.remove('show');
-                }, 2500);
-            },
-
-            setupInteractions() {
-                let isMouseDown = false;
-                let dragOffset = new Vector2D();
-
-                const getMousePos = (e) => {
-                    const rect = this.canvas.getBoundingClientRect();
-                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-                    return new Vector2D(clientX - rect.left, clientY - rect.top);
-                };
-
-                // Drag from Dispenser Slot
-                const slot = document.getElementById('dispenser-slot');
-                
-                const initiateDragFromDispenser = (e) => {
-                    AudioSynth.playPlop(200, 0.15);
-                    const rect = this.canvas.getBoundingClientRect();
-                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-                    
-                    const spawnPos = new Vector2D(clientX - rect.left, clientY - rect.top);
-                    
-                    const newTopping = new ToppingInstance(spawnPos.x, spawnPos.y, this.dispenserTopping);
-                    newTopping.isDragging = true;
-                    this.draggedTopping = newTopping;
-                    this.toppings.push(newTopping);
-                    
-                    // Cycle dispenser
-                    this.dispenserTopping = SpawnSystem.getNextTopping();
-                    this.renderDispenserPreview();
-                    this.updateUI();
-                };
-
-                slot.addEventListener('mousedown', initiateDragFromDispenser);
-                slot.addEventListener('touchstart', initiateDragFromDispenser);
-
-                // Canvas Interactions
-                const onStart = (e) => {
-                    const mPos = getMousePos(e);
-                    // Check if clicked on existing topping
-                    for (let i = this.toppings.length - 1; i >= 0; i--) {
-                        const t = this.toppings[i];
-                        if (mPos.dist(t.pos) < t.radius) {
-                            this.draggedTopping = t;
-                            t.isDragging = true;
-                            dragOffset = t.pos.sub(mPos);
-                            AudioSynth.playPlop(250, 0.08);
-                            break;
-                        }
-                    }
-                };
-
-                const onMove = (e) => {
-                    if (!this.draggedTopping) return;
-                    const mPos = getMousePos(e);
-                    
-                    // Calculate velocity while dragging for juicy stretch
-                    const targetPos = mPos.add(dragOffset);
-                    const dragVel = targetPos.sub(this.draggedTopping.pos);
-                    
-                    this.draggedTopping.pos = targetPos;
-                    
-                    // Apply dynamic squish based on drag speed
-                    const speed = dragVel.mag();
-                    if (speed > 1) {
-                        const stretch = Math.min(speed * 0.02, 0.4);
-                        this.draggedTopping.scaleX = 1.0 + stretch;
-                        this.draggedTopping.scaleY = 1.0 - stretch;
-                        this.draggedTopping.rotation = Math.atan2(dragVel.y, dragVel.x);
-                    }
-                };
-
-                const onEnd = () => {
-                    if (!this.draggedTopping) return;
-                    
-                    this.draggedTopping.isDragging = false;
-                    
-                    // Trigger juicy bounce on release
-                    this.draggedTopping.triggerJiggle(-0.3, 0.3);
-                    
-                    // Check if dropped on Pizza
-                    const distToCenter = this.draggedTopping.pos.dist(this.pizza.center);
-                    if (distToCenter < this.pizza.radius) {
-                        // Successful Placement!
-                        this.totalPlacedCount++;
-                        const id = this.draggedTopping.config.id;
-                        this.unlockedToppings[id] = (this.unlockedToppings[id] || 0) + 1;
-                        
-                        // Deform Pizza Crust based on impact
-                        this.pizza.deform(this.draggedTopping.pos, 15);
-                        
-                        // Spawn Juice Splatters
-                        for (let i = 0; i < 8; i++) {
-                            this.particles.push(new Particle(
-                                this.draggedTopping.pos.x, 
-                                this.draggedTopping.pos.y, 
-                                this.draggedTopping.config.baseColor
-                            ));
-                        }
-
-                        // Rare Topping Effects
-                        if (this.draggedTopping.config.glow) {
-                            AudioSynth.playChime();
-                            this.triggerToast(`✨ UNLOCKED: ${this.draggedTopping.config.name}! ✨`);
-                            // Spawn Glitter
-                            for (let i = 0; i < 15; i++) {
-                                this.particles.push(new Particle(
-                                    this.draggedTopping.pos.x, 
-                                    this.draggedTopping.pos.y, 
-                                    '#ffd700',
-                                    true
-                                ));
-                            }
-                        } else {
-                            AudioSynth.playPlop(120, 0.2);
-                        }
-                    } else {
-                        // Dropped off pizza - slide away or fall off
-                        this.draggedTopping.applyForce(new Vector2D((Math.random() - 0.5) * 5, 5));
-                    }
-
-                    this.draggedTopping = null;
-                    this.updateUI();
-                };
-
-                this.canvas.addEventListener('mousedown', onStart);
-                this.canvas.addEventListener('mousemove', onMove);
-                window.addEventListener('mouseup', onEnd);
-
-                this.canvas.addEventListener('touchstart', onStart);
-                this.canvas.addEventListener('touchmove', onMove);
-                window.addEventListener('touchend', onEnd);
-            },
-
-            resolveCollisions() {
-                // Topping vs Topping Collisions (Elastic Circle Collision)
-                for (let i = 0; i < this.toppings.length; i++) {
-                    const a = this.toppings[i];
-                    for (let j = i + 1; j < this.toppings.length; j++) {
-                        const b = this.toppings[j];
-                        
-                        const dist = a.pos.dist(b.pos);
-                        const minDist = a.radius + b.radius;
-                        
-                        if (dist < minDist) {
-                            const overlap = minDist - dist;
-                            const normal = b.pos.sub(a.pos).normalize();
-                            
-                            // Positional correction (prevent sinking into each other)
-                            if (!a.isDragging && !b.isDragging) {
-                                a.pos = a.pos.sub(normal.mult(overlap * 0.5));
-                                b.pos = b.pos.add(normal.mult(overlap * 0.5));
-                                
-                                // Elastic bounce math
-                                const kx = a.vel.x - b.vel.x;
-                                const ky = a.vel.y - b.vel.y;
-                                const p = 2 * (normal.x * kx + normal.y * ky) / 2; // assuming equal mass
-                                
-                                a.vel.x -= p * normal.x;
-                                a.vel.y -= p * normal.y;
-                                b.vel.x += p * normal.x;
-                                b.vel.y += p * normal.y;
-
-                                // Trigger squish on impact
-                                a.triggerJiggle(-0.15, 0.15);
-                                b.triggerJiggle(-0.15, 0.15);
-                            }
-                        }
-                    }
-
-                    // Topping vs Pizza Boundary Constraint (Keep toppings on pizza)
-                    if (!a.isDragging) {
-                        const distToCenter = a.pos.dist(this.pizza.center);
-                        const maxDist = this.pizza.radius - a.radius;
-                        if (distToCenter > maxDist) {
-                            const normal = a.pos.sub(this.pizza.center).normalize();
-                            // Push back inside
-                            a.pos = this.pizza.center.add(normal.mult(maxDist));
-                            // Bounce off boundary
-                            a.vel = a.vel.sub(normal.mult(2 * a.vel.dot(normal)));
-                            a.vel = a.vel.mult(0.5); // Lose energy
-                            a.triggerJiggle(0.2, -0.2);
-                        }
-                    }
-                }
-            },
-
-            loop(timestamp) {
-                // Clear Canvas
-                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-                // Update & Draw Pizza Dough
-                this.pizza.update();
-                this.pizza.draw(this.ctx);
-
-                // Update & Draw Toppings
-                this.toppings.forEach(topping => {
-                    topping.update(this.gravity, this.friction);
-                    topping.draw(this.ctx);
-                    
-                    // Ambient sparkles for ultra rare
-                    if (topping.config.sparkle && Math.random() < 0.05) {
-                        this.particles.push(new Particle(
-                            topping.pos.x + (Math.random() - 0.5) * topping.radius,
-                            topping.pos.y + (Math.random() - 0.5) * topping.radius,
-                            '#e0aaff',
-                            true
-                        ));
-                    }
-                });
-
-                // Resolve Collisions
-                this.resolveCollisions();
-
-                // Update & Draw Particles
-                for (let i = this.particles.length - 1; i >= 0; i--) {
-                    const p = this.particles[i];
-                    p.update();
-                    p.draw(this.ctx);
-                    if (p.alpha <= 0) {
-                        this.particles.splice(i, 1);
-                    }
-                }
-
-                requestAnimationFrame((t) => this.loop(t));
-            }
-        };
-
-        // Start the application
-        window.onload = () => Game.init();
-    </script>
+  <div class="card">
+    <div class="glow-orb">⚡</div>
+    <h1>NEON PLAYGROUND</h1>
+    <p>Experience real-time, sandboxed mobile development with instant hot-reloading.</p>
+    <button onclick="triggerSystem()">Initialize System</button>
+  </div>
+
+  <script>
+    function triggerSystem() {
+      console.log("⚡ System diagnostics initiated...");
+      console.log("🟢 Core engine: ACTIVE");
+      console.log("🚀 Render latency: 0.4ms");
+      alert("System Online! Check the Console tab for logs.");
+    }
+  </script>
 </body>
-</html>
+</html>`;
+
+export default function MobilePlayground() {
+  const [code, setCode] = useState(DEFAULT_CODE);
+  const [activeTab, setActiveTab] = useState('editor'); // 'editor' | 'preview' | 'console'
+  const [logs, setLogs] = useState([]);
+  const [copied, setCopied] = useState(false);
+  const [previewKey, setPreviewKey] = useState(0); // Used to force reload iframe
+
+  const textareaRef = useRef(null);
+  const gutterRef = useRef(null);
+  const iframeRef = useRef(null);
+
+  // Sync textarea scroll with line numbers gutter
+  const handleScroll = (e) => {
+    if (gutterRef.current) {
+      gutterRef.current.scrollTop = e.target.scrollTop;
+    }
+  };
+
+  // Quick insert helper characters at cursor position
+  const insertHelper = (char) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    const before = text.substring(0, start);
+    const after = text.substring(end, text.length);
+
+    let newCode = before + char + after;
+    let cursorOffset = char.length;
+
+    // Smart pairing for brackets/quotes
+    if (char === '{') { newCode = before + '{}' + after; cursorOffset = 1; }
+    else if (char === '[') { newCode = before + '[]' + after; cursorOffset = 1; }
+    else if (char === '(') { newCode = before + '()' + after; cursorOffset = 1; }
+    else if (char === '<') { newCode = before + '<>' + after; cursorOffset = 1; }
+    else if (char === '"') { newCode = before + '""' + after; cursorOffset = 1; }
+    else if (char === "'") { newCode = before + "''" + after; cursorOffset = 1; }
+
+    setCode(newCode);
+
+    // Restore cursor focus and position
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + cursorOffset, start + cursorOffset);
+    }, 0);
+  };
+
+  // Copy code to clipboard
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Reset code to default template
+  const resetCode = () => {
+    if (window.confirm("Reset editor to default template? Current progress will be lost.")) {
+      setCode(DEFAULT_CODE);
+      setLogs([]);
+      setPreviewKey(prev => prev + 1);
+    }
+  };
+
+  // Clear console logs
+  const clearLogs = () => {
+    setLogs([]);
+  };
+
+  // Listen to console messages from the sandboxed iframe
+  useEffect(() => {
+    const handleConsoleMessage = (event) => {
+      if (event.data && event.data.type === 'CONSOLE_LOG') {
+        setLogs(prev => [...prev, { type: 'log', text: event.data.data, time: new Date().toLocaleTimeString() }]);
+      } else if (event.data && event.data.type === 'CONSOLE_ERROR') {
+        setLogs(prev => [...prev, { type: 'error', text: event.data.data, time: new Date().toLocaleTimeString() }]);
+      }
+    };
+
+    window.addEventListener('message', handleConsoleMessage);
+    return () => window.removeEventListener('message', handleConsoleMessage);
+  }, []);
+
+  // Inject console interceptor and user code into iframe srcDoc
+  const getSrcDoc = () => {
+    const interceptor = `
+      <script>
+        (function() {
+          const _log = console.log;
+          const _error = console.error;
+          
+          console.log = function(...args) {
+            _log.apply(console, args);
+            window.parent.postMessage({ 
+              type: 'CONSOLE_LOG', 
+              data: args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ') 
+            }, '*');
+          };
+
+          console.error = function(...args) {
+            _error.apply(console, args);
+            window.parent.postMessage({ 
+              type: 'CONSOLE_ERROR', 
+              data: args.join(' ') 
+            }, '*');
+          };
+
+          window.onerror = function(message, source, lineno, colno, error) {
+            window.parent.postMessage({ 
+              type: 'CONSOLE_ERROR', 
+              data: message + ' (Line ' + lineno + ')' 
+            }, '*');
+            return false;
+          };
+        })();
+      </script>
+    `;
+
+    // Insert interceptor right after <head> or at the very beginning
+    if (code.includes('<head>')) {
+      return code.replace('<head>', `<head>${interceptor}`);
+    }
+    return interceptor + code;
+  };
+
+  // Trigger manual run / refresh of preview
+  const handleRun = () => {
+    setPreviewKey(prev => prev + 1);
+    setActiveTab('preview');
+  };
+
+  // Calculate line numbers
+  const lineCount = code.split('\n').length;
+  const lineNumbers = Array.from({ length: lineCount }, (_, i) => i + 1);
+
+  return (
+    <div className="flex flex-col h-screen w-full bg-[#07070a] text-slate-100 font-sans overflow-hidden select-none">
+      
+      {/* Header */}
+      <header className="flex items-center justify-between px-4 py-3 bg-[#0a0a0f]/90 border-b border-slate-800/80 backdrop-blur-md z-10">
+        <div className="flex items-center gap-2">
+          <div className="relative flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
+          </div>
+          <span className="font-mono font-black tracking-wider text-sm text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
+            NEON_EDIT v1.0
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={copyToClipboard}
+            className="p-2 rounded-lg bg-slate-900/60 border border-slate-800 hover:border-cyan-500/50 active:scale-95 transition-all"
+            title="Copy Code"
+          >
+            {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-slate-400" />}
+          </button>
+          <button 
+            onClick={resetCode}
+            className="p-2 rounded-lg bg-slate-900/60 border border-slate-800 hover:border-rose-500/50 active:scale-95 transition-all"
+            title="Reset Template"
+          >
+            <RotateCcw className="w-4 h-4 text-slate-400" />
+          </button>
+        </div>
+      </header>
+
+      {/* Main Workspace Area */}
+      <main className="flex-1 relative overflow-hidden bg-[#07070a]">
+        
+        {/* Tab 1: Code Editor */}
+        <div className={`absolute inset-0 flex flex-col transition-transform duration-300 ease-out ${activeTab === 'editor' ? 'translate-x-0' : '-translate-x-full'}`}>
+          <div className="flex-1 flex overflow-hidden relative font-mono text-sm">
+            
+            {/* Line Numbers Gutter */}
+            <div 
+              ref={gutterRef}
+              className="w-12 py-4 bg-[#07070a] text-slate-600 text-right pr-3 select-none overflow-hidden border-r border-slate-900/60"
+            >
+              {lineNumbers.map(num => (
+                <div key={num} className="h-6 leading-6 text-xs font-medium">
+                  {num}
+                </div>
+              ))}
+            </div>
+
+            {/* Textarea Editor */}
+            <textarea
+              ref={textareaRef}
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              onScroll={handleScroll}
+              className="flex-1 py-4 px-3 bg-transparent text-slate-200 focus:outline-none resize-none overflow-y-auto whitespace-pre break-normal leading-6 font-mono selection:bg-cyan-500/20 selection:text-cyan-200"
+              placeholder="Write HTML/CSS/JS here..."
+              spellCheck="false"
+              autoCapitalize="off"
+              autoComplete="off"
+              autoCorrect="off"
+            />
+          </div>
+
+          {/* Quick-Insert Toolbar (Thumb-friendly, positioned above keyboard/nav) */}
+          <div className="flex items-center gap-1 px-2 py-1.5 bg-[#0a0a0f] border-t border-slate-900 overflow-x-auto scrollbar-none select-none">
+            {['Tab', '{', '}', '[', ']', '(', ')', '<', '>', '/', ';', '"', "'", '=', '$'].map((char) => (
+              <button
+                key={char}
+                onClick={() => insertHelper(char === 'Tab' ? '  ' : char)}
+                className="flex-shrink-0 px-3.5 py-2 rounded-lg bg-slate-900/80 border border-slate-800/60 text-slate-300 font-mono text-xs font-bold active:bg-cyan-500 active:text-slate-950 active:border-cyan-400 transition-all"
+              >
+                {char}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Tab 2: Live Preview */}
+        <div className={`absolute inset-0 flex flex-col transition-transform duration-300 ease-out ${activeTab === 'preview' ? 'translate-x-0' : activeTab === 'editor' ? 'translate-x-full' : '-translate-x-full'}`}>
+          <iframe
+            key={previewKey}
+            ref={iframeRef}
+            srcDoc={getSrcDoc()}
+            title="Live Sandbox Preview"
+            sandbox="allow-scripts"
+            className="w-full h-full bg-white border-none"
+          />
+        </div>
+
+        {/* Tab 3: Console Logs */}
+        <div className={`absolute inset-0 flex flex-col bg-[#09090e] transition-transform duration-300 ease-out ${activeTab === 'console' ? 'translate-x-0' : 'translate-x-full'}`}>
+          <div className="flex items-center justify-between px-4 py-2 bg-[#0d0d15] border-b border-slate-800/80">
+            <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
+              <Terminal className="w-3.5 h-3.5 text-purple-400" />
+              SYSTEM_DIAGNOSTICS
+            </div>
+            {logs.length > 0 && (
+              <button 
+                onClick={clearLogs}
+                className="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-rose-400 transition-colors"
+                title="Clear Logs"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          
+          <div className="flex-1 overflow-y-auto p-4 font-mono text-xs space-y-2.5">
+            {logs.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-slate-600 space-y-2">
+                <Terminal className="w-8 h-8 opacity-20" />
+                <p className="text-center">No logs captured yet.<br/>Interact with your preview to trigger logs.</p>
+              </div>
+            ) : (
+              logs.map((log, index) => (
+                <div 
+                  key={index} 
+                  className={`p-2.5 rounded-lg border flex items-start gap-2.5 ${
+                    log.type === 'error' 
+                      ? 'bg-rose-950/20 border-rose-900/40 text-rose-300' 
+                      : 'bg-slate-900/40 border-slate-800/60 text-cyan-300'
+                  }`}
+                >
+                  <span className="text-[10px] text-slate-500 mt-0.5 select-none">{log.time}</span>
+                  <span className="font-semibold select-none">{log.type === 'error' ? '❌' : '⚡'}</span>
+                  <span className="flex-1 break-all whitespace-pre-wrap">{log.text}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Floating Action Button (FAB) - Run/Refresh */}
+        <button
+          onClick={handleRun}
+          className="absolute bottom-4 right-4 z-20 flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-600 text-white shadow-[0_0_20px_rgba(6,182,212,0.4)] active:scale-90 active:shadow-none transition-all duration-150"
+          title="Run Code"
+        >
+          <Play className="w-6 h-6 fill-current text-slate-950" />
+        </button>
+
+      </main>
+
+      {/* Bottom Navigation Bar (Thumb-friendly ergonomics) */}
+      <nav className="flex items-center justify-around bg-[#0a0a0f]/95 border-t border-slate-900/80 backdrop-blur-md py-2 px-4 pb-safe">
+        <button
+          onClick={() => setActiveTab('editor')}
+          className={`flex flex-col items-center gap-1 py-1 px-4 rounded-xl transition-all ${
+            activeTab === 'editor' 
+              ? 'text-cyan-400 bg-cyan-500/5' 
+              : 'text-slate-500 hover:text-slate-300'
+          }`}
+        >
+          <Code2 className="w-5 h-5" />
+          <span className="text-[10px] font-bold tracking-wider">CODE</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('preview')}
+          className={`flex flex-col items-center gap-1 py-1 px-4 rounded-xl transition-all ${
+            activeTab === 'preview' 
+              ? 'text-cyan-400 bg-cyan-500/5' 
+              : 'text-slate-500 hover:text-slate-300'
+          }`}
+        >
+          <Eye className="w-5 h-5" />
+          <span className="text-[10px] font-bold tracking-wider">PREVIEW</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('console')}
+          className={`flex flex-col items-center gap-1 py-1 px-4 rounded-xl relative transition-all ${
+            activeTab === 'console' 
+              ? 'text-purple-400 bg-purple-500/5' 
+              : 'text-slate-500 hover:text-slate-300'
+          }`}
+        >
+          <Terminal className="w-5 h-5" />
+          <span className="text-[10px] font-bold tracking-wider">CONSOLE</span>
+          {logs.length > 0 && (
+            <span className="absolute top-1 right-3 flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
+            </span>
+          )}
+        </button>
+      </nav>
+    </div>
+  );
+}
