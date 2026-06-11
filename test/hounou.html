@@ -1,0 +1,1593 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>極楽お賽銭日和 - 癒しとご利益の神社アプリ</title>
+  <style>
+    :root {
+      --primary-color: #b33939;
+      --primary-dark: #8c2525;
+      --accent-gold: #ffd700;
+      --accent-silver: #dcdde1;
+      --accent-bronze: #cd7f32;
+      --bg-cream: #fcf8f2;
+      --text-dark: #2c3e50;
+      --wood-dark: #5d4037;
+      --wood-light: #8d6e63;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: #111;
+      color: var(--text-dark);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* App Container */
+    .app-container {
+      width: 100%;
+      max-width: 480px;
+      height: 100vh;
+      max-height: 850px;
+      background: linear-gradient(to bottom, #1a0505, #2c0a0a);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      overflow: hidden;
+      border-radius: 16px;
+    }
+
+    /* Canvas for Sakura */
+    #sakura-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Header Stats */
+    .app-header {
+      background: rgba(179, 57, 57, 0.9);
+      border-bottom: 3px solid var(--accent-gold);
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+      color: #fff;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+
+    .app-title h1 {
+      font-size: 1.1rem;
+      font-weight: bold;
+      letter-spacing: 1px;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .stats-container {
+      display: flex;
+      gap: 12px;
+    }
+
+    .stat-badge {
+      background: rgba(0, 0, 0, 0.4);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      border: 1px solid rgba(255, 215, 0, 0.3);
+    }
+
+    .stat-badge span {
+      font-weight: bold;
+      color: var(--accent-gold);
+    }
+
+    /* Main Content Area */
+    .main-content {
+      flex: 1;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 2;
+    }
+
+    /* Screens */
+    .screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: none;
+      flex-direction: column;
+      padding: 16px;
+      overflow-y: auto;
+    }
+
+    .screen.active {
+      display: flex;
+    }
+
+    /* --- SHRINE SCREEN --- */
+    #shrine-screen {
+      padding: 0;
+      justify-content: space-between;
+      overflow: hidden;
+    }
+
+    /* Shrine Background & Torii */
+    .shrine-view {
+      position: relative;
+      width: 100%;
+      height: 65%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      background: linear-gradient(to bottom, #3a0505 0%, #8c1c1c 50%, #d35400 100%);
+      border-bottom: 8px solid var(--wood-dark);
+    }
+
+    /* Torii Gate SVG Background */
+    .torii-gate {
+      position: absolute;
+      bottom: 40px;
+      width: 220px;
+      height: 180px;
+      opacity: 0.85;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* Saisen Box (賽銭箱) */
+    .saisen-box-container {
+      position: absolute;
+      bottom: 10px;
+      width: 180px;
+      height: 100px;
+      z-index: 5;
+      perspective: 400px;
+    }
+
+    .saisen-box {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, var(--wood-dark), #3e2723);
+      border: 4px solid var(--accent-gold);
+      border-radius: 8px;
+      position: relative;
+      transform: rotateX(15deg);
+      box-shadow: 0 15px 25px rgba(0,0,0,0.6), inset 0 2px 10px rgba(255,255,255,0.2);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+    }
+
+    .saisen-box::before {
+      content: '奉納';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: var(--accent-gold);
+      font-size: 1.4rem;
+      font-weight: 900;
+      letter-spacing: 8px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+      opacity: 0.9;
+    }
+
+    /* Saisen Box Grate (Bars) */
+    .saisen-grate {
+      display: flex;
+      justify-content: space-around;
+      width: 100%;
+      height: 25px;
+      background: #27120f;
+      border-bottom: 3px solid var(--accent-gold);
+    }
+
+    .saisen-bar {
+      width: 6px;
+      height: 100%;
+      background: var(--wood-light);
+      box-shadow: inset 1px 0 2px rgba(0,0,0,0.5);
+    }
+
+    /* Character Spawn Area */
+    .character-spawn {
+      position: absolute;
+      bottom: 130px;
+      width: 100%;
+      height: 180px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    .character-sprite {
+      width: 130px;
+      height: 130px;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      transform: translateY(30px) scale(0.7);
+      transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .character-sprite.show {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .character-sprite.float {
+      animation: floatAnim 3s ease-in-out infinite alternate;
+    }
+
+    @keyframes floatAnim {
+      0% { transform: translateY(0px); }
+      100% { transform: translateY(-12px); }
+    }
+
+    /* Speech Bubble */
+    .speech-bubble {
+      position: absolute;
+      top: -55px;
+      background: white;
+      border: 3px solid var(--primary-color);
+      border-radius: 12px;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      white-space: nowrap;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      opacity: 0;
+      transform: scale(0.8);
+      transition: all 0.3s ease;
+      z-index: 10;
+    }
+
+    .speech-bubble::after {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 10px 10px 0;
+      border-style: solid;
+      border-color: white transparent;
+      display: block;
+      width: 0;
+    }
+
+    .speech-bubble::before {
+      content: '';
+      position: absolute;
+      bottom: -14px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 11px 11px 0;
+      border-style: solid;
+      border-color: var(--primary-color) transparent;
+      display: block;
+      width: 0;
+      z-index: -1;
+    }
+
+    .character-sprite.show .speech-bubble {
+      opacity: 1;
+      transform: scale(1);
+      transition-delay: 0.4s;
+    }
+
+    /* Aura Effect */
+    .aura {
+      position: absolute;
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,215,0,0.4) 0%, rgba(255,215,0,0) 70%);
+      animation: pulseAura 2s infinite;
+      z-index: -1;
+    }
+
+    @keyframes pulseAura {
+      0% { transform: scale(0.8); opacity: 0.5; }
+      50% { transform: scale(1.2); opacity: 0.8; }
+      100% { transform: scale(0.8); opacity: 0.5; }
+    }
+
+    /* Interactive Throwing Area */
+    .interaction-area {
+      width: 100%;
+      height: 35%;
+      background: linear-gradient(to bottom, #2c0a0a, #150202);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-around;
+      align-items: center;
+      padding: 12px;
+      position: relative;
+      z-index: 6;
+    }
+
+    .tap-prompt {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.8rem;
+      letter-spacing: 2px;
+      animation: pulseText 1.5s infinite alternate;
+    }
+
+    @keyframes pulseText {
+      0% { opacity: 0.4; }
+      100% { opacity: 1; }
+    }
+
+    /* Coin Selector */
+    .coin-selector {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .coin-option {
+      background: rgba(255,255,255,0.05);
+      border: 2px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 8px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      width: 85px;
+    }
+
+    .coin-option.selected {
+      background: rgba(179, 57, 57, 0.2);
+      border-color: var(--accent-gold);
+      transform: translateY(-4px);
+      box-shadow: 0 5px 15px rgba(255, 215, 0, 0.2);
+    }
+
+    /* Coin Visuals */
+    .coin-visual {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      font-size: 0.8rem;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      position: relative;
+    }
+
+    .coin-visual::after {
+      content: '';
+      position: absolute;
+      width: 80%;
+      height: 80%;
+      border: 1px dashed rgba(255,255,255,0.4);
+      border-radius: 50%;
+    }
+
+    .coin-5 {
+      background: linear-gradient(135deg, #e5a93b, #b57c1e);
+      color: #5d4037;
+      border: 2px solid #f5cd79;
+    }
+    .coin-5::before {
+      content: '';
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: #2c0a0a;
+      border-radius: 50%;
+      z-index: 2;
+    }
+
+    .coin-100 {
+      background: linear-gradient(135deg, #dcdde1, #7f8c8d);
+      color: #2c3e50;
+      border: 2px solid #f5f6fa;
+    }
+
+    .coin-500 {
+      background: linear-gradient(135deg, #ffeaa7, #d4af37);
+      color: #5d4037;
+      border: 2px solid #fff;
+    }
+
+    .coin-label {
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: bold;
+    }
+
+    /* Throw Button */
+    .throw-btn {
+      background: linear-gradient(to bottom, #e74c3c, #c0392b);
+      border: none;
+      border-bottom: 4px solid #962d22;
+      color: white;
+      padding: 12px 40px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      border-radius: 30px;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+      transition: all 0.1s ease;
+      letter-spacing: 2px;
+    }
+
+    .throw-btn:active {
+      transform: translateY(2px);
+      border-bottom-width: 2px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+    }
+
+    /* Flying Coin Animation */
+    .flying-coin {
+      position: absolute;
+      pointer-events: none;
+      z-index: 4;
+      transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.6s ease;
+    }
+
+    /* Sparkle Effect */
+    .sparkle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: var(--accent-gold);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 6;
+    }
+
+    /* --- COLLECTION SCREEN --- */
+    .screen-title {
+      font-size: 1.3rem;
+      color: var(--primary-color);
+      border-bottom: 2px solid var(--primary-color);
+      padding-bottom: 6px;
+      margin-bottom: 16px;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .collection-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      padding-bottom: 20px;
+    }
+
+    .collection-card {
+      background: white;
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+      border: 2px solid #eee;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .collection-card.locked {
+      filter: grayscale(1) contrast(0.8);
+      opacity: 0.7;
+    }
+
+    .collection-card.locked::after {
+      content: '？';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: rgba(0,0,0,0.15);
+      z-index: 2;
+    }
+
+    .card-rarity {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      font-size: 0.65rem;
+      font-weight: bold;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: white;
+    }
+
+    .rarity-UR { background: linear-gradient(45deg, #ff00cc, #3333ff); }
+    .rarity-SSR { background: #e74c3c; }
+    .rarity-SR { background: #9b59b6; }
+    .rarity-R { background: #3498db; }
+    .rarity-HN { background: #2ecc71; }
+    .rarity-N { background: #95a5a6; }
+
+    .card-icon {
+      font-size: 2.5rem;
+      margin: 8px 0;
+    }
+
+    .card-name {
+      font-size: 0.85rem;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+
+    .card-desc {
+      font-size: 0.7rem;
+      color: #7f8c8d;
+      line-height: 1.2;
+    }
+
+    /* --- OMIKUJI SCREEN --- */
+    .omikuji-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      gap: 20px;
+    }
+
+    .omikuji-box-visual {
+      width: 120px;
+      height: 200px;
+      background: linear-gradient(to right, #d35400, #e67e22);
+      border: 4px solid var(--accent-gold);
+      border-radius: 10px;
+      position: relative;
+      cursor: pointer;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+      transition: transform 0.1s ease;
+    }
+
+    .omikuji-box-visual::before {
+      content: 'おみくじ';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-90deg);
+      color: white;
+      font-weight: bold;
+      letter-spacing: 4px;
+      font-size: 1.1rem;
+      white-space: nowrap;
+    }
+
+    .omikuji-box-visual.shake {
+      animation: shakeAnim 0.5s ease infinite;
+    }
+
+    @keyframes shakeAnim {
+      0% { transform: rotate(0deg); }
+      20% { transform: rotate(15deg); }
+      40% { transform: rotate(-15deg); }
+      60% { transform: rotate(10deg); }
+      80% { transform: rotate(-10deg); }
+      100% { transform: rotate(0deg); }
+    }
+
+    .omikuji-result-card {
+      background: #fff;
+      border: 4px double var(--primary-color);
+      border-radius: 8px;
+      padding: 20px;
+      width: 100%;
+      max-width: 280px;
+      text-align: center;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      display: none;
+      animation: fadeIn 0.5s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .fortune-title {
+      font-size: 2rem;
+      font-weight: 900;
+      color: var(--primary-color);
+      margin-bottom: 12px;
+      letter-spacing: 4px;
+    }
+
+    .fortune-text {
+      font-size: 0.9rem;
+      color: #333;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    /* --- STATS & API SCREEN --- */
+    .stats-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .stats-item {
+      background: white;
+      padding: 12px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .stats-item span:first-child {
+      font-weight: bold;
+      color: #7f8c8d;
+    }
+
+    .stats-item span:last-child {
+      font-weight: bold;
+      color: var(--primary-color);
+      font-size: 1.1rem;
+    }
+
+    /* Simulated API Console */
+    .api-console {
+      background: #2c3e50;
+      color: #2ecc71;
+      font-family: 'Courier New', Courier, monospace;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      height: 180px;
+      overflow-y: auto;
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.5);
+      margin-top: 10px;
+    }
+
+    .api-log-entry {
+      margin-bottom: 8px;
+      border-bottom: 1px dashed rgba(255,255,255,0.1);
+      padding-bottom: 4px;
+    }
+
+    .api-log-entry .timestamp {
+      color: #95a5a6;
+    }
+
+    .api-log-entry .method {
+      color: #e74c3c;
+      font-weight: bold;
+    }
+
+    /* Bottom Navigation Bar */
+    .app-nav {
+      background: #fff;
+      border-top: 2px solid #eee;
+      display: flex;
+      height: 65px;
+      z-index: 10;
+    }
+
+    .nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: #7f8c8d;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      gap: 4px;
+    }
+
+    .nav-item.active {
+      color: var(--primary-color);
+      background: var(--bg-cream);
+    }
+
+    .nav-icon {
+      font-size: 1.4rem;
+    }
+
+    .nav-label {
+      font-size: 0.7rem;
+      font-weight: bold;
+    }
+
+    /* Auto Throw Toggle */
+    .auto-throw-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: white;
+      font-size: 0.85rem;
+      background: rgba(0,0,0,0.4);
+      padding: 6px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 40px;
+      height: 20px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 20px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--accent-gold);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Sakura Falling Canvas -->
+    <canvas id="sakura-canvas"></canvas>
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="app-title">
+        <h1>⛩️ 極楽お賽銭日和</h1>
+      </div>
+      <div class="stats-container">
+        <div class="stat-badge">
+          <span>徳:</span> <span id="virtue-display">0</span>
+        </div>
+        <div class="stat-badge">
+          <span>所持金:</span> <span id="money-display">1,000</span>円
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      
+      <!-- 1. SHRINE SCREEN -->
+      <div id="shrine-screen" class="screen active">
+        <div class="shrine-view">
+          <!-- Torii Gate SVG -->
+          <svg class="torii-gate" viewBox="0 0 100 80">
+            <path d="M 10 15 L 90 15 L 90 22 L 10 22 Z" fill="#b33939" />
+            <path d="M 15 25 L 85 25 L 85 30 L 15 30 Z" fill="#b33939" />
+            <path d="M 25 30 L 25 80 L 33 80 L 33 30 Z" fill="#b33939" />
+            <path d="M 67 30 L 67 80 L 75 80 L 75 30 Z" fill="#b33939" />
+            <rect x="25" y="72" width="8" height="8" fill="#2c3e50" />
+            <rect x="67" y="72" width="8" height="8" fill="#2c3e50" />
+            <rect x="44" y="22" width="12" height="15" fill="#2c3e50" />
+            <path d="M 5 10 L 20 15 L 10 15 Z" fill="#b33939" />
+            <path d="M 95 10 L 80 15 L 90 15 Z" fill="#b33939" />
+          </svg>
+
+          <!-- Character Spawn Area -->
+          <div class="character-spawn">
+            <div id="character-sprite" class="character-sprite">
+              <div class="aura"></div>
+              <div class="speech-bubble" id="speech-bubble">ようこそ参拝された</div>
+              <div id="character-visual" style="font-size: 5rem; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));">🦊</div>
+            </div>
+          </div>
+
+          <!-- Saisen Box -->
+          <div class="saisen-box-container">
+            <div class="saisen-box">
+              <div class="saisen-grate">
+                <div class="saisen-bar"></div>
+                <div class="saisen-bar"></div>
+                <div class="saisen-bar"></div>
+                <div class="saisen-bar"></div>
+                <div class="saisen-bar"></div>
+                <div class="saisen-bar"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interaction Area -->
+        <div class="interaction-area">
+          <div style="display: flex; justify-content: space-between; width: 100%; padding: 0 16px; align-items: center;">
+            <span class="tap-prompt">画面タップでもお賽銭を投げられます</span>
+            <div class="auto-throw-container">
+              <span>自動参拝</span>
+              <label class="switch">
+                <input type="checkbox" id="auto-throw-toggle">
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Coin Selector -->
+          <div class="coin-selector">
+            <div class="coin-option selected" data-value="5">
+              <div class="coin-visual coin-5">5</div>
+              <span class="coin-label">ご縁 (5円)</span>
+            </div>
+            <div class="coin-option" data-value="100">
+              <div class="coin-visual coin-100">100</div>
+              <span class="coin-label">百円</span>
+            </div>
+            <div class="coin-option" data-value="500">
+              <div class="coin-visual coin-500">500</div>
+              <span class="coin-label">五百円</span>
+            </div>
+          </div>
+
+          <button class="throw-btn" id="throw-btn">お賽銭を投げる</button>
+        </div>
+      </div>
+
+      <!-- 2. COLLECTION SCREEN -->
+      <div id="collection-screen" class="screen">
+        <div class="screen-title">
+          <span>⛩️ 神仏・猫々図鑑</span>
+          <span style="font-size: 0.8rem; color: #7f8c8d;" id="collection-progress">0/8 発見</span>
+        </div>
+        <div class="collection-grid" id="collection-grid">
+          <!-- Dynamic Cards -->
+        </div>
+      </div>
+
+      <!-- 3. OMIKUJI SCREEN -->
+      <div id="omikuji-screen" class="screen">
+        <div class="screen-title">
+          <span>🔮 本日の運勢おみくじ</span>
+        </div>
+        <div class="omikuji-container">
+          <p style="text-align: center; color: #7f8c8d; font-size: 0.9rem;">
+            1日1回、または徳を50消費して<br>おみくじを引くことができます。
+          </p>
+          <div class="omikuji-box-visual" id="omikuji-box"></div>
+          <button class="throw-btn" id="draw-omikuji-btn">おみくじを引く</button>
+          
+          <div class="omikuji-result-card" id="omikuji-result">
+            <div class="fortune-title" id="fortune-title">大吉</div>
+            <div class="fortune-text" id="fortune-text">素晴らしい一日になるでしょう。お賽銭のご利益が2倍になります！</div>
+            <button class="throw-btn" style="padding: 6px 20px; font-size: 0.9rem;" id="close-omikuji-btn">閉じる</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. STATS & API SCREEN -->
+      <div id="stats-screen" class="screen">
+        <div class="screen-title">
+          <span>📊 参拝記録 & 開発者コンソール</span>
+        </div>
+        <div class="stats-list">
+          <div class="stats-item">
+            <span>総お賽銭額</span>
+            <span><span id="stat-total-money">0</span> 円</span>
+          </div>
+          <div class="stats-item">
+            <span>投げた硬貨の総数</span>
+            <span><span id="stat-total-coins">0</span> 枚</span>
+          </div>
+          <div class="stats-item">
+            <span>神様との遭遇回数</span>
+            <span><span id="stat-god-encounters">0</span> 回</span>
+          </div>
+          <div class="stats-item">
+            <span>猫との遭遇回数</span>
+            <span><span id="stat-cat-encounters">0</span> 回</span>
+          </div>
+        </div>
+
+        <div class="screen-title" style="margin-top: 10px;">
+          <span>📡 リアルタイムAPIログ (シミュレータ)</span>
+        </div>
+        <p style="font-size: 0.75rem; color: #7f8c8d; margin-bottom: 6px;">
+          Firebase Firestoreへのデータ同期とアナリティクス送信ログ
+        </p>
+        <div class="api-console" id="api-console">
+          <div class="api-log-entry">
+            <span class="timestamp">[00:00:00]</span> <span class="method">SYSTEM</span>: アプリケーションが起動しました。
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="app-nav">
+      <div class="nav-item active" data-target="shrine-screen">
+        <span class="nav-icon">⛩️</span>
+        <span class="nav-label">参拝</span>
+      </div>
+      <div class="nav-item" data-target="collection-screen">
+        <span class="nav-icon">📖</span>
+        <span class="nav-label">図鑑</span>
+      </div>
+      <div class="nav-item" data-target="omikuji-screen">
+        <span class="nav-icon">🔮</span>
+        <span class="nav-label">おみくじ</span>
+      </div>
+      <div class="nav-item" data-target="stats-screen">
+        <span class="nav-icon">📊</span>
+        <span class="nav-label">記録</span>
+      </div>
+    </nav>
+  </div>
+
+  <script>
+    // --- AUDIO SYNTHESIZER (Web Audio API) ---
+    const AudioEngine = {
+      ctx: null,
+      init() {
+        if (!this.ctx) {
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+      },
+      playCoin(value) {
+        this.init();
+        const now = this.ctx.currentTime;
+        const osc1 = this.ctx.createOscillator();
+        const osc2 = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        
+        let freq1 = 900;
+        let freq2 = 1400;
+        let duration = 0.3;
+        
+        if (value === 5) {
+          freq1 = 1100; freq2 = 1700; duration = 0.25;
+        } else if (value === 500) {
+          freq1 = 700; freq2 = 1100; duration = 0.4;
+        }
+        
+        osc1.type = 'sine';
+        osc2.type = 'triangle';
+        osc1.frequency.setValueAtTime(freq1, now);
+        osc2.frequency.setValueAtTime(freq2, now);
+        
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+        
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(this.ctx.destination);
+        
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + duration);
+        osc2.stop(now + duration);
+      },
+      playDivine() {
+        this.init();
+        const now = this.ctx.currentTime;
+        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+        notes.forEach((freq, index) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + index * 0.08);
+          gain.gain.setValueAtTime(0, now + index * 0.08);
+          gain.gain.linearRampToValueAtTime(0.15, now + index * 0.08 + 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + index * 0.08 + 0.6);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + index * 0.08);
+          osc.stop(now + index * 0.08 + 0.6);
+        });
+      },
+      playCat() {
+        this.init();
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(850, now);
+        osc.frequency.exponentialRampToValueAtTime(1250, now + 0.12);
+        osc.frequency.exponentialRampToValueAtTime(1050, now + 0.25);
+        
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.12, now + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+        
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.25);
+      },
+      playShake() {
+        this.init();
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(120, now);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      }
+    };
+
+    // --- GAME STATE & STORAGE ---
+    const GameState = {
+      virtue: 0,
+      money: 1000,
+      totalMoneyOffered: 0,
+      totalCoinsThrown: 0,
+      godEncounters: 0,
+      catEncounters: 0,
+      unlockedCharacters: [],
+      lastOmikujiDate: null,
+      activeMultiplier: 1,
+
+      load() {
+        const saved = localStorage.getItem('saisen_app_state');
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            Object.assign(this, parsed);
+          } catch (e) {
+            console.error("Failed to load state", e);
+          }
+        }
+        this.updateUI();
+      },
+
+      save() {
+        localStorage.setItem('saisen_app_state', JSON.stringify(this));
+        this.updateUI();
+      },
+
+      updateUI() {
+        document.getElementById('virtue-display').textContent = this.virtue;
+        document.getElementById('money-display').textContent = this.money.toLocaleString();
+        document.getElementById('stat-total-money').textContent = this.totalMoneyOffered.toLocaleString();
+        document.getElementById('stat-total-coins').textContent = this.totalCoinsThrown;
+        document.getElementById('stat-god-encounters').textContent = this.godEncounters;
+        document.getElementById('stat-cat-encounters').textContent = this.catEncounters;
+        
+        // Update collection progress
+        const totalChars = Object.keys(CHARACTERS).length;
+        document.getElementById('collection-progress').textContent = `${this.unlockedCharacters.length}/${totalChars} 発見`;
+      }
+    };
+
+    // --- CHARACTERS DATA ---
+    const CHARACTERS = {
+      god_amaterasu: { id: 'god_amaterasu', name: '天照大神 (Amaterasu)', type: 'god', rarity: 'UR', rate: 0.02, desc: '高天原を統べる太陽の女神。現れるだけで世界が光に包まれ、徳が爆増します。', color: '#ffd700', icon: '☀️', dialogue: 'あまねく世界に光を届けましょう。' },
+      god_ebisu: { id: 'god_ebisu', name: '恵比寿天 (Ebisu)', type: 'god', rarity: 'SR', rate: 0.06, desc: '商売繁盛の神様。鯛を抱えたおめでたい姿で、お賽銭の価値を一時的に高めます。', color: '#ff7f50', icon: '🐟', dialogue: '商売繁盛、大漁追福じゃ！' },
+      god_daikokuten: { id: 'god_daikokuten', name: '大黒天 (Daikokuten)', type: 'god', rarity: 'SR', rate: 0.06, desc: '財宝・開運の神様。打ち出の小槌を振り、周囲に小判を降らせます。', color: '#8b4513', icon: '🔨', dialogue: 'そーれ、福よ舞い込め！' },
+      god_kitsune: { id: 'god_kitsune', name: 'お狐様 (Kitsune)', type: 'god', rarity: 'R', rate: 0.12, desc: '稲荷大神の使い。お賽銭を投げると、嬉しそうに踊り狂います。', color: '#ff4500', icon: '🦊', dialogue: 'コンコン！良いご縁がありますように！' },
+      cat_calico: { id: 'cat_calico', name: 'みけねこ (Calico)', type: 'cat', rarity: 'N', rate: 0.25, desc: '神社に住み着いている三毛猫。お賽銭の音が大好きで、よく顔を出します。', color: '#d2b48c', icon: '🐱', dialogue: 'にゃ〜ん（お賽銭の音、好きにゃ）' },
+      cat_black: { id: 'cat_black', name: 'くろねこ (Black Cat)', type: 'cat', rarity: 'HN', rate: 0.15, desc: '夜の神社に現れる黒猫。魔除けの力があり、不吉な出来事を払ってくれます。', color: '#2f3640', icon: '🐈‍⬛', dialogue: 'ふにゃ（厄を払っておいたにゃ）' },
+      cat_gold: { id: 'cat_gold', name: '金の招き猫 (Gold Maneki)', type: 'cat', rarity: 'SSR', rate: 0.04, desc: '千客万来・千両万両を招く黄金の猫。現れると大吉の予感！', color: '#f1c40f', icon: '🐱✨', dialogue: 'にゃにゃん！金運を招くニャ！' },
+      cat_thief: { id: 'cat_thief', name: 'どろぼう猫 (Thief Cat)', type: 'cat', rarity: 'R', rate: 0.10, desc: '唐草模様の風呂敷を背負った猫。お賽銭を少し失敬していきますが、愛嬌で許せます。', color: '#2ecc71', icon: '😼', dialogue: 'ニヤリ…お賽銭、ごちそうさまだにゃ！' }
+    };
+
+    // --- PROBABILITY ENGINE ---
+    const ProbabilityEngine = {
+      rollCharacter() {
+        const rand = Math.random();
+        let cumulative = 0;
+        
+        // 25% chance overall that something appears
+        if (rand > 0.25) return null;
+
+        // Determine which character appears based on relative rates
+        const charList = Object.values(CHARACTERS);
+        const totalRate = charList.reduce((sum, char) => sum + char.rate, 0);
+        const charRand = Math.random() * totalRate;
+
+        for (const char of charList) {
+          cumulative += char.rate;
+          if (charRand <= cumulative) {
+            return char;
+          }
+        }
+        return null;
+      }
+    };
+
+    // --- SIMULATED API & ANALYTICS ---
+    const APISimulator = {
+      logConsole(method, message, data = null) {
+        const consoleEl = document.getElementById('api-console');
+        const time = new Date().toTimeString().split(' ')[0];
+        const entry = document.createElement('div');
+        entry.className = 'api-log-entry';
+        
+        let dataStr = data ? ` <span style="color: #f1c40f;">${JSON.stringify(data)}</span>` : '';
+        entry.innerHTML = `<span class="timestamp">[${time}]</span> <span class="method">${method}</span>: ${message}${dataStr}`;
+        
+        consoleEl.appendChild(entry);
+        consoleEl.scrollTop = consoleEl.scrollHeight;
+      },
+
+      async syncToFirebase(payload) {
+        this.logConsole('POST', 'https://firestore.googleapis.com/v1/projects/saisen-app/databases/(default)/documents/users', payload);
+        // Simulate network latency
+        return new Promise(resolve => setTimeout(resolve, 300));
+      },
+
+      async sendAnalytics(eventName, params) {
+        this.logConsole('ANALYTICS', `Event: ${eventName}`, params);
+      }
+    };
+
+    // --- SAKURA FALLING EFFECT ---
+    const SakuraEffect = {
+      canvas: null,
+      ctx: null,
+      petals: [],
+      maxPetals: 25,
+
+      init() {
+        this.canvas = document.getElementById('sakura-canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+
+        for (let i = 0; i < this.maxPetals; i++) {
+          this.petals.push(this.createPetal());
+        }
+        this.animate();
+      },
+
+      resize() {
+        this.canvas.width = this.canvas.parentElement.clientWidth;
+        this.canvas.height = this.canvas.parentElement.clientHeight;
+      },
+
+      createPetal() {
+        return {
+          x: Math.random() * this.canvas.width,
+          y: Math.random() * this.canvas.height - this.canvas.height,
+          r: Math.random() * 4 + 2,
+          d: Math.random() * this.maxPetals,
+          xs: Math.random() * 1 + 0.5,
+          ys: Math.random() * 1 + 1,
+          tilt: Math.random() * 10 - 5,
+          tiltAngleChan: Math.random() * 0.03 + 0.01,
+          tiltAngle: 0
+        };
+      },
+
+      animate() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        for (let i = 0; i < this.maxPetals; i++) {
+          const p = this.petals[i];
+          this.ctx.beginPath();
+          this.ctx.fillStyle = 'rgba(255, 183, 197, 0.8)';
+          this.ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2, true);
+          this.ctx.fill();
+
+          p.y += p.ys;
+          p.x += p.xs;
+          p.tiltAngle += p.tiltAngleChan;
+          p.tilt = Math.sin(p.tiltAngle) * 5;
+
+          if (p.y > this.canvas.height || p.x > this.canvas.width) {
+            this.petals[i] = this.createPetal();
+            this.petals[i].y = -10;
+          }
+        }
+        requestAnimationFrame(() => this.animate());
+      }
+    };
+
+    // --- APP CONTROLLER ---
+    const App = {
+      selectedCoinValue: 5,
+      isThrowing: false,
+      activeCharacter: null,
+      characterTimeout: null,
+      autoThrowInterval: null,
+
+      init() {
+        GameState.load();
+        SakuraEffect.init();
+        this.renderCollection();
+        this.setupEventListeners();
+        
+        // Initial passive income / money generation so user never gets stuck
+        setInterval(() => {
+          GameState.money += 1;
+          GameState.save();
+        }, 2000);
+      },
+
+      setupEventListeners() {
+        // Navigation
+        document.querySelectorAll('.nav-item').forEach(item => {
+          item.addEventListener('click', (e) => {
+            const target = e.currentTarget.getAttribute('data-target');
+            this.switchScreen(target);
+          });
+        });
+
+        // Coin Selection
+        document.querySelectorAll('.coin-option').forEach(option => {
+          option.addEventListener('click', (e) => {
+            document.querySelectorAll('.coin-option').forEach(opt => opt.classList.remove('selected'));
+            e.currentTarget.classList.add('selected');
+            this.selectedCoinValue = parseInt(e.currentTarget.getAttribute('data-value'));
+            AudioEngine.playCoin(this.selectedCoinValue);
+          });
+        });
+
+        // Throw Button
+        document.getElementById('throw-btn').addEventListener('click', () => {
+          this.throwCoin();
+        });
+
+        // Tap on Shrine View to throw
+        document.querySelector('.shrine-view').addEventListener('click', (e) => {
+          // Prevent throwing if clicking on the character or saisen box directly
+          if (e.target.closest('.saisen-box-container') || e.target.closest('.character-spawn')) return;
+          this.throwCoin(e.clientX, e.clientY);
+        });
+
+        // Auto Throw Toggle
+        document.getElementById('auto-throw-toggle').addEventListener('change', (e) => {
+          if (e.target.checked) {
+            APISimulator.sendAnalytics('auto_throw_enabled', {});
+            this.autoThrowInterval = setInterval(() => {
+              this.throwCoin();
+            }, 1000);
+          } else {
+            clearInterval(this.autoThrowInterval);
+            this.autoThrowInterval = null;
+          }
+        });
+
+        // Omikuji
+        document.getElementById('draw-omikuji-btn').addEventListener('click', () => {
+          this.drawOmikuji();
+        });
+        document.getElementById('close-omikuji-btn').addEventListener('click', () => {
+          document.getElementById('omikuji-result').style.display = 'none';
+          document.getElementById('omikuji-box').style.display = 'block';
+          document.getElementById('draw-omikuji-btn').style.display = 'block';
+        });
+      },
+
+      switchScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+        
+        document.getElementById(screenId).classList.add('active');
+        document.querySelector(`[data-target="${screenId}"]`).classList.add('active');
+
+        APISimulator.sendAnalytics('screen_view', { screen_name: screenId });
+      },
+
+      throwCoin(clickX, clickY) {
+        if (GameState.money < this.selectedCoinValue) {
+          alert('お賽銭用の所持金が足りません！(時間経過で自動回復します)');
+          return;
+        }
+
+        GameState.money -= this.selectedCoinValue;
+        GameState.totalMoneyOffered += this.selectedCoinValue;
+        GameState.totalCoinsThrown += 1;
+        
+        // Virtue calculation based on coin value and active multiplier
+        let virtueGained = Math.floor(this.selectedCoinValue * 0.2 * GameState.activeMultiplier);
+        if (virtueGained < 1) virtueGained = 1;
+        GameState.virtue += virtueGained;
+
+        GameState.save();
+
+        // Play Sound
+        AudioEngine.playCoin(this.selectedCoinValue);
+
+        // Animate Coin
+        this.animateCoinThrow(clickX, clickY);
+
+        // API Sync & Analytics
+        APISimulator.syncToFirebase({
+          balance: GameState.money,
+          total_offered: GameState.totalMoneyOffered,
+          last_offering: this.selectedCoinValue
+        });
+        APISimulator.sendAnalytics('offering_thrown', {
+          amount: this.selectedCoinValue,
+          virtue_gained: virtueGained
+        });
+
+        // Roll for Character Appearance
+        this.checkCharacterAppearance();
+      },
+
+      animateCoinThrow(startX, startY) {
+        const shrineView = document.querySelector('.shrine-view');
+        const rect = shrineView.getBoundingClientRect();
+        
+        // Default start position (bottom center) if not clicked
+        const x = startX ? (startX - rect.left) : (rect.width / 2);
+        const y = startY ? (startY - rect.top) : (rect.height - 20);
+
+        const coin = document.createElement('div');
+        coin.className = `flying-coin coin-visual coin-${this.selectedCoinValue}`;
+        coin.style.left = `${x - 20}px`;
+        coin.style.top = `${y - 20}px`;
+        coin.textContent = this.selectedCoinValue;
+        shrineView.appendChild(coin);
+
+        // Target is the Saisen Box center
+        const targetX = rect.width / 2;
+        const targetY = rect.height - 60;
+
+        // Animate using JS to calculate parabolic arc
+        setTimeout(() => {
+          coin.style.transform = `translate(${targetX - x}px, ${targetY - y}px) scale(0.4) rotate(720deg)`;
+          coin.style.opacity = '0';
+        }, 50);
+
+        // Remove coin and create splash particles
+        setTimeout(() => {
+          coin.remove();
+          this.createSplash(targetX, targetY);
+        }, 650);
+      },
+
+      createSplash(x, y) {
+        const shrineView = document.querySelector('.shrine-view');
+        for (let i = 0; i < 8; i++) {
+          const sparkle = document.createElement('div');
+          sparkle.className = 'sparkle';
+          sparkle.style.left = `${x}px`;
+          sparkle.style.top = `${y}px`;
+          shrineView.appendChild(sparkle);
+
+          const angle = Math.random() * Math.PI * 2;
+          const velocity = Math.random() * 40 + 20;
+          const tx = Math.cos(angle) * velocity;
+          const ty = Math.sin(angle) * velocity - 20; // upward bias
+
+          sparkle.animate([
+            { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+            { transform: `translate(${tx}px, ${ty}px) scale(0)`, opacity: 0 }
+          ], {
+            duration: 500,
+            easing: 'ease-out'
+          }).onfinish = () => sparkle.remove();
+        }
+      },
+
+      checkCharacterAppearance() {
+        const character = ProbabilityEngine.rollCharacter();
+        if (!character) return;
+
+        // If a character is already active, don't interrupt unless it's a different one
+        if (this.activeCharacter && this.activeCharacter.id === character.id) return;
+
+        this.triggerCharacter(character);
+      },
+
+      triggerCharacter(character) {
+        if (this.characterTimeout) clearTimeout(this.characterTimeout);
+
+        this.activeCharacter = character;
+        
+        // Update stats
+        if (character.type === 'god') {
+          GameState.godEncounters++;
+          AudioEngine.playDivine();
+        } else {
+          GameState.catEncounters++;
+          AudioEngine.playCat();
+        }
+
+        // Unlock in collection
+        if (!GameState.unlockedCharacters.includes(character.id)) {
+          GameState.unlockedCharacters.push(character.id);
+          this.renderCollection();
+        }
+
+        // Apply special character effects
+        this.applyCharacterEffect(character);
+
+        GameState.save();
+
+        // Show Sprite
+        const sprite = document.getElementById('character-sprite');
+        const visual = document.getElementById('character-visual');
+        const bubble = document.getElementById('speech-bubble');
+
+        visual.textContent = character.icon;
+        bubble.textContent = character.dialogue;
+        
+        sprite.classList.remove('show', 'float');
+        void sprite.offsetWidth; // Trigger reflow
+        sprite.classList.add('show', 'float');
+
+        // Analytics
+        APISimulator.sendAnalytics('character_encounter', {
+          character_id: character.id,
+          character_name: character.name,
+          rarity: character.rarity
+        });
+
+        // Hide after 4 seconds
+        this.characterTimeout = setTimeout(() => {
+          sprite.classList.remove('show', 'float');
+          this.activeCharacter = null;
+        }, 4000);
+      },
+
+      applyCharacterEffect(character) {
+        if (character.id === 'god_amaterasu') {
+          GameState.virtue += 100;
+          APISimulator.logConsole('EFFECT', '天照大神の加護により、徳が100増加しました！');
+        } else if (character.id === 'god_ebisu') {
+          GameState.money += 200;
+          APISimulator.logConsole('EFFECT', '恵比寿天のご利益により、臨時収入200円を獲得！');
+        } else if (character.id === 'cat_thief') {
+          const stolen = Math.min(GameState.money, 15);
+          GameState.money -= stolen;
+          APISimulator.logConsole('EFFECT', `どろぼう猫にお賽銭を${stolen}円盗まれました！`);
+        } else if (character.id === 'cat_gold') {
+          GameState.virtue += 50;
+          APISimulator.logConsole('EFFECT', '金の招き猫が福を呼び、徳が50増加しました！');
+        }
+      },
+
+      renderCollection() {
+        const grid = document.getElementById('collection-grid');
+        grid.innerHTML = '';
+
+        Object.values(CHARACTERS).forEach(char => {
+          const isUnlocked = GameState.unlockedCharacters.includes(char.id);
+          const card = document.createElement('div');
+          card.className = `collection-card ${isUnlocked ? '' : 'locked'}`;
+          
+          card.innerHTML = `
+            <span class="card-rarity rarity-${char.rarity}">${char.rarity}</span>
+            <div class="card-icon">${isUnlocked ? char.icon : '❓'}</div>
+            <div class="card-name">${isUnlocked ? char.name : '？？？'}</div>
+            <div class="card-desc">${isUnlocked ? char.desc : '参拝を続けると現れるかもしれません。'}</div>
+          `;
+          grid.appendChild(card);
+        });
+      },
+
+      drawOmikuji() {
+        if (GameState.virtue < 50) {
+          alert('おみくじを引くには徳が50必要です！(お賽銭を投げると徳が貯まります)');
+          return;
+        }
+
+        GameState.virtue -= 50;
+        GameState.save();
+
+        const box = document.getElementById('omikuji-box');
+        const btn = document.getElementById('draw-omikuji-btn');
+        const result = document.getElementById('omikuji-result');
+
+        btn.style.display = 'none';
+        box.classList.add('shake');
+        
+        // Play shake sounds
+        let shakeCount = 0;
+        const shakeInterval = setInterval(() => {
+          AudioEngine.playShake();
+          shakeCount++;
+          if (shakeCount >= 4) clearInterval(shakeInterval);
+        }, 150);
+
+        setTimeout(() => {
+          box.classList.remove('shake');
+          box.style.display = 'none';
+          
+          // Determine Fortune
+          const fortunes = [
+            { title: '大吉', text: '最高の一日！お賽銭のご利益が3倍になります！', mult: 3 },
+            { title: '吉', text: '素晴らしい運気。お賽銭のご利益が2倍になります！', mult: 2 },
+            { title: '中吉', text: '穏やかで良い日。お賽銭のご利益が1.5倍になります！', mult: 1.5 },
+            { title: '小吉', text: '小さな幸せが見つかるでしょう。', mult: 1.2 },
+            { title: '末吉', text: '焦らず一歩ずつ進みましょう。', mult: 1.0 },
+            { title: '凶', text: '油断大敵。しかしお賽銭を投げれば厄除けになります！', mult: 0.8 }
+          ];
+
+          const roll = Math.random();
+          let selected = fortunes[fortunes.length - 1]; // Default to 凶
+          
+          if (roll < 0.15) selected = fortunes[0]; // 大吉
+          else if (roll < 0.35) selected = fortunes[1]; // 吉
+          else if (roll < 0.60) selected = fortunes[2]; // 中吉
+          else if (roll < 0.80) selected = fortunes[3]; // 小吉
+          else if (roll < 0.95) selected = fortunes[4]; // 末吉
+
+          document.getElementById('fortune-title').textContent = selected.title;
+          document.getElementById('fortune-text').textContent = selected.text;
+          
+          GameState.activeMultiplier = selected.mult;
+          APISimulator.sendAnalytics('omikuji_drawn', { fortune: selected.title, multiplier: selected.mult });
+
+          result.style.display = 'block';
+        }, 1000);
+      }
+    };
+
+    // Start App
+    window.addEventListener('DOMContentLoaded', () => {
+      App.init();
+    });
+  </script>
+</body>
+</html>
