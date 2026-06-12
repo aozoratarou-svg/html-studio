@@ -1,465 +1,482 @@
-jsx
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Code2, 
-  Play, 
-  Terminal, 
-  Eye, 
-  RotateCcw, 
-  Copy, 
-  Check, 
-  Sparkles, 
-  Settings, 
-  ChevronRight,
-  Trash2
-} from 'lucide-react';
-
-// Default template to showcase the playground's capabilities
-const DEFAULT_CODE = `<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body {
-      margin: 0;
-      padding: 20px;
-      background: #0a0a0f;
-      color: #f3f4f6;
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 90vh;
-      overflow-hidden: x;
-    }
-
-    .card {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(0, 242, 254, 0.2);
-      border-radius: 24px;
-      padding: 32px;
-      max-width: 340px;
-      width: 100%;
-      text-align: center;
-      backdrop-filter: blur(12px);
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3),
-                  0 0 40px rgba(0, 242, 254, 0.1);
-      transform: translateY(0);
-      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-
-    .card:hover {
-      transform: translateY(-8px);
-      border-color: rgba(155, 81, 224, 0.4);
-      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4),
-                  0 0 50px rgba(155, 81, 224, 0.15);
-    }
-
-    .glow-orb {
-      width: 80px;
-      height: 80px;
-      background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
-      border-radius: 50%;
-      margin: 0 auto 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 32px;
-      box-shadow: 0 0 30px rgba(0, 242, 254, 0.6);
-      animation: pulse 3s infinite alternate;
-    }
-
-    h1 {
-      font-size: 24px;
-      margin: 0 0 8px;
-      background: linear-gradient(to right, #00f2fe, #9b51e0);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-    }
-
-    p {
-      color: #9ca3af;
-      font-size: 14px;
-      line-height: 1.6;
-      margin: 0 0 24px;
-    }
-
-    button {
-      background: linear-gradient(135deg, #00f2fe 0%, #9b51e0 100%);
-      border: none;
-      color: white;
-      padding: 14px 28px;
-      border-radius: 14px;
-      font-weight: 600;
-      font-size: 14px;
-      cursor: pointer;
-      width: 100%;
-      box-shadow: 0 4px 15px rgba(0, 242, 254, 0.3);
-      transition: all 0.2s;
-    }
-
-    button:active {
-      transform: scale(0.96);
-      opacity: 0.9;
-    }
-
-    @keyframes pulse {
-      0% { transform: scale(1); box-shadow: 0 0 20px rgba(0, 242, 254, 0.4); }
-      100% { transform: scale(1.05); box-shadow: 0 0 40px rgba(0, 242, 254, 0.8); }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>夜の虚 (Null Void)</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000000;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            cursor: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%), auto;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        #ui {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2;
+            color: rgba(255, 255, 255, 0.25);
+            font-size: 10px;
+            letter-spacing: 0.25em;
+            text-transform: uppercase;
+            pointer-events: none;
+            transition: color 0.5s ease;
+            font-weight: 300;
+            text-align: center;
+        }
+        #ui.active {
+            color: rgba(255, 255, 255, 0.05);
+        }
+        #interaction-prompt {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 3;
+            color: rgba(255, 255, 255, 0.35);
+            font-size: 11px;
+            letter-spacing: 0.4em;
+            text-transform: uppercase;
+            pointer-events: none;
+            transition: opacity 1.5s ease;
+            font-weight: 300;
+        }
+    </style>
 </head>
 <body>
+    <canvas id="glCanvas"></canvas>
+    <div id="interaction-prompt">Tap to awaken the void</div>
+    <div id="ui">Null // Breath</div>
 
-  <div class="card">
-    <div class="glow-orb">⚡</div>
-    <h1>NEON PLAYGROUND</h1>
-    <p>Experience real-time, sandboxed mobile development with instant hot-reloading.</p>
-    <button onclick="triggerSystem()">Initialize System</button>
-  </div>
+    <script>
+        const vertexShaderSource = `
+            attribute vec2 position;
+            varying vec2 v_uv;
+            void main() {
+                v_uv = position * 0.5 + 0.5;
+                gl_Position = vec4(position, 0.0, 1.0);
+            }
+        `;
 
-  <script>
-    function triggerSystem() {
-      console.log("⚡ System diagnostics initiated...");
-      console.log("🟢 Core engine: ACTIVE");
-      console.log("🚀 Render latency: 0.4ms");
-      alert("System Online! Check the Console tab for logs.");
-    }
-  </script>
-</body>
-</html>`;
-
-export default function MobilePlayground() {
-  const [code, setCode] = useState(DEFAULT_CODE);
-  const [activeTab, setActiveTab] = useState('editor'); // 'editor' | 'preview' | 'console'
-  const [logs, setLogs] = useState([]);
-  const [copied, setCopied] = useState(false);
-  const [previewKey, setPreviewKey] = useState(0); // Used to force reload iframe
-
-  const textareaRef = useRef(null);
-  const gutterRef = useRef(null);
-  const iframeRef = useRef(null);
-
-  // Sync textarea scroll with line numbers gutter
-  const handleScroll = (e) => {
-    if (gutterRef.current) {
-      gutterRef.current.scrollTop = e.target.scrollTop;
-    }
-  };
-
-  // Quick insert helper characters at cursor position
-  const insertHelper = (char) => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = textarea.value;
-    const before = text.substring(0, start);
-    const after = text.substring(end, text.length);
-
-    let newCode = before + char + after;
-    let cursorOffset = char.length;
-
-    // Smart pairing for brackets/quotes
-    if (char === '{') { newCode = before + '{}' + after; cursorOffset = 1; }
-    else if (char === '[') { newCode = before + '[]' + after; cursorOffset = 1; }
-    else if (char === '(') { newCode = before + '()' + after; cursorOffset = 1; }
-    else if (char === '<') { newCode = before + '<>' + after; cursorOffset = 1; }
-    else if (char === '"') { newCode = before + '""' + after; cursorOffset = 1; }
-    else if (char === "'") { newCode = before + "''" + after; cursorOffset = 1; }
-
-    setCode(newCode);
-
-    // Restore cursor focus and position
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + cursorOffset, start + cursorOffset);
-    }, 0);
-  };
-
-  // Copy code to clipboard
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  // Reset code to default template
-  const resetCode = () => {
-    if (window.confirm("Reset editor to default template? Current progress will be lost.")) {
-      setCode(DEFAULT_CODE);
-      setLogs([]);
-      setPreviewKey(prev => prev + 1);
-    }
-  };
-
-  // Clear console logs
-  const clearLogs = () => {
-    setLogs([]);
-  };
-
-  // Listen to console messages from the sandboxed iframe
-  useEffect(() => {
-    const handleConsoleMessage = (event) => {
-      if (event.data && event.data.type === 'CONSOLE_LOG') {
-        setLogs(prev => [...prev, { type: 'log', text: event.data.data, time: new Date().toLocaleTimeString() }]);
-      } else if (event.data && event.data.type === 'CONSOLE_ERROR') {
-        setLogs(prev => [...prev, { type: 'error', text: event.data.data, time: new Date().toLocaleTimeString() }]);
-      }
-    };
-
-    window.addEventListener('message', handleConsoleMessage);
-    return () => window.removeEventListener('message', handleConsoleMessage);
-  }, []);
-
-  // Inject console interceptor and user code into iframe srcDoc
-  const getSrcDoc = () => {
-    const interceptor = `
-      <script>
-        (function() {
-          const _log = console.log;
-          const _error = console.error;
-          
-          console.log = function(...args) {
-            _log.apply(console, args);
-            window.parent.postMessage({ 
-              type: 'CONSOLE_LOG', 
-              data: args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ') 
-            }, '*');
-          };
-
-          console.error = function(...args) {
-            _error.apply(console, args);
-            window.parent.postMessage({ 
-              type: 'CONSOLE_ERROR', 
-              data: args.join(' ') 
-            }, '*');
-          };
-
-          window.onerror = function(message, source, lineno, colno, error) {
-            window.parent.postMessage({ 
-              type: 'CONSOLE_ERROR', 
-              data: message + ' (Line ' + lineno + ')' 
-            }, '*');
-            return false;
-          };
-        })();
-      </script>
-    `;
-
-    // Insert interceptor right after <head> or at the very beginning
-    if (code.includes('<head>')) {
-      return code.replace('<head>', `<head>${interceptor}`);
-    }
-    return interceptor + code;
-  };
-
-  // Trigger manual run / refresh of preview
-  const handleRun = () => {
-    setPreviewKey(prev => prev + 1);
-    setActiveTab('preview');
-  };
-
-  // Calculate line numbers
-  const lineCount = code.split('\n').length;
-  const lineNumbers = Array.from({ length: lineCount }, (_, i) => i + 1);
-
-  return (
-    <div className="flex flex-col h-screen w-full bg-[#07070a] text-slate-100 font-sans overflow-hidden select-none">
-      
-      {/* Header */}
-      <header className="flex items-center justify-between px-4 py-3 bg-[#0a0a0f]/90 border-b border-slate-800/80 backdrop-blur-md z-10">
-        <div className="flex items-center gap-2">
-          <div className="relative flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
-          </div>
-          <span className="font-mono font-black tracking-wider text-sm text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
-            NEON_EDIT v1.0
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={copyToClipboard}
-            className="p-2 rounded-lg bg-slate-900/60 border border-slate-800 hover:border-cyan-500/50 active:scale-95 transition-all"
-            title="Copy Code"
-          >
-            {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-slate-400" />}
-          </button>
-          <button 
-            onClick={resetCode}
-            className="p-2 rounded-lg bg-slate-900/60 border border-slate-800 hover:border-rose-500/50 active:scale-95 transition-all"
-            title="Reset Template"
-          >
-            <RotateCcw className="w-4 h-4 text-slate-400" />
-          </button>
-        </div>
-      </header>
-
-      {/* Main Workspace Area */}
-      <main className="flex-1 relative overflow-hidden bg-[#07070a]">
-        
-        {/* Tab 1: Code Editor */}
-        <div className={`absolute inset-0 flex flex-col transition-transform duration-300 ease-out ${activeTab === 'editor' ? 'translate-x-0' : '-translate-x-full'}`}>
-          <div className="flex-1 flex overflow-hidden relative font-mono text-sm">
+        const fragmentShaderSource = `
+            precision highp float;
+            varying vec2 v_uv;
             
-            {/* Line Numbers Gutter */}
-            <div 
-              ref={gutterRef}
-              className="w-12 py-4 bg-[#07070a] text-slate-600 text-right pr-3 select-none overflow-hidden border-r border-slate-900/60"
-            >
-              {lineNumbers.map(num => (
-                <div key={num} className="h-6 leading-6 text-xs font-medium">
-                  {num}
-                </div>
-              ))}
-            </div>
+            uniform vec2 u_resolution;
+            uniform float u_time;
+            uniform float u_breath;
+            uniform vec3 u_color_base;
+            uniform vec3 u_color_glow;
+            
+            uniform vec2 u_touch_pos;
+            uniform float u_touch_time;
+            uniform float u_touch_intensity;
 
-            {/* Textarea Editor */}
-            <textarea
-              ref={textareaRef}
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              onScroll={handleScroll}
-              className="flex-1 py-4 px-3 bg-transparent text-slate-200 focus:outline-none resize-none overflow-y-auto whitespace-pre break-normal leading-6 font-mono selection:bg-cyan-500/20 selection:text-cyan-200"
-              placeholder="Write HTML/CSS/JS here..."
-              spellCheck="false"
-              autoCapitalize="off"
-              autoComplete="off"
-              autoCorrect="off"
-            />
-          </div>
+            // Pseudo-random noise for etheric texture
+            float noise(vec2 uv) {
+                return fract(sin(dot(uv, vec2(12.9898, 78.233))) * 43758.5453);
+            }
 
-          {/* Quick-Insert Toolbar (Thumb-friendly, positioned above keyboard/nav) */}
-          <div className="flex items-center gap-1 px-2 py-1.5 bg-[#0a0a0f] border-t border-slate-900 overflow-x-auto scrollbar-none select-none">
-            {['Tab', '{', '}', '[', ']', '(', ')', '<', '>', '/', ';', '"', "'", '=', '$'].map((char) => (
-              <button
-                key={char}
-                onClick={() => insertHelper(char === 'Tab' ? '  ' : char)}
-                className="flex-shrink-0 px-3.5 py-2 rounded-lg bg-slate-900/80 border border-slate-800/60 text-slate-300 font-mono text-xs font-bold active:bg-cyan-500 active:text-slate-950 active:border-cyan-400 transition-all"
-              >
-                {char}
-              </button>
-            ))}
-          </div>
-        </div>
+            void main() {
+                // Normalize coordinates with aspect ratio correction
+                vec2 uv = (gl_FragCoord.xy - 0.5 * u_resolution) / min(u_resolution.x, u_resolution.y);
+                float dist = length(uv);
 
-        {/* Tab 2: Live Preview */}
-        <div className={`absolute inset-0 flex flex-col transition-transform duration-300 ease-out ${activeTab === 'preview' ? 'translate-x-0' : activeTab === 'editor' ? 'translate-x-full' : '-translate-x-full'}`}>
-          <iframe
-            key={previewKey}
-            ref={iframeRef}
-            srcDoc={getSrcDoc()}
-            title="Live Sandbox Preview"
-            sandbox="allow-scripts"
-            className="w-full h-full bg-white border-none"
-          />
-        </div>
+                // Base background: Pure black (#000000) to deep night air (#05050A)
+                vec3 bg = mix(vec3(0.0, 0.0, 0.0), vec3(0.02, 0.02, 0.04), uv.y + 0.5);
 
-        {/* Tab 3: Console Logs */}
-        <div className={`absolute inset-0 flex flex-col bg-[#09090e] transition-transform duration-300 ease-out ${activeTab === 'console' ? 'translate-x-0' : 'translate-x-full'}`}>
-          <div className="flex items-center justify-between px-4 py-2 bg-[#0d0d15] border-b border-slate-800/80">
-            <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
-              <Terminal className="w-3.5 h-3.5 text-purple-400" />
-              SYSTEM_DIAGNOSTICS
-            </div>
-            {logs.length > 0 && (
-              <button 
-                onClick={clearLogs}
-                className="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-rose-400 transition-colors"
-                title="Clear Logs"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-          
-          <div className="flex-1 overflow-y-auto p-4 font-mono text-xs space-y-2.5">
-            {logs.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-slate-600 space-y-2">
-                <Terminal className="w-8 h-8 opacity-20" />
-                <p className="text-center">No logs captured yet.<br/>Interact with your preview to trigger logs.</p>
-              </div>
-            ) : (
-              logs.map((log, index) => (
-                <div 
-                  key={index} 
-                  className={`p-2.5 rounded-lg border flex items-start gap-2.5 ${
-                    log.type === 'error' 
-                      ? 'bg-rose-950/20 border-rose-900/40 text-rose-300' 
-                      : 'bg-slate-900/40 border-slate-800/60 text-cyan-300'
-                  }`}
-                >
-                  <span className="text-[10px] text-slate-500 mt-0.5 select-none">{log.time}</span>
-                  <span className="font-semibold select-none">{log.type === 'error' ? '❌' : '⚡'}</span>
-                  <span className="flex-1 break-all whitespace-pre-wrap">{log.text}</span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+                // 1/f breathing ring parameters
+                float ringRadius = 0.32;
+                float ringWidth = 0.15 + u_breath * 0.08;
+                
+                // Soft etheric ring generation
+                float ringGlow = exp(-pow((dist - ringRadius) / ringWidth, 2.0));
+                
+                // Modulate ring intensity with breathing cycle
+                float breathIntensity = mix(0.15, 0.65, u_breath);
+                vec3 ringColor = mix(u_color_base, u_color_glow, u_breath);
+                vec3 finalRing = ringColor * ringGlow * breathIntensity;
 
-        {/* Floating Action Button (FAB) - Run/Refresh */}
-        <button
-          onClick={handleRun}
-          className="absolute bottom-4 right-4 z-20 flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-600 text-white shadow-[0_0_20px_rgba(6,182,212,0.4)] active:scale-90 active:shadow-none transition-all duration-150"
-          title="Run Code"
-        >
-          <Play className="w-6 h-6 fill-current text-slate-950" />
-        </button>
+                // Tactile Ripple (Water droplet propagation)
+                vec3 rippleEffect = vec3(0.0);
+                if (u_touch_intensity > 0.01) {
+                    vec2 touchUV = (u_touch_pos - 0.5 * u_resolution) / min(u_resolution.x, u_resolution.y);
+                    float d = length(uv - touchUV);
+                    
+                    // Wave equation
+                    float waveSpeed = 1.2;
+                    float waveFreq = 28.0;
+                    float wave = sin(d * waveFreq - u_touch_time * waveSpeed * waveFreq);
+                    
+                    // Attenuation over space and time
+                    float envelope = smoothstep(0.0, 0.15, u_touch_time) * exp(-u_touch_time * 1.4) * exp(-d * 2.5);
+                    float rippleGlow = max(wave, 0.0) * envelope * u_touch_intensity;
+                    
+                    // Ripple color matches the current temporal glow state but is more etheric/white
+                    rippleEffect = mix(u_color_glow, vec3(0.9, 0.95, 1.0), 0.3) * rippleGlow * 0.45;
+                }
 
-      </main>
+                // Combine elements
+                vec3 color = bg + finalRing + rippleEffect;
 
-      {/* Bottom Navigation Bar (Thumb-friendly ergonomics) */}
-      <nav className="flex items-center justify-around bg-[#0a0a0f]/95 border-t border-slate-900/80 backdrop-blur-md py-2 px-4 pb-safe">
-        <button
-          onClick={() => setActiveTab('editor')}
-          className={`flex flex-col items-center gap-1 py-1 px-4 rounded-xl transition-all ${
-            activeTab === 'editor' 
-              ? 'text-cyan-400 bg-cyan-500/5' 
-              : 'text-slate-500 hover:text-slate-300'
-          }`}
-        >
-          <Code2 className="w-5 h-5" />
-          <span className="text-[10px] font-bold tracking-wider">CODE</span>
-        </button>
+                // Add subtle organic etheric noise (fog/grain)
+                float grain = noise(uv * 150.0 + u_time * 0.005) * 0.012;
+                color += vec3(grain) * (0.1 + u_breath * 0.9);
 
-        <button
-          onClick={() => setActiveTab('preview')}
-          className={`flex flex-col items-center gap-1 py-1 px-4 rounded-xl transition-all ${
-            activeTab === 'preview' 
-              ? 'text-cyan-400 bg-cyan-500/5' 
-              : 'text-slate-500 hover:text-slate-300'
-          }`}
-        >
-          <Eye className="w-5 h-5" />
-          <span className="text-[10px] font-bold tracking-wider">PREVIEW</span>
-        </button>
+                // The Absolute Void (Null) - Force absolute black in the center
+                float centerVoid = smoothstep(0.0, 0.18, dist);
+                color *= centerVoid;
 
-        <button
-          onClick={() => setActiveTab('console')}
-          className={`flex flex-col items-center gap-1 py-1 px-4 rounded-xl relative transition-all ${
-            activeTab === 'console' 
-              ? 'text-purple-400 bg-purple-500/5' 
-              : 'text-slate-500 hover:text-slate-300'
-          }`}
-        >
-          <Terminal className="w-5 h-5" />
-          <span className="text-[10px] font-bold tracking-wider">CONSOLE</span>
-          {logs.length > 0 && (
-            <span className="absolute top-1 right-3 flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
-            </span>
-          )}
-        </button>
-      </nav>
-    </div>
-  );
-}
+                gl_FragColor = vec4(color, 1.0);
+            }
+        `;
+
+        // Temporal Light-Cycle Algorithm
+        function getTemporalColors() {
+            const now = new Date();
+            const hour = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
+            
+            let base = [0.01, 0.01, 0.03]; // Deep Indigo
+            let glow = [0.05, 0.08, 0.18]; // Soft Etheric Blue
+
+            if (hour >= 17 && hour < 20) { 
+                // Dusk: Deep violet to warm amber
+                const t = (hour - 17) / 3;
+                base = mixColors([0.05, 0.02, 0.08], [0.02, 0.01, 0.05], t);
+                glow = mixColors([0.25, 0.08, 0.04], [0.12, 0.05, 0.15], t);
+            } else if (hour >= 20 || hour < 4) { 
+                // Midnight: Deepest indigo to absolute void blue
+                let t = 0;
+                if (hour >= 20) t = (hour - 20) / 8;
+                else t = (hour + 4) / 8;
+                base = mixColors([0.01, 0.01, 0.03], [0.0, 0.0, 0.01], t);
+                glow = mixColors([0.04, 0.06, 0.15], [0.02, 0.03, 0.08], t);
+            } else if (hour >= 4 && hour < 7) { 
+                // Dawn: Pale slate blue to soft gold
+                const t = (hour - 4) / 3;
+                base = mixColors([0.0, 0.0, 0.02], [0.02, 0.03, 0.05], t);
+                glow = mixColors([0.03, 0.05, 0.12], [0.22, 0.18, 0.12], t);
+            } else {
+                // Day (Dormant state): Extremely dim, quiet grey-blue
+                const t = (hour - 7) / 10;
+                base = [0.01, 0.01, 0.015];
+                glow = [0.03, 0.04, 0.06];
+            }
+            return { base, glow };
+        }
+
+        function mixColors(c1, c2, t) {
+            return [
+                c1[0] * (1 - t) + c2[0] * t,
+                c1[1] * (1 - t) + c2[1] * t,
+                c1[2] * (1 - t) * c2[2] * t
+            ];
+        }
+
+        // Web Audio Synthesis Engine
+        class AudioEngine {
+            constructor() {
+                this.ctx = null;
+                this.initialized = false;
+            }
+
+            init() {
+                if (this.initialized) return;
+                
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioContext();
+                
+                // Master Limiter/Gain
+                this.masterGain = this.ctx.createGain();
+                this.masterGain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                
+                // Lowpass Filter for the entire atmosphere
+                this.filter = this.ctx.createBiquadFilter();
+                this.filter.type = 'lowpass';
+                this.filter.frequency.setValueAtTime(80, this.ctx.currentTime);
+                this.filter.Q.setValueAtTime(1.0, this.ctx.currentTime);
+
+                this.masterGain.connect(this.filter);
+                this.filter.connect(this.ctx.destination);
+
+                this.setupDrone();
+                this.initialized = true;
+            }
+
+            setupDrone() {
+                // Deep breathing fundamental drone
+                this.osc1 = this.ctx.createOscillator();
+                this.osc1.type = 'sine';
+                this.osc1.frequency.setValueAtTime(55.0, this.ctx.currentTime); // A1
+
+                this.osc2 = this.ctx.createOscillator();
+                this.osc2.type = 'triangle';
+                this.osc2.frequency.setValueAtTime(55.2, this.ctx.currentTime); // Subtle beating
+
+                this.droneGain1 = this.ctx.createGain();
+                this.droneGain2 = this.ctx.createGain();
+                
+                this.droneGain1.gain.setValueAtTime(0.6, this.ctx.currentTime);
+                this.droneGain2.gain.setValueAtTime(0.3, this.ctx.currentTime);
+
+                this.osc1.connect(this.droneGain1);
+                this.osc2.connect(this.droneGain2);
+
+                this.droneGain1.connect(this.masterGain);
+                this.droneGain2.connect(this.masterGain);
+
+                this.osc1.start();
+                this.osc2.start();
+            }
+
+            updateBreath(breath) {
+                if (!this.initialized) return;
+                // Modulate filter cutoff and volume with 1/f breathing cycle
+                const cutoff = mix(60, 140, breath);
+                const volume = mix(0.1, 0.22, breath);
+                
+                this.filter.frequency.setTargetAtTime(cutoff, this.ctx.currentTime, 0.1);
+                this.masterGain.gain.setTargetAtTime(volume, this.ctx.currentTime, 0.2);
+            }
+
+            triggerRipple(panValue) {
+                if (!this.initialized) return;
+
+                const now = this.ctx.currentTime;
+                
+                // Spatial Panning
+                const panner = this.ctx.createStereoPanner ? this.ctx.createStereoPanner() : null;
+                const targetNode = panner ? panner : this.filter;
+                if (panner) {
+                    panner.pan.setValueAtTime(panValue, now);
+                    panner.connect(this.filter);
+                }
+
+                // Deep water droplet impact
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                
+                osc.type = 'sine';
+                // Pitch sweep down
+                osc.frequency.setValueAtTime(120, now);
+                osc.frequency.exponentialRampToValueAtTime(45, now + 1.8);
+
+                gain.gain.setValueAtTime(0.0, now);
+                gain.gain.linearRampToValueAtTime(0.4, now + 0.05);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 2.0);
+
+                osc.connect(gain);
+                gain.connect(targetNode);
+                
+                osc.start(now);
+                osc.stop(now + 2.1);
+
+                // High-frequency soft "ping" (the droplet impact)
+                const pingOsc = this.ctx.createOscillator();
+                const pingGain = this.ctx.createGain();
+
+                pingOsc.type = 'sine';
+                pingOsc.frequency.setValueAtTime(850, now);
+                pingOsc.frequency.exponentialRampToValueAtTime(300, now + 0.15);
+
+                pingGain.gain.setValueAtTime(0.0, now);
+                pingGain.gain.linearRampToValueAtTime(0.03, now + 0.01);
+                pingGain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+
+                pingOsc.connect(pingGain);
+                pingGain.connect(targetNode);
+
+                pingOsc.start(now);
+                pingOsc.stop(now + 0.4);
+            }
+        }
+
+        function mix(a, b, t) {
+            return a * (1 - t) + b * t;
+        }
+
+        // Application Setup
+        const canvas = document.getElementById('glCanvas');
+        const gl = canvas.getContext('webgl');
+        const promptEl = document.getElementById('interaction-prompt');
+        const uiEl = document.getElementById('ui');
+        const audio = new AudioEngine();
+
+        if (!gl) {
+            console.error('WebGL not supported');
+        }
+
+        // Shader Compilation Helper
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error(gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        const vs = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+        const fs = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+
+        const program = gl.createProgram();
+        gl.attachShader(program, vs);
+        gl.attachShader(program, fs);
+        gl.linkProgram(program);
+
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            console.error(gl.getProgramInfoLog(program));
+        }
+
+        const positionAttributeLocation = gl.getAttribLocation(program, 'position');
+        const positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+            -1, -1,
+             1, -1,
+            -1,  1,
+            -1,  1,
+             1, -1,
+             1,  1,
+        ]), gl.STATIC_DRAW);
+
+        // Uniform Locations
+        const uniforms = {
+            resolution: gl.getUniformLocation(program, 'u_resolution'),
+            time: gl.getUniformLocation(program, 'u_time'),
+            breath: gl.getUniformLocation(program, 'u_breath'),
+            colorBase: gl.getUniformLocation(program, 'u_color_base'),
+            colorGlow: gl.getUniformLocation(program, 'u_color_glow'),
+            touchPos: gl.getUniformLocation(program, 'u_touch_pos'),
+            touchTime: gl.getUniformLocation(program, 'u_touch_time'),
+            touchIntensity: gl.getUniformLocation(program, 'u_touch_intensity')
+        };
+
+        // State Variables
+        let startTime = performance.now();
+        let lastTime = startTime;
+        let breathPhase = 0;
+        
+        let touchX = 0;
+        let touchY = 0;
+        let touchTime = 99.0; 
+        let touchIntensity = 0.0;
+
+        function resize() {
+            canvas.width = window.innerWidth * window.devicePixelRatio;
+            canvas.height = window.innerHeight * window.devicePixelRatio;
+            gl.viewport(0, 0, canvas.width, canvas.height);
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // 1/f Fluctuation Generator (Multi-octave slow noise)
+        function getBreathValue(time) {
+            let n = Math.sin(time * 0.15) * 0.5;
+            n += Math.sin(time * 0.37) * 0.25;
+            n += Math.sin(time * 0.08) * 0.15;
+            n += Math.sin(time * 0.73) * 0.05;
+            n = n / 0.95; // Normalize
+            return n * 0.5 + 0.5; // Map to [0, 1]
+        }
+
+        // Interaction Handlers
+        function handleInteraction(clientX, clientY) {
+            // Initialize Audio on first gesture
+            if (!audio.initialized) {
+                audio.init();
+                promptEl.style.opacity = '0';
+                uiEl.classList.add('active');
+            }
+
+            const rect = canvas.getBoundingClientRect();
+            const x = (clientX - rect.left) * window.devicePixelRatio;
+            // Flip Y for WebGL coordinates
+            const y = (rect.height - (clientY - rect.top)) * window.devicePixelRatio;
+
+            touchX = x;
+            touchY = y;
+            touchTime = 0.0;
+            touchIntensity = 1.0;
+
+            // Calculate panning based on screen position (-1.0 to 1.0)
+            const pan = (clientX / window.innerWidth) * 2.0 - 1.0;
+            audio.triggerRipple(pan);
+        }
+
+        window.addEventListener('pointerdown', (e) => {
+            handleInteraction(e.clientX, e.clientY);
+        });
+
+        // Main Render Loop
+        function render(now) {
+            const dt = (now - lastTime) * 0.001;
+            lastTime = now;
+            const elapsed = (now - startTime) * 0.001;
+
+            // Update breathing cycle
+            const breath = getBreathValue(elapsed);
+            audio.updateBreath(breath);
+
+            // Update touch ripple state
+            touchTime += dt;
+            if (touchIntensity > 0.0) {
+                touchIntensity -= dt * 0.45; // Slow decay
+                if (touchIntensity < 0.0) touchIntensity = 0.0;
+            }
+
+            // Get real-time temporal colors
+            const colors = getTemporalColors();
+
+            // WebGL Draw
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            gl.useProgram(program);
+
+            gl.enableVertexAttribArray(positionAttributeLocation);
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+
+            // Set Uniforms
+            gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+            gl.uniform1f(uniforms.time, elapsed);
+            gl.uniform1f(uniforms.breath, breath);
+            gl.uniform3fv(uniforms.colorBase, colors.base);
+            gl.uniform3fv(uniforms.colorGlow, colors.glow);
+            gl.uniform2f(uniforms.touchPos, touchX, touchY);
+            gl.uniform1f(uniforms.touchTime, touchTime);
+            gl.uniform1f(uniforms.touchIntensity, touchIntensity);
+
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+            requestAnimationFrame(render);
+        }
+
+        requestAnimationFrame(render);
+    </script>
+</body>
+</html>
