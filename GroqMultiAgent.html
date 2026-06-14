@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Agent Code Hub</title>
+    <style>
+        :root {
+            --bg-color: #f5f7fa;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --accent-color: #24292e;
+            --accent-hover: #444d56;
+            --border-color: #e1e4e8;
+            --danger-color: #cb2431;
+            --danger-hover: #9e1c26;
+            --log-bg: #1e1e1e;
+            --log-color: #00ff00;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-color); padding: 16px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        .container { width: 100%; max-width: 800px; background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); }
+        
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        h1 { font-size: 1.25rem; font-weight: 600; }
+        
+        .icon-btn { background: none; border: none; cursor: pointer; padding: 8px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+        .icon-btn:hover { background-color: var(--border-color); }
+        .icon-btn svg { width: 24px; height: 24px; fill: #586069; }
+
+        .form-group { margin-bottom: 16px; }
+        label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: #586069; }
+        textarea { width: 100%; height: 120px; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; resize: vertical; font-size: 1rem; outline: none; }
+        textarea:focus { border-color: var(--accent-color); }
+
+        .btn-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        .btn { flex: 1; background-color: var(--accent-color); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .btn:hover { background-color: var(--accent-hover); }
+        .btn:disabled { background-color: #9eccf5; cursor: not-allowed; }
+        .btn-stop { background-color: var(--danger-color); display: none; }
+        .btn-stop:hover { background-color: var(--danger-hover); }
+
+        /* ログエリア */
+        .log-container { background: var(--log-bg); color: var(--log-color); padding: 12px; border-radius: 8px; font-family: "Courier New", Courier, monospace; font-size: 0.85rem; height: 180px; overflow-y: auto; margin-bottom: 20px; border: 1px solid #000; }
+        .log-entry { margin-bottom: 4px; line-height: 1.4; }
+        .log-entry.system { color: #aaaaaa; }
+        .log-entry.error { color: #ffaa00; }
+        .log-entry.fatal { color: #ff5555; }
+
+        /* 成果物エリア */
+        .output-container { display: none; }
+        .output-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .copy-btn { background-color: #f6f8fa; border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; }
+        pre { background-color: #272822; color: #f8f8f2; padding: 16px; border-radius: 8px; overflow-x: auto; font-family: "Courier New", Courier, monospace; font-size: 0.9rem; max-height: 500px; white-space: pre-wrap; word-wrap: break-word; }
+
+        /* モーダル */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; padding: 16px; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal { background: white; width: 100%; max-width: 500px; padding: 20px; border-radius: 12px; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .modal-body input { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.95rem; margin-bottom: 12px; }
+        
+        /* 全画面プレビュー */
+        #fullscreen-view { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #fff; z-index: 100; }
+        #fullscreen-view iframe { width: 100%; height: 100%; border: none; display: block; }
+        .back-btn { position: fixed; top: 20px; right: 20px; width: 50px; height: 50px; background: rgba(36, 41, 46, 0.9); border: none; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.3); color: white; transition: 0.2s; }
+        .back-btn:hover { transform: scale(1.05); background: #000; }
+        .back-btn svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Multi-Agent Code Hub</h1>
+            <button class="icon-btn" id="openSettings" aria-label="設定">
+                <svg viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3-1.07-3-3s1.07-3 3-3 3 1.07 3 3-1.07 3-3 3z"/></svg>
+            </button>
+        </header>
+
+        <div class="form-group">
+            <label for="prompt">作成したいシステムの要件を入力してください</label>
+            <textarea id="prompt" placeholder="例: ポモドーロタイマーのWebアプリ。タスク追加機能と、完了時の通知音機能をつけて。モダンなUIで。"></textarea>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn" id="generateBtn">🚀 開発開始 (マルチエージェント稼働)</button>
+            <button class="btn btn-stop" id="stopBtn">🛑 強制停止</button>
+            <button class="btn" id="previewBtn" style="background-color: #28a745; display: none;">👁️ プレビュー</button>
+        </div>
+
+        <div class="log-container" id="logContainer">
+            <div class="log-entry system">System: Standby...</div>
+        </div>
+
+        <div class="output-container" id="outputContainer">
+            <div class="output-header">
+                <label>最終成果物 (統合エージェント出力)</label>
+                <button class="copy-btn" id="copyBtn"><span id="copyTxt">コピー</span></button>
+            </div>
+            <pre><code id="outputCode"></code></pre>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>API設定</h2>
+                <button class="icon-btn" id="closeSettings" style="padding:4px;">✕</button>
+            </div>
+            <div class="modal-body">
+                <label for="apiKey">Groq API Key</label>
+                <input type="password" id="apiKey" placeholder="gsk_...">
+                
+                <label for="geminiApiKey" style="margin-top: 12px;">Gemini API Key (親・統合エージェント用)</label>
+                <input type="password" id="geminiApiKey" placeholder="AIza...">
+
+                <label for="openRouterApiKey" style="margin-top: 12px;">OpenRouter API Key (子エージェント拡張用)</label>
+                <input type="password" id="openRouterApiKey" placeholder="sk-or-v1-...">
+                
+                <p style="font-size: 0.8rem; color: #586069; margin-top: 12px; line-height: 1.4;">
+                    ※使用モデルは内部で最適なものに自動割り当て・フォールバックされます。<br>
+                    ※Gemini APIキーは必須です。子エージェントの並列処理にはGroqまたはOpenRouterのキーも推奨します。
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div id="fullscreen-view">
+        <button id="backBtn" class="back-btn" title="入力画面に戻る">
+            <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+        </button>
+        <iframe id="result-frame"></iframe>
+    </div>
+
+    <script>
+        const UI = {
+            apiKey: document.getElementById('apiKey'),
+            geminiApiKey: document.getElementById('geminiApiKey'),
+            openRouterApiKey: document.getElementById('openRouterApiKey'),
+            prompt: document.getElementById('prompt'),
+            generateBtn: document.getElementById('generateBtn'),
+            stopBtn: document.getElementById('stopBtn'),
+            logContainer: document.getElementById('logContainer'),
+            outputContainer: document.getElementById('outputContainer'),
+            outputCode: document.getElementById('outputCode'),
+            copyBtn: document.getElementById('copyBtn'),
+            copyTxt: document.getElementById('copyTxt'),
+            modalOverlay: document.getElementById('modalOverlay'),
+            previewBtn: document.getElementById('previewBtn'),
+            fullscreenView: document.getElementById('fullscreen-view'),
+            backBtn: document.getElementById('backBtn'),
+            resultFrame: document.getElementById('result-frame'),
+            mainContainer: document.querySelector('.container')
+        };
+
+        let abortController = null;
+        const API_TIMEOUT_MS = 120000; 
+
+        async function fetchWithTimeout(url, options) {
+            const localController = new AbortController();
+            const timeoutId = setTimeout(() => localController.abort(), API_TIMEOUT_MS);
+            const onGlobalAbort = () => localController.abort();
+            if (abortController) {
+                if (abortController.signal.aborted) localController.abort();
+                else abortController.signal.addEventListener('abort', onGlobalAbort, { once: true });
+            }
+            try {
+                return await fetch(url, { ...options, signal: localController.signal });
+            } finally {
+                clearTimeout(timeoutId);
+                if (abortController) abortController.signal.removeEventListener('abort', onGlobalAbort);
+            }
+        }
+
+        let executionState = {
+            phase: 1,
+            projectPlan: null,
+            designGuidelines: null,
+            tasks: [],
+            lastPrompt: ""
+        };
+
+        UI.prompt.addEventListener('input', () => {
+            if (UI.prompt.value.trim() !== executionState.lastPrompt) {
+                UI.generateBtn.textContent = "🚀 開発開始 (マルチエージェント稼働)";
+            } else if (executionState.phase > 1 && executionState.phase < 5) {
+                UI.generateBtn.textContent = "🔄 中断箇所から再開する";
+            }
+        });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedKey = localStorage.getItem('groq_api_key_multi');
+            const savedGeminiKey = localStorage.getItem('gemini_api_key_multi');
+            const savedOpenRouterKey = localStorage.getItem('openrouter_api_key_multi');
+            
+            if (savedKey) UI.apiKey.value = savedKey;
+            if (savedGeminiKey) UI.geminiApiKey.value = savedGeminiKey;
+            if (savedOpenRouterKey) UI.openRouterApiKey.value = savedOpenRouterKey;
+            
+            if (!savedGeminiKey) UI.modalOverlay.classList.add('active');
+        });
+
+        document.getElementById('openSettings').addEventListener('click', () => UI.modalOverlay.classList.add('active'));
+        document.getElementById('closeSettings').addEventListener('click', () => UI.modalOverlay.classList.remove('active'));
+
+        UI.apiKey.addEventListener('input', () => localStorage.setItem('groq_api_key_multi', UI.apiKey.value.trim()));
+        UI.geminiApiKey.addEventListener('input', () => localStorage.setItem('gemini_api_key_multi', UI.geminiApiKey.value.trim()));
+        UI.openRouterApiKey.addEventListener('input', () => localStorage.setItem('openrouter_api_key_multi', UI.openRouterApiKey.value.trim()));
+
+        UI.previewBtn.addEventListener('click', () => {
+            UI.mainContainer.style.display = 'none';
+            UI.fullscreenView.style.display = 'block';
+        });
+
+        UI.backBtn.addEventListener('click', () => {
+            UI.fullscreenView.style.display = 'none';
+            UI.mainContainer.style.display = 'block';
+        });
+
+        function addLog(message, type = 'normal') {
+            const div = document.createElement('div');
+            div.className = `log-entry ${type}`;
+            const time = new Date().toLocaleTimeString();
+            div.textContent = `[${time}] ${message}`;
+            UI.logContainer.appendChild(div);
+            UI.logContainer.scrollTop = UI.logContainer.scrollHeight;
+        }
+
+        async function callGroqAPI(models, systemPrompt, userPrompt, temperature, jsonMode = false) {
+            const rawApiKey = UI.apiKey.value.trim();
+            let lastError = null;
+            for (const model of models) {
+                try {
+                    const body = {
+                        model: model,
+                        messages: [
+                            { role: "system", content: systemPrompt },
+                            { role: "user", content: userPrompt }
+                        ],
+                        temperature: temperature
+                    };
+                    if (jsonMode) body.response_format = { type: "json_object" };
+
+                    const response = await fetchWithTimeout("https://api.groq.com/openai/v1/chat/completions", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${rawApiKey}`
+                        },
+                        body: JSON.stringify(body)
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(`Groq API Error (${response.status}): ${errorData.error?.message || 'Unknown'}`);
+                    }
+
+                    const data = await response.json();
+                    return data.choices[0].message.content;
+                } catch (error) {
+                    if (abortController && abortController.signal.aborted) throw error;
+                    lastError = error;
+                    const reason = error.name === 'AbortError' ? `タイムアウト` : error.message;
+                    addLog(`  ⚠️ [Groq] ${model} でエラー: ${reason}`, 'error');
+                }
+            }
+            throw lastError;
+        }
+
+        async function callGeminiAPI(model, systemPrompt, userPrompt, temperature) {
+            const rawApiKey = UI.geminiApiKey.value.trim();
+            const body = {
+                system_instruction: { parts: [{ text: systemPrompt }] },
+                contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+                generationConfig: { temperature: temperature }
+            };
+
+            const response = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${rawApiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(`Gemini API Error (${response.status}): ${errorData.error?.message || 'Unknown'}`);
+            }
+
+            const data = await response.json();
+            return data.candidates[0].content.parts[0].text;
+        }
+
+        async function callOpenRouterAPI(model, systemPrompt, userPrompt, temperature) {
+            const rawApiKey = UI.openRouterApiKey.value.trim();
+            const body = {
+                model: model,
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: userPrompt }
+                ],
+                temperature: temperature
+            };
+
+            const response = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${rawApiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(`OpenRouter Error (${response.status}): ${errorData.error?.message || errorData.error}`);
+            }
+
+            const data = await response.json();
+            return data.choices[0].message.content;
+        }
+
+        async function callAnyAPI(models, systemPrompt, userPrompt, temperature) {
+            let lastError = null;
+            for (const {provider, id} of models) {
+                try {
+                    if (provider === 'groq') {
+                        if(!UI.apiKey.value.trim()) continue;
+                        return await callGroqAPI([id], systemPrompt, userPrompt, temperature);
+                    } else if (provider === 'gemini') {
+                        if(!UI.geminiApiKey.value.trim()) continue;
+                        return await callGeminiAPI(id, systemPrompt, userPrompt, temperature);
+                    } else if (provider === 'openrouter') {
+                        if(!UI.openRouterApiKey.value.trim()) continue;
+                        return await callOpenRouterAPI(id, systemPrompt, userPrompt, temperature);
+                    }
+                } catch (error) {
+                    if (abortController && abortController.signal.aborted) throw error;
+                    lastError = error;
+                    const reason = error.name === 'AbortError' ? `タイムアウト` : error.message;
+                    addLog(`  ⚠️ [${provider}] ${id} でエラー: ${reason}。次を試します...`, 'error');
+                }
+            }
+            throw new Error(`利用可能な全モデルでエラーが発生しました。設定やAPIキーを確認してください。`);
+        }
+
+        UI.generateBtn.addEventListener('click', async () => {
+            const userRequest = UI.prompt.value.trim();
+            if (!userRequest) { alert('要件を入力してください。'); return; }
+
+            const rawGeminiApiKey = UI.geminiApiKey.value.trim();
+            if (!rawGeminiApiKey) {
+                alert('Gemini APIキーは必須です（親・統合エージェント用）。設定画面を確認してください。');
+                UI.modalOverlay.classList.add('active');
+                return;
+            }
+
+            if (executionState.lastPrompt !== userRequest || executionState.phase === 5) {
+                executionState = {
+                    phase: 1,
+                    projectPlan: null,
+                    designGuidelines: null,
+                    tasks: [],
+                    lastPrompt: userRequest
+                };
+                UI.logContainer.innerHTML = '';
+            } else if (executionState.phase > 1) {
+                addLog('🔄 前回の中断箇所から処理を再開します...', 'system');
+            } else {
+                UI.logContainer.innerHTML = '';
+            }
+
+            UI.outputContainer.style.display = 'none';
+            UI.generateBtn.disabled = true;
+            UI.generateBtn.style.display = 'none';
+            UI.stopBtn.style.display = 'block';
+            
+            abortController = new AbortController();
+
+            try {
+                if (executionState.phase === 1) {
+                    addLog('🚀 開発プロジェクト始動...', 'system');
+
+                    addLog('【Phase 1: 親エージェント】要件を分析中...');
+                    const currentYear = new Date().getFullYear();
+                    const parentSystemPrompt = `You are an expert System Architect. Analyze the user's request and break it down into parallel implementable tasks. 
+IMPORTANT: Keep the total number of tasks to 5 or fewer.
+Assume the current year is ${currentYear}.
+You MUST output ONLY a valid JSON object. Do NOT wrap the JSON in markdown code blocks.
+If the user provides raw code, DO NOT include raw code inside the JSON.
+Use exactly this JSON structure:
+{
+  "project_overview_en": "Brief description",
+  "tasks": [
+    { "id": "task_1", "role": "logic or ui", "instruction_en": "Detailed technical instruction" }
+  ]
+}`;
+                    const parentRawResponse = await callGeminiAPI('gemini-3.5-flash', parentSystemPrompt, userRequest, 0.2);
+                    const sanitizedResponse = parentRawResponse.replace(/^```[a-zA-Z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+                    executionState.projectPlan = JSON.parse(sanitizedResponse);
+                    executionState.tasks = executionState.projectPlan.tasks.map(t => ({...t, status: 'pending', code: null}));
+                    addLog(`✓ 親エージェント完了: ${executionState.tasks.length}個のタスクに分割しました。`);
+                    executionState.phase = 2;
+                }
+
+                if (executionState.phase === 2) {
+                    addLog('【Phase 2: デザイナー】UI/UXのガイドラインを策定中...');
+                    const designerSystemPrompt = "You are a Lead UI/UX Designer. Based on the project overview, define color codes, layout structures, and modern CSS guidelines in English. Keep it concise.";
+                    const designerModels = [
+                        { provider: 'groq', id: 'llama-3.3-70b-versatile' },
+                        { provider: 'gemini', id: 'gemini-3.5-flash' },
+                        { provider: 'openrouter', id: 'meta-llama/llama-3.3-70b-instruct' }
+                    ];
+                    executionState.designGuidelines = await callAnyAPI(designerModels, designerSystemPrompt, executionState.projectPlan.project_overview_en, 0.4);
+                    addLog('✓ デザイナー完了: デザイン指針を策定しました。');
+                    executionState.phase = 3;
+                }
+
+                if (executionState.phase === 3) {
+                    const pendingTasks = executionState.tasks.filter(t => t.status !== 'completed');
+                    addLog(`【Phase 3: 子エージェント】${pendingTasks.length}名のエージェントを召喚し、並列コーディングを開始...`);
+                    
+                    const codingPromises = pendingTasks.map(async (task, idx) => {
+                        await new Promise(resolve => setTimeout(resolve, idx * 300));
+
+                        const logicModels = [
+                            { provider: 'groq', id: 'llama-3.3-70b-versatile' },
+                            { provider: 'gemini', id: 'gemini-3.5-flash' },
+                            { provider: 'openrouter', id: 'meta-llama/llama-3.3-70b-instruct' },
+                            { provider: 'groq', id: 'openai/gpt-oss-120b' }
+                        ];
+                        
+                        const uiModels = [
+                            { provider: 'groq', id: 'llama-3.1-8b-instant' },
+                            { provider: 'gemini', id: 'gemini-3.1-flash-lite' },
+                            { provider: 'openrouter', id: 'mistralai/mistral-small-2603' }
+                        ];
+
+                        const childModels = task.role.includes('logic') ? logicModels : uiModels;
+                        
+                        addLog(`  -> [Task ${task.id}] に依頼中...`);
+                        
+                        const childSystemPrompt = `You are an expert programmer. Output ONLY the raw source code based on the instructions. NO markdown formatting, NO explanations.`;
+                        const childUserPrompt = `
+Project Overview: ${executionState.projectPlan.project_overview_en}
+Design Guidelines: ${executionState.designGuidelines}
+Original User Request (may contain reference code): ${userRequest}
+
+Your Specific Task: ${task.instruction_en}
+
+Please generate the code snippet for your task. ONLY code.`;
+
+                        try {
+                            const codeSnippet = await callAnyAPI(childModels, childSystemPrompt, childUserPrompt, 0.1);
+                            addLog(`  ✓ [Task ${task.id}] 完了！`);
+                            task.code = `/* --- Component: ${task.id} --- */\n${codeSnippet}\n`;
+                            task.status = 'completed';
+                        } catch (error) {
+                            addLog(`  ❌ [Task ${task.id}] エラー: ${error.message}`, 'fatal');
+                            throw error;
+                        }
+                    });
+
+                    await Promise.all(codingPromises);
+                    addLog('✓ 全子エージェントのコーディングが完了しました。');
+                    executionState.phase = 4;
+                }
+
+                if (executionState.phase === 4) {
+                    addLog('【Phase 4: 統合エージェント】各コンポーネントを結合し、最終コードを生成中... (Model: gemini-3.5-flash)');
+                    const integratorSystemPrompt = `You are a Lead Integrator. Merge the provided code snippets into a single, complete, and functional file (e.g., HTML file with embedded CSS/JS). 
+CRITICAL: Do NOT use placeholders. The final product must be highly polished, visually stunning, and work perfectly out of the box.
+Output ONLY the final raw code. Do NOT use markdown code blocks (\`\`\`). No explanations.`;
+                    
+                    const allSnippets = executionState.tasks.map(t => t.code).join('\n');
+                    const integratorUserPrompt = `User's original request: ${userRequest}\n\nHere are the components created by the team:\n${allSnippets}\n\nMerge them into one cohesive file. Make sure all CSS, JS, and HTML are properly enclosed in their respective tags.`;
+                    
+                    let finalCode = await callGeminiAPI('gemini-3.5-flash', integratorSystemPrompt, integratorUserPrompt, 0.1);
+                    
+                    const htmlMatch = finalCode.match(/<(?:!DOCTYPE\s+html|html)[\s\S]*<\/html>/i);
+                    if (htmlMatch) {
+                        finalCode = htmlMatch[0];
+                    } else {
+                        finalCode = finalCode.replace(/^```[a-zA-Z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+                    }
+
+                    addLog('🎉 全工程完了！成果物を出力します。', 'system');
+
+                    UI.outputCode.textContent = finalCode;
+                    UI.outputContainer.style.display = 'block';
+                    UI.outputContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    UI.previewBtn.style.display = 'block';
+
+                    UI.resultFrame.srcdoc = finalCode;
+
+                    UI.mainContainer.style.display = 'none';
+                    UI.fullscreenView.style.display = 'block';
+                    executionState.phase = 5;
+                }
+
+            } catch (error) {
+                if (abortController && abortController.signal.aborted) {
+                    addLog('🛑 ユーザーによって処理が強制停止されました。', 'fatal');
+                } else if (error.name === 'AbortError') {
+                    addLog(`❌ タイムアウト(${API_TIMEOUT_MS / 1000}秒): 応答がありませんでした。再開ボタンで再試行できます。`, 'fatal');
+                } else {
+                    console.error(error);
+                    addLog(`❌ エラー発生: ${error.message}`, 'fatal');
+                }
+            } finally {
+                UI.generateBtn.disabled = false;
+                UI.generateBtn.style.display = 'block';
+                UI.stopBtn.style.display = 'none';
+                
+                if (executionState.phase > 1 && executionState.phase < 5) {
+                    UI.generateBtn.textContent = "🔄 中断箇所から再開する";
+                } else {
+                    UI.generateBtn.textContent = "🚀 開発開始 (マルチエージェント稼働)";
+                }
+            }
+        });
+
+        UI.stopBtn.addEventListener('click', () => {
+            if (abortController) {
+                abortController.abort();
+            }
+        });
+
+        UI.copyBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(UI.outputCode.textContent);
+                UI.copyTxt.textContent = 'チェック！';
+                UI.copyBtn.style.backgroundColor = '#dcffe4';
+                setTimeout(() => {
+                    UI.copyTxt.textContent = 'コピー';
+                    UI.copyBtn.style.backgroundColor = '#f6f8fa';
+                }, 2000);
+            } catch (err) {
+                alert('コピーに失敗しました。');
+            }
+        });
+    </script>
+</body>
+</html>
