@@ -64,24 +64,37 @@
             display: flex; flex-direction: column; justify-content: center; align-items: center;
             min-height: 60px; word-break: break-all; text-decoration: none; color: #fff;
         }
-        .file-card:hover { background: #222; border-color: var(--blue); transform: translateY(-2px); box-shadow: 0 4px 0 #0047BB; }
-        .file-card:active { transform: translateY(2px); box-shadow: none; }
+        .file-card:hover { background: #222; border-color: var(--blue); }
+        .file-card:active { background: #333; }
         .file-card.html-file { border-color: #fff; background: #1a1a1a; font-weight: bold; }
-        .file-card.html-file:hover { border-color: var(--red); box-shadow: 0 4px 0 var(--red); }
+        .file-card.html-file:hover { border-color: var(--red); }
+        .file-card.selected { border-color: var(--green); background: rgba(51, 255, 51, 0.2); }
         
         .file-icon { font-size: 1.5rem; margin-bottom: 4px; }
         .file-name { font-size: 0.8rem; line-height: 1.2; }
 
         /* リスト表示切替用 */
-        .view-mode-list .file-grid { display: flex; flex-direction: column; gap: 4px; }
-        .view-mode-list .file-card { flex-direction: row; justify-content: flex-start; align-items: center; min-height: 40px; padding: 6px 12px; }
-        .view-mode-list .file-icon { margin-bottom: 0; margin-right: 12px; font-size: 1.2rem; }
-        .view-mode-list .file-name { font-size: 0.95rem; text-align: left; }
+        .view-mode-list .file-grid { display: flex; flex-direction: column; gap: 2px; }
+        .view-mode-list .file-card { flex-direction: row; justify-content: flex-start; align-items: center; min-height: 36px; padding: 6px 10px; }
+        .view-mode-list .file-icon { margin-bottom: 0; margin-right: 10px; font-size: 1.2rem; }
+        .view-mode-list .file-name { font-size: 0.85rem; text-align: left; }
 
         .empty-msg { color: #aaa; font-size: 0.85rem; text-align: center; margin-top: 20px; }
 
         .view-toggle-btn { background: #222; border: 1px solid #fff; color: #fff; font-family: inherit; font-size: 0.8rem; padding: 3px 8px; cursor: pointer; margin-right: 10px; }
         .view-toggle-btn:hover { background: #444; }
+
+        #file-tree-container { padding-bottom: 90px; } /* Bottom bar space */
+        #bottom-action-bar {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: rgba(0, 0, 0, 0.95); border-top: var(--bdr);
+            padding: 15px 12px max(15px, env(safe-area-inset-bottom));
+            display: flex; gap: 10px; z-index: 1000;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.7);
+        }
+        #bottom-action-bar.visible { transform: translateY(0); }
 
     </style>
 </head>
@@ -96,16 +109,26 @@
     <div id="panel-list" class="panel panel-borderless active">
         <div id="toolbar">
             <div class="section-header-title" style="margin: 0;">▼ REPOSITORY FILES</div>
-            <div style="display: flex; align-items: center;">
-                <button id="view-toggle-btn" class="view-toggle-btn" onclick="toggleViewMode()">📄 リスト表示</button>
-                <div id="last-updated">未取得</div>
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <button class="view-toggle-btn" style="margin:0;" onclick="selectAllCards()">全選択</button>
+                <button class="view-toggle-btn" style="margin:0;" onclick="deselectAllCards()">全解除</button>
+                <button id="view-toggle-btn" class="view-toggle-btn" style="margin:0;" onclick="toggleViewMode()">📄 リスト表示</button>
             </div>
         </div>
-        
-        <button class="btn-action blue" style="margin-bottom: 15px; width: 100%;" onclick="fetchRepositoryData()">🔄 リストを更新する</button>
+        <div id="last-updated" style="text-align: right; margin-bottom: 10px; font-size: 0.75rem; color: #aaa;">未取得</div>
+        <div class="flex-row" style="margin-bottom: 15px;">
+            <button id="btn-refresh" class="btn-action blue" onclick="fetchRepositoryData()" style="flex: 2; padding: 12px; font-size: 1.1rem;">🔄 リスト更新</button>
+            <button class="btn-action gray" onclick="createFolder()" style="flex: 1; padding: 12px;">📁 フォルダ作成</button>
+        </div>
         
         <div id="file-tree-container">
             <div class="empty-msg">まだデータがありません。<br>「リストを更新する」を押してください。</div>
+        </div>
+
+        <div id="bottom-action-bar">
+            <button class="btn-action red" onclick="executeSelected()" style="flex: 2; font-size: 1.2rem; padding: 15px;">▶️ 開く</button>
+            <button class="btn-action gray" onclick="moveSelected()" style="flex: 1; padding: 15px;">📦 移動</button>
+            <button class="btn-action gray" onclick="trashSelected()" style="flex: 1; padding: 15px;">🗑️ ゴミ箱</button>
         </div>
     </div>
 
@@ -189,7 +212,7 @@
 
         const getToken = () => sessionStorage.getItem('ghToken') || $('gh-token').value;
 
-        let isListView = localStorage.getItem('view_mode_list') === 'true';
+        let isListView = localStorage.getItem('view_mode_list') !== 'false';
 
         function updateViewModeUI() {
             const container = $('file-tree-container');
@@ -207,6 +230,160 @@
             isListView = !isListView;
             localStorage.setItem('view_mode_list', isListView);
             updateViewModeUI();
+        }
+
+        function toggleSelect(el) {
+            el.classList.toggle('selected');
+            updateActionBar();
+        }
+
+        function selectAllCards() {
+            document.querySelectorAll('.file-card').forEach(el => el.classList.add('selected'));
+            updateActionBar();
+        }
+
+        function deselectAllCards() {
+            document.querySelectorAll('.file-card').forEach(el => el.classList.remove('selected'));
+            updateActionBar();
+        }
+
+        function updateActionBar() {
+            const selectedCount = document.querySelectorAll('.file-card.selected').length;
+            const bar = $('bottom-action-bar');
+            if (bar) {
+                if (selectedCount > 0) {
+                    bar.classList.add('visible');
+                    bar.querySelector('.red').textContent = `▶️ 開く (${selectedCount})`;
+                } else {
+                    bar.classList.remove('visible');
+                }
+            }
+        }
+
+        function executeSelected() {
+            const selected = document.querySelectorAll('.file-card.selected');
+            if (selected.length === 0) return alert("ファイルが選択されていません。");
+            selected.forEach(card => {
+                window.open(card.dataset.url, '_blank');
+                card.classList.remove('selected');
+            });
+            updateActionBar();
+        }
+
+        async function gitCommitTreeUpdates(updates, commitMessage) {
+            const token = getToken(), owner = $('gh-owner').value.trim(), repo = $('gh-repo').value.trim(), branch = $('gh-branch').value.trim();
+            if(!token) throw new Error("Tokenが設定されていません。設定画面で保存してください。");
+            const headers = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' };
+            
+            let res = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${branch}`, {headers});
+            if(!res.ok) throw new Error("ブランチの取得に失敗しました: " + await res.text());
+            const commitSha = (await res.json()).object.sha;
+            
+            res = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/commits/${commitSha}`, {headers});
+            if(!res.ok) throw new Error("コミット情報の取得に失敗しました");
+            const baseTreeSha = (await res.json()).tree.sha;
+            
+            res = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees`, {
+                method: 'POST', headers,
+                body: JSON.stringify({ base_tree: baseTreeSha, tree: updates })
+            });
+            if(!res.ok) throw new Error("Treeの作成に失敗しました: " + await res.text());
+            const newTreeSha = (await res.json()).sha;
+            
+            res = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/commits`, {
+                method: 'POST', headers,
+                body: JSON.stringify({ message: commitMessage, tree: newTreeSha, parents: [commitSha] })
+            });
+            if(!res.ok) throw new Error("新しいコミットの作成に失敗しました");
+            const newCommitSha = (await res.json()).sha;
+            
+            res = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${branch}`, {
+                method: 'PATCH', headers,
+                body: JSON.stringify({ sha: newCommitSha })
+            });
+            if(!res.ok) throw new Error("参照の更新に失敗しました");
+        }
+
+        async function createFolder() {
+            const folderName = prompt("作成するフォルダのパスを入力してください（例: folderName）:");
+            if (!folderName) return;
+            
+            const updates = [{
+                path: `${folderName}/.gitkeep`,
+                mode: '100644',
+                type: 'blob',
+                content: "keep"
+            }];
+            
+            try {
+                await gitCommitTreeUpdates(updates, `Create folder ${folderName}`);
+                alert("フォルダを作成しました。");
+                fetchRepositoryData();
+            } catch(e) {
+                alert("エラー: " + e.message);
+            }
+        }
+
+        async function moveSelected() {
+            const selected = document.querySelectorAll('.file-card.selected');
+            if (selected.length === 0) return alert("ファイルが選択されていません。");
+            
+            const existingFolders = Array.from(document.querySelectorAll('.folder-title'))
+                .map(el => el.textContent.replace('📂 ', '')).filter(p => p !== '/ (ルート)');
+            const hint = existingFolders.length ? `既存フォルダ: ${existingFolders.join(', ')}` : '既存のフォルダはありません';
+            
+            const targetFolder = prompt(`移動先のフォルダパスを入力してください。\n(${hint})\n\n※ルートに移動する場合は「/」を入力`);
+            if (!targetFolder) return;
+            
+            const prefix = targetFolder === '/' ? '' : (targetFolder.endsWith('/') ? targetFolder : targetFolder + '/');
+            const updates = [];
+            
+            selected.forEach(card => {
+                const oldPath = card.dataset.path;
+                const sha = card.dataset.sha;
+                const name = oldPath.split('/').pop();
+                const newPath = prefix + name;
+                
+                if (oldPath !== newPath) {
+                    updates.push({ path: oldPath, mode: "100644", type: "blob", sha: null });
+                    updates.push({ path: newPath, mode: "100644", type: "blob", sha: sha });
+                }
+            });
+            
+            if (updates.length === 0) return alert("変更はありません。");
+            
+            try {
+                await gitCommitTreeUpdates(updates, `Move ${selected.length} files to ${targetFolder}`);
+                alert("移動が完了しました。");
+                fetchRepositoryData();
+            } catch (e) {
+                alert("エラー: " + e.message);
+            }
+        }
+
+        async function trashSelected() {
+            const selected = document.querySelectorAll('.file-card.selected');
+            if (selected.length === 0) return alert("ファイルが選択されていません。");
+            
+            if (!confirm(`${selected.length}個のファイルをゴミ箱（Trash/）に移動しますか？`)) return;
+            
+            const updates = [];
+            selected.forEach(card => {
+                const oldPath = card.dataset.path;
+                const sha = card.dataset.sha;
+                const safePath = `Trash/${oldPath}`;
+                
+                updates.push({ path: oldPath, mode: "100644", type: "blob", sha: null });
+                updates.push({ path: safePath, mode: "100644", type: "blob", sha: sha });
+            });
+            
+            try {
+                await gitCommitTreeUpdates(updates, `Move ${selected.length} files to Trash`);
+                alert("ゴミ箱へ移動しました。");
+                fetchRepositoryData();
+            } catch(e) {
+                alert("エラー: " + e.message);
+            }
         }
 
         /** ===================================================================
@@ -249,7 +426,7 @@
                 switchTab('config'); return;
             }
             
-            const btn = document.querySelector('#panel-list .btn-action');
+            const btn = $('btn-refresh');
             const originalText = btn.textContent;
             btn.textContent = "⏳ 取得中...";
             btn.style.pointerEvents = "none";
@@ -311,6 +488,7 @@
         function renderTree(data) {
             const container = $('file-tree-container');
             container.innerHTML = '';
+            if (typeof updateActionBar === 'function') updateActionBar();
             
             const d = new Date(data.timestamp);
             $('last-updated').textContent = `最終更新: ${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
@@ -329,7 +507,7 @@
                 const folderPath = parts.length > 0 ? parts.join('/') : '/ (ルート)';
                 
                 if (!folders[folderPath]) folders[folderPath] = [];
-                folders[folderPath].push({ path: f.path, name: filename });
+                folders[folderPath].push({ path: f.path, name: filename, sha: f.sha });
             });
 
             // Sort folders: root first, then alphabetical
@@ -364,11 +542,13 @@
 
                 folders[folderPath].forEach(file => {
                     const isHtml = file.name.endsWith('.html');
-                    const card = document.createElement('a');
-                    card.href = `${baseUrl}${file.path}`;
-                    card.target = '_blank';
+                    const card = document.createElement('div');
                     card.className = `file-card ${isHtml ? 'html-file' : ''}`;
                     card.title = file.name;
+                    card.dataset.url = `${baseUrl}${file.path}`;
+                    card.dataset.path = file.path;
+                    card.dataset.sha = file.sha;
+                    card.onclick = function() { toggleSelect(this); };
                     
                     const icon = document.createElement('div');
                     icon.className = 'file-icon';
