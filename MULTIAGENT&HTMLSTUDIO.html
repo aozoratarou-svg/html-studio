@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MULTI STUDIO">
+    <title>MULTI AGENT & HTML STUDIO (分散モデル対応版)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #000; --fg: #fff; --red: #e52521; --blue: #0047BB;
+            --green: #33ff33; --gray: #444; --bdr: 2px solid #fff; --shd: 2px 2px 0px #fff;
+        }
+        body {
+            background: var(--bg); color: var(--fg); font-family: 'DotGothic16', sans-serif;
+            margin: 0; padding: max(10px, env(safe-area-inset-top)) 12px max(10px, env(safe-area-inset-bottom)) 12px;
+            box-sizing: border-box; display: flex; flex-direction: column; min-height: 100vh; overflow-x: hidden;
+        }
+        h1 { text-align: center; font-size: 1.2rem; color: var(--red); text-shadow: 2px 2px 0 #fff; margin: 5px 0 12px; letter-spacing: 1px; white-space: nowrap; }
+        
+        .tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-shrink: 0; }
+        .tab-btn { flex: 1; background: var(--bg); color: var(--fg); border: var(--bdr); font-family: inherit; padding: 8px 0; font-size: .85rem; cursor: pointer; box-shadow: var(--shd); white-space: nowrap; user-select: none; }
+        .tab-btn.active { background: var(--fg); color: var(--bg); box-shadow: none; transform: translate(2px, 2px); }
+        .panel { display: none; border: var(--bdr); padding: 10px; margin-bottom: 10px; box-sizing: border-box; background: var(--bg); position: relative; width: 100%; }
+        .panel.active { display: flex; flex-direction: column; }
+        .panel-borderless { border: none; padding: 0; }
+        
+        #panel-edit { flex: 1; }
+        #panel-output { flex: 1; border: var(--bdr); padding: 10px; background: #000; }
+        #panel-preview-full { display: none; flex-direction: column; position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 99999; margin: 0; border: none; padding: 0; background: var(--bg); -webkit-overflow-scrolling: touch; overflow: auto; }
+        #panel-preview-full.active { display: flex; }
+        .fullscreen-toolbar { display: flex; justify-content: flex-end; background: var(--bg); padding: 8px 12px; }
+        .fullscreen-toolbar button { padding: 6px 12px; background: var(--red); color: #fff; border: 2px solid #fff; font-weight: bold; cursor: pointer; }
+        
+        /* 共通レイアウト */
+        .flex-row { display: flex; gap: 6px; align-items: center; width: 100%; }
+        .section-header-row { display: flex; justify-content: space-between; align-items: center; margin: 10px 0 4px; }
+        .section-header-title { font-size: .9rem; color: #fff; font-weight: bold; letter-spacing: 1px; margin: 0; }
+        .editor-container { width: 100%; flex-grow: 1; display: flex; flex-direction: column; }
+
+        /* 入力フィールド */
+        textarea, input[type="text"], input[type="password"], select { width: 100%; background: #0000AA; color: #fff; border: var(--bdr); padding: 8px; font-family: 'DotGothic16', monospace; font-size: 1rem; line-height: 1.4; resize: none; outline: none; box-sizing: border-box; }
+        textarea:focus, input:focus, select:focus { border-color: var(--red); }
+        textarea::placeholder { color: #aaa; }
+        #userInput { height: 110px; flex-shrink: 0; margin-bottom: 8px; }
+        #code-editor { flex-grow: 1; min-height: 25vh; }
+        #sub-order-input { height: 70px; flex-shrink: 0; margin-bottom: 4px; background: #004488; }
+        iframe { width: 100%; flex-grow: 1; background: #fff; border: none; display: block; }
+
+        /* ボタン */
+        .editor-inline-btn { background: var(--gray); color: var(--fg); border: 1px solid #fff; font-family: inherit; padding: 2px 8px; cursor: pointer; font-size: .8rem; margin-left: 4px; }
+        .editor-inline-btn:active { background: #666; }
+
+        /* Web Components - 状態・アクション */
+        agent-status-board { display: block; background: #000; border: 2px dashed #fff; padding: 6px; margin-bottom: 8px; font-size: .85rem; max-height: 120px; overflow-y: auto; flex-shrink: 0; }
+        agent-status-board:empty { display: none; }
+        .agent-status { margin: 2px 0; }
+        .status-wait { color: #aaa; }
+        .status-run { color: #f39c12; animation: blink 1s infinite; }
+        .status-done { color: #2ecc71; }
+        .status-err { color: #e74c3c; }
+        @keyframes blink { 50% { opacity: .5; } }
+
+        action-buttons { display: flex; gap: 6px; margin-bottom: 8px; flex-shrink: 0; }
+        .btn-action { flex: 1; padding: 10px 2px; font-size: .85rem; text-align: center; white-space: nowrap; color: #fff; border-color: #fff; box-shadow: var(--shd); }
+        .red { background: var(--red); }
+        .blue { background: var(--blue); }
+        .gray { background: var(--gray); }
+        .btn-action:active { transform: translate(2px, 2px); box-shadow: none; }
+        .btn-action:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: var(--shd); }
+
+        /* Web Components - Github, Output, Config */
+        github-manager { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+        .gh-btn { padding: 8px 4px; font-family: inherit; font-size: .85rem; cursor: pointer; border: 2px solid #fff; color: #fff; box-sizing: border-box; height: 36px; white-space: nowrap; text-align: center; }
+        .gh-btn-narrow { width: 52px; font-size: .8rem; padding: 8px 1px; }
+        .gh-input-text { flex-grow: 1; background: #222 !important; border: 2px solid #fff !important; height: 36px !important; font-size: .85rem !important; padding: 4px 6px !important; }
+        .gh-select-box { flex-grow: 1; color: var(--green) !important; background: #000 !important; border: 2px solid #fff !important; height: 36px !important; font-size: .8rem !important; padding: 4px 2px !important; }
+        .gh-sync-btn { width: 36px; height: 36px; background: #335577; border: 2px solid #fff; color: #fff; font-size: .9rem; cursor: pointer; }
+
+        output-console { display: block; width: 100%; flex-grow: 1; background: #000; color: #fff; font-family: 'DotGothic16', monospace; font-size: .95rem; line-height: 1.5; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; }
+        .console-toolbar { display: flex; gap: 6px; margin-bottom: 6px; flex-shrink: 0; width: 100%; }
+        .console-toolbar-btn { padding: 6px; font-size: .82rem; margin-bottom: 0; flex: 1; white-space: nowrap; }
+        .section-title { color: var(--red); margin: 12px 0 4px; font-weight: bold; }
+        .section-title:first-child { margin-top: 0; }
+        .constitution-text { color: #f1c40f; font-style: italic; background: #222; padding: 5px 8px; border-left: 3px solid #f1c40f; margin-bottom: 5px; }
+        .audit-text { color: #2ecc71; }
+        .sys-log { color: #0f3; font-size: .85rem; border-bottom: 1px dashed #333; padding: 2px 0; }
+        .error-msg { color: #e74c3c; margin-top: 10px; }
+
+        .config-item { margin-bottom: 10px; box-sizing: border-box; width: 100%; }
+        .config-item label { display: block; font-size: .85rem; margin-bottom: 3px; color: var(--red); }
+        .config-warning-text { font-size: .75rem; color: #f1c40f; margin-bottom: 2px; }
+
+        /* Swarmsモードトグル */
+        .swarms-mode-toggle { display: flex; gap: 4px; margin-bottom: 6px; }
+        .swarms-mode-toggle .editor-inline-btn { padding: 5px 10px; font-size: .8rem; border: 1px solid #888; transition: all 0.15s; }
+        .swarms-mode-active { background: var(--red) !important; color: #fff !important; border-color: #fff !important; box-shadow: 0 0 6px rgba(229,37,33,0.4); }
+    </style>
+</head>
+<body>
+    <h1>MULTI AGENT & HTML STUDIO</h1>
+    <div class="tabs">
+        <button id="tab-edit-btn" class="tab-btn active" onclick="switchTab('edit')" aria-label="つくるタブ">🔨つくる</button>
+        <button id="tab-output-btn" class="tab-btn" onclick="switchTab('output')" aria-label="AIコンソールタブ">🧠AIコンソール</button>
+        <button id="tab-preview-full-btn" class="tab-btn" onclick="switchTab('preview-full')" aria-label="プレビュータブ">👁みる</button>
+        <button id="tab-config-btn" class="tab-btn" onclick="switchTab('config')" aria-label="設定タブ">⚙️せってい</button>
+    </div>
+
+    <div id="panel-edit" class="panel panel-borderless active">
+        <div class="section-header-row" id="generator-header" style="cursor: pointer; user-select: none;">
+            <div class="section-header-title">▼ GENERATOR</div>
+            <div style="display: flex; align-items: center; gap: 4px;">
+                <button class="editor-inline-btn" onclick="clearAllForNew()" aria-label="新規作成">🌟NEW</button>
+                <button class="editor-inline-btn" onclick="applyTemplate(1)" aria-label="定型文1を適用">⚡定型1</button>
+                <button class="editor-inline-btn" onclick="applyTemplate(2)" aria-label="定型文2を適用">⚡定型2</button>
+            </div>
+        </div>
+        <div id="generator-details" style="display: block;">
+            <textarea id="userInput" placeholder="▶AIニ 何ヲ サセマスカ？ (例: 19世紀の学術書風 of 美しいタイマーアプリを作って)"></textarea>
+            
+            <agent-status-board></agent-status-board>
+            
+            <action-buttons>
+                <div class="swarms-mode-toggle">
+                    <button id="swarms-mode-seq" class="editor-inline-btn swarms-mode-active" onclick="setSwarmsMode('sequential')" aria-label="直列開発モード">🔗 直列Dev</button>
+                    <button id="swarms-mode-par" class="editor-inline-btn" onclick="setSwarmsMode('parallel')" aria-label="並列ブレストモード">⚡ 並列ブレスト</button>
+                </div>
+                <button class="btn btn-action red" data-action="swarms" aria-label="Swarmsモードで実行">🕹️ Swarms</button>
+                <button class="btn btn-action blue" data-action="dev" aria-label="開発直結モードで実行">🛠️ 開発直結</button>
+                <button class="btn btn-action blue" data-action="prompt" aria-label="指示書のみモードで実行">📝 指示書のみ</button>
+            </action-buttons>
+        </div>
+        
+        <div class="editor-container">
+            <div class="section-header-row" id="editor-header" style="cursor: pointer; user-select: none;">
+                <div class="section-header-title">▼ CODE EDITOR</div>
+                <div style="display: flex; align-items: center; gap: 4px;">
+                    <button class="editor-inline-btn" onclick="copyEditorOnly()" aria-label="コードをコピー">📋コピ</button>
+                    <button class="editor-inline-btn" onclick="clearEditor()" aria-label="エディタをクリア">🗑️ケス</button>
+                </div>
+            </div>
+            <div id="editor-details" style="display: block; width: 100%;">
+                <textarea id="code-editor" data-store-key="savedCode" placeholder="ここに生成されたHTMLコードが入ります。"></textarea>
+            </div>
+        </div>
+
+        <div class="editor-container" style="margin-top:10px;">
+            <div class="section-header-row" id="sub-order-header" style="cursor: pointer; user-select: none;">
+                <div class="section-header-title">▼ ADDITIONAL ORDER</div>
+            </div>
+            <div id="sub-order-details" style="display: none;">
+                <textarea id="sub-order-input" placeholder="▶ 追加の要望や修正指示を入力してください（例: ボタンの角を丸くして、色をパステルブルーに変更して）"></textarea>
+                <button class="btn btn-action blue" id="sub-order-btn" style="margin-top:6px; width:100%;">🛠️ 追加修正を実行</button>
+            </div>
+        </div>
+        
+        <div class="editor-container" style="margin-top:10px;">
+            <div class="section-header-row" id="studio-header" style="cursor: pointer; user-select: none;">
+                <div class="section-header-title">▼ STUDIO REFLECTION (反省点蓄積)</div>
+            </div>
+            <div id="studio-details" style="display: block;">
+                <textarea id="studio-input" rows="3" placeholder="ここにAIが自動で『良い点』『改善点』の2行を生成します。手動修正も可能です。"></textarea>
+                <button class="btn btn-action red" id="studio-report-btn" style="margin-top:6px; width:100%;">📝 studio.md に反省点を追記保存</button>
+            </div>
+        </div>
+        
+        <div class="section-header-title" id="github-header" style="cursor: pointer; user-select: none; margin-top:14px; margin-bottom:4px; display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <span>▼ GITHUB</span>
+        </div>
+        <div id="github-details" style="display: block;">
+            <github-manager>
+                <div class="flex-row">
+                    <input type="text" id="test-filename" class="gh-input-text" data-store-key="lastTestFile" data-default="test.html" placeholder="テスト用名">
+                    <button class="gh-btn" data-action="save" data-target="test-filename" style="background:var(--red);width:85px" aria-label="テストファイルを保存">💾 セーブ</button>
+                    <button class="gh-btn" data-action="open" data-target="test-filename" style="background:var(--blue);width:55px" aria-label="テストファイルを開く">🌍 開く</button>
+                </div>
+                <div class="flex-row">
+                    <input type="text" id="custom-filename" class="gh-input-text" data-store-key="lastCustomFile" placeholder="ファイル名 (例: index.html)">
+                    <button class="gh-btn" data-action="save" data-target="custom-filename" style="background:var(--red);width:85px" aria-label="本番ファイルを保存">💾 セーブ</button>
+                    <button class="gh-btn" data-action="open" data-target="custom-filename" style="background:var(--blue);width:55px" aria-label="本番ファイルを開く">🌍 開く</button>
+                </div>
+                <div class="flex-row">
+                    <select id="file-select-box" class="gh-select-box" aria-label="ファイル選択"><option value="">ページをえらんでひらく</option></select>
+                    <button class="gh-sync-btn" data-action="sync" title="同期" aria-label="ファイルリストを同期">🔄</button>
+                    <button class="gh-btn gh-btn-narrow" data-action="open" data-target="file-select-box" style="background:var(--blue)" aria-label="選択したページを開く">📂 開く</button>
+                </div>
+            </github-manager>
+        </div>
+    </div>
+
+    <div id="panel-output" class="panel">
+        <div class="console-toolbar">
+            <button class="btn btn-action gray console-toolbar-btn" onclick="copyOutput()" aria-label="最適化コピー">📋 最適化コピー</button>
+            <button class="btn btn-action gray console-toolbar-btn" style="background:#2c3e50" onclick="copyPromptsOnly()" aria-label="プロンプトのみコピー">📝 プロンプトコピー</button>
+        </div>
+        <output-console id="output-view">
+            <div style="color:#aaa">▶ここにエージェント同士の思考ログや、デザイン憲法、監査結果がリアルタイムに出力されます。</div>
+        </output-console>
+    </div>
+
+    <div id="panel-preview-full" class="panel">
+        <div class="fullscreen-toolbar"><button onclick="switchTab('edit')">❌ もどる</button></div>
+        <iframe id="preview-frame-full"></iframe>
+    </div>
+
+    <div id="panel-config" class="panel">
+        <div class="section-header-title" style="margin-bottom:8px">▼ SECURITY (暗号化管理)</div>
+        <div class="config-item">
+            <label>🔐 マスターパスワード (復号・保存用)</label>
+            <div class="config-warning-text">※アプリ起動時にキーを復元するための合言葉です</div>
+            <input type="password" id="master-password" placeholder="任意のパスワードを入力">
+        </div>
+        <div class="action-button-row" style="margin-bottom:15px">
+            <button class="btn btn-action blue" onclick="encryptAndSaveKeys()" aria-label="暗号化して保存">💾 暗号化保存</button>
+            <button class="btn btn-action red" onclick="unlockKeys()" aria-label="ロック解除">🔓 ロック解除</button>
+        </div>
+        
+        <div class="section-header-title" style="margin-top:15px;margin-bottom:8px">▼ GEMINI API KEYS (親エージェント・構造化推論用)</div>
+        <div class="config-warning-text">※改行区切りで最大5つまで入力可能です。</div>
+        <div class="config-item"><textarea id="gemini-keys-area" rows="4" placeholder="AIzaSy...\nAIzaSy..."></textarea></div>
+
+        <div class="section-header-title" style="margin-top:15px;margin-bottom:8px">▼ EXTERNAL AI API KEYS (子エージェント・分散生成用)</div>
+        <div class="config-warning-text">※Groq / OpenRouterのキーを設定すると、子エージェントのタスクを高速分散します。</div>
+        <div class="config-item"><label>GROQ API KEY</label><input type="password" id="groq-key" data-store-key="groqKey" placeholder="gsk_xxxxxxxx..."></div>
+        <div class="config-item"><label>OPENROUTER API KEY</label><input type="password" id="openrouter-key" data-store-key="orKey" placeholder="sk-or-v1-xxxxxxxx..."></div>
+
+        <div class="config-item" style="margin-top: 15px;"><label>GITHUB トークン (PAT)</label><input type="password" id="gh-token" placeholder="ghp_xxxxxxxx..."></div>
+        
+        <div class="section-header-title" style="margin-top:15px;margin-bottom:8px">▼ SETUP</div>
+        <div class="config-item"><label>ユーザー名 (Owner)</label><input type="text" id="gh-owner" data-store-key="ghOwner" placeholder="例: octocat"></div>
+        <div class="config-item"><label>リポジトリ名 (Repo)</label><input type="text" id="gh-repo" data-store-key="ghRepo" placeholder="例: my-website"></div>
+        <div class="config-item">
+            <label>⚡ GENERATOR 定型1 登録</label>
+            <div class="config-warning-text">※スマホで見切れないよう、横に長く書きすぎないでください</div>
+            <textarea id="tmpl-text-1" data-store-key="tmplText1" data-default="挨拶返信不要\nオシャレなUI UX\n携帯画面で利用可能\n英語" rows="2" placeholder="定型ボタン1を押したときに末尾に追記されるプロンプト"></textarea>
+        </div>
+        <div class="config-item">
+            <label>⚡ GENERATOR 定型2 登録</label>
+            <div class="config-warning-text">※スマホで見切れないよう、横に長く書きすぎないでください</div>
+            <textarea id="tmpl-text-2" data-store-key="tmplText2" rows="2" placeholder="定型ボタン2を押したときに末尾に追記されるプロンプト"></textarea>
+        </div>
+        <div class="config-item"><label>マイ・コンテキスト (全体の前提条件/技術スタック)</label><textarea id="myContext" data-store-key="my_context" rows="2" placeholder="例: シンプルかつ実用的な道具感を好む。目に優しい配色。"></textarea></div>
+        <label class="checkbox-label"><input type="checkbox" id="soundToggle" checked><span>タイピング音 (SOUND) を鳴らす</span></label>
+        <label class="checkbox-label"><input type="checkbox" id="staticAuditToggle"><span>devモード完了時に静的監査(AU)を実行する（任意・既定OFF）</span></label>
+        <p class="system-msg" style="margin-top:15px">※入力した設定は安全にブラウザに保存されます。キー情報は暗号化保存を推奨します。</p>
+    </div>
+
+<script>
+    const BEEP = {base:320, range:280, gain:0.01, dur:0.04}, MAX_TOKENS = 60000;
+    const API_TIMEOUT_MS = 120000;   // API呼び出しのタイムアウト(ms)。表示・abortで共有
+    const PM_MAX_TOKENS = 4096;      // PM・監査・解析など短い応答用の上限
+    const STAGGER_DELAY = 150;       // Swarmsエージェント間の起動間隔(ms)
+    const EP_CONCURRENCY = 3;        // エンドポイントチェックの並列上限
+    const $ = id => document.getElementById(id);
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    const mkEl = (tag, cls, text) => { const e = document.createElement(tag); if(cls) e.className = cls; if(text) e.textContent = text; return e };
+
+    // --- Swarmsモード切替 ---
+    let swarmsExecutionMode = 'sequential'; // 'sequential' | 'parallel'
+    function setSwarmsMode(mode) {
+        swarmsExecutionMode = mode;
+        $('swarms-mode-seq').classList.toggle('swarms-mode-active', mode === 'sequential');
+        $('swarms-mode-par').classList.toggle('swarms-mode-active', mode === 'parallel');
+    }
+
+    // --- 共通ユーティリティ ---
+    function extractHtmlFromResponse(raw) {
+        const htmlMatch = raw.match(/<(?:!DOCTYPE\s+html|html)[\s\S]*<\/html>/i);
+        if (htmlMatch) return htmlMatch[0];
+        return raw.replace(/^```html|```$/gm, "").trim();
+    }
+
+    function sanitizeJsonText(t) {
+        let s = String(t).trim();
+        s = s.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
+        const first = s.indexOf("{"), last = s.lastIndexOf("}");
+        if (first !== -1 && last !== -1 && last > first) s = s.slice(first, last + 1);
+        return s;
+    }
+
+    // プレビューiframeへの書き込み
+    function syncPreview(code, withErrorCatcher = false) {
+        const frame = $('preview-frame-full');
+        frame.srcdoc = withErrorCatcher ? injectErrorCatcher(code) : code;
+    }
+
+    // コード確定（エディタ反映 + localStorage + プレビュー同期）
+    let _editorDirty = true;
+    function finalizeCode(rawCode, opts = {}) {
+        const clean = extractHtmlFromResponse(rawCode);
+        $('code-editor').value = clean;
+        localStorage.setItem('savedCode', clean);
+        _editorDirty = true;
+        if (opts.preview) { syncPreview(clean, !!opts.errorCatcher); _editorDirty = false; }
+        return clean;
+    }
+
+    // --- プレビュー・エラー監視 ---
+    let previewErrors = [];
+    window.addEventListener('message', e => {
+        if (e.data?.type === 'preview_error') previewErrors.push(e.data.msg);
+    });
+
+    function injectErrorCatcher(html) {
+        const script = `<script>
+            window.onerror = function(msg, url, line) { window.parent.postMessage({type:'preview_error', msg: msg + ' (Line ' + line + ')'}, '*'); };
+            window.addEventListener('unhandledrejection', function(e) { window.parent.postMessage({type:'preview_error', msg: e.reason}, '*'); });
+            const _err = console.error; console.error = function(...args) { window.parent.postMessage({type:'preview_error', msg: args.join(' ')}, '*'); _err.apply(console, args); };
+        <\/script>`;
+        return html.includes('<head>') ? html.replace(/<head>/i, '<head>' + script) : script + html;
+    }
+
+    // --- 状態管理 (Signals) ---
+    /**
+     * @typedef {Object} AgentStatus
+     * @property {string} id
+     * @property {string} icon
+     * @property {string} label
+     * @property {'wait'|'run'|'done'|'err'} state
+     * @property {string} text
+     * @property {boolean} visible
+     */
+    
+    /**
+     * @typedef {Object} AppState
+     * @property {boolean} isProcessing
+     * @property {'swarms'|'dev'|'prompt'|'suborder'|''} currentMode
+     * @property {AgentStatus[]} agents
+     */
+
+    function createSignal(v) {
+        const subs = new Set();
+        return {
+            get: () => v,
+            set: (nv) => { v = nv; subs.forEach(fn => fn(v)); },
+            subscribe: (fn) => { subs.add(fn); fn(v); return () => subs.delete(fn); }
+        };
+    }
+
+    /** @type {ReturnType<typeof createSignal<AppState>>} */
+    const store = createSignal({ isProcessing: false, currentMode: '', agents: [] });
+
+    const StoreActions = {
+        setProcessing: (bool, mode = '') => store.set({ ...store.get(), isProcessing: bool, currentMode: mode }),
+        initBaseAgents: () => store.set({ ...store.get(), agents: [
+            { id: 'sys', icon: '📡', label: 'システム', state: 'wait', text: '待機中...', visible: true },
+            { id: 'pm', icon: '🧠', label: '親(PM)', state: 'wait', text: '待機中...', visible: true },
+            { id: 'en', icon: '🗣️', label: '子A(EN)', state: 'wait', text: '待機中...', visible: false },
+            { id: 'code', icon: '💻', label: '子B(CD)', state: 'wait', text: '待機中...', visible: false },
+            { id: 'audit', icon: '🕵️', label: '監査(AU)', state: 'wait', text: '待機中...', visible: false }
+        ]}),
+        initSwarmAgents: (team) => {
+            const s = store.get(), base = s.agents.filter(a => ['sys', 'pm'].includes(a.id));
+            const swarms = team.map((a, i) => ({ id: `child-${i}`, icon: '🤖', label: `子[${a.role}]`, state: 'wait', text: '待機中...', visible: true }));
+            store.set({ ...s, agents: [...base, ...swarms] });
+        },
+        updateAgent: (id, state, text) => {
+            const s = store.get();
+            const agent = s.agents.find(a => a.id === id);
+            if (agent) { agent.state = state; agent.text = text; agent.visible = true; }
+            store.set(s); // 同一参照でも通知は発行（DOM更新トリガ）
+        }
+    };
+
+    // --- Web Components ---
+    class AgentStatusBoard extends HTMLElement {
+        connectedCallback() { this.unsub = store.subscribe(s => this.render(s.agents)); }
+        disconnectedCallback() { this.unsub?.(); }
+        render(agents) {
+            const visible = agents.filter(a => a.visible);
+            // 要素数が変わった場合のみフル再構築、それ以外は差分更新
+            if (this.children.length !== visible.length) {
+                this.innerHTML = '';
+                visible.forEach(a => {
+                    this.appendChild(mkEl('div', `agent-status status-${a.state}`, `${a.icon} ${a.label} : ${a.text}`));
+                });
+            } else {
+                visible.forEach((a, i) => {
+                    const el = this.children[i];
+                    const newClass = `agent-status status-${a.state}`;
+                    const newText = `${a.icon} ${a.label} : ${a.text}`;
+                    if (el.className !== newClass) el.className = newClass;
+                    if (el.textContent !== newText) el.textContent = newText;
+                });
+            }
+        }
+    }
+    customElements.define('agent-status-board', AgentStatusBoard);
+
+    class ActionButtons extends HTMLElement {
+        connectedCallback() {
+            this.unsub = store.subscribe(s => {
+                this.querySelectorAll('button').forEach(btn => btn.disabled = s.isProcessing);
+                if (s.isProcessing) {
+                    const btn = this.querySelector(`[data-action="${s.currentMode}"]`);
+                    if(btn) btn.textContent = s.currentMode === 'swarms' ? "⏳ Swarms..." : (s.currentMode === 'dev' ? "⏳ 開発中..." : "⏳ 記述中...");
+                } else {
+                    this.querySelector('[data-action="swarms"]').textContent = "🕹️ Swarms";
+                    this.querySelector('[data-action="dev"]').textContent = "🛠️ 開発直結";
+                    this.querySelector('[data-action="prompt"]').textContent = "📝 指示書のみ";
+                }
+            });
+            this.addEventListener('click', e => {
+                const btn = e.target.closest('button[data-action]');
+                if(!btn || store.get().isProcessing) return;
+                const act = btn.dataset.action;
+                if(act === 'swarms') runSwarms(); else runMultiAgent(act);
+            });
+        }
+        disconnectedCallback() { this.unsub?.(); }
+    }
+    customElements.define('action-buttons', ActionButtons);
+
+    class OutputConsole extends HTMLElement {
+        log(msg) { this.appendChild(mkEl('div', 'sys-log', `[${new Date().toLocaleTimeString()}] 📡 ${msg}`)); this.scrollTop = this.scrollHeight; }
+        error(msg) { this.appendChild(mkEl('div', 'error-msg', `ERROR: ${msg}`)); this.scrollTop = this.scrollHeight; }
+        clear() { this.innerHTML = ''; }
+        initLayout() { this.innerHTML = `<div id="const-section"><div class="section-title">--- [ System Design Constitution (魂) ] ---</div><div id="constitution-text" class="constitution-text">思考中...</div></div><div id="en-section"><div class="section-title">--- [ Task / EN Prompt ] ---</div><div id="en-text"></div></div><div id="audit-section" style="display:none"><div class="section-title">--- [ AUDIT REFLECTION (憲法適合性監査) ] ---</div><div id="audit-text" class="audit-text"></div></div>`; }
+    }
+    customElements.define('output-console', OutputConsole);
+
+    class GithubManager extends HTMLElement {
+        connectedCallback() {
+            this.addEventListener('click', e => {
+                const btn = e.target.closest('button[data-action]');
+                if(!btn) return;
+                const action = btn.dataset.action, targetId = btn.dataset.target;
+                const el = $(targetId), filename = el ? (el.tagName === 'SELECT' ? el.value : el.value.trim()) : '';
+                
+                if(action === 'sync') this.fetchFiles();
+                else if(action === 'save') { if(!filename) alert('エラー: ファイル名を入力！'); else this.saveFile(filename); }
+                else if(action === 'open') { if(!filename) alert('エラー: ページを選択！'); else this.openPage(filename); }
+                if(el && el.tagName === 'SELECT') el.value = "";
+            });
+        }
+        openPage(filename) {
+            const o = $('gh-owner').value, r = $('gh-repo').value;
+            if(!o || !r) return alert('【エラー】設定タブからユーザー・リポジトリ名を入力！');
+            window.open(`https://${o}.github.io/${r}/${filename}`, '_blank');
+        }
+        async fetchFiles() {
+            const token = getToken(), owner = $('gh-owner').value, repo = $('gh-repo').value, sel = $('file-select-box');
+            if(!token || !owner || !repo) return;
+            sel.innerHTML = '<option value="">取得中...</option>';
+            const h = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' };
+            try {
+                let files = [];
+                for (const path of ['', 'test']) {
+                    const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, { headers: h });
+                    if(r.ok) (await r.json()).forEach(i => { if(i.type === 'file' && i.name.endsWith('.html')) files.push(i.path); });
+                }
+                sel.innerHTML = '<option value="">ページをえらんでひらく</option>';
+                if(!files.length) return sel.innerHTML = '<option value="">HTMLファイルが見つかりません</option>';
+                files.forEach(p => sel.appendChild(mkEl('option', '', `📄 ${p}`)).value = p);
+            } catch(e) { sel.innerHTML = '<option value="">取得失敗</option>'; }
+        }
+        async saveFile(filename) {
+            const token = getToken(), owner = $('gh-owner').value, repo = $('gh-repo').value, content = $('code-editor').value;
+            if(!token || !owner || !repo) { alert('【エラー】GitHub認証情報が不足しています。'); return switchTab('config'); }
+            const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filename}`;
+            const encoded = btoa(unescape(encodeURIComponent(content))); // Standard base64
+            const h = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' };
+            try {
+                let sha = null;
+                const g = await fetch(url, { headers: h }); if(g.ok) sha = (await g.json()).sha;
+                const body = { message: `📝 ${filename} を更新 (via AgentForge Mobile)`, content: encoded };
+                if(sha) body.sha = sha;
+                const p = await fetch(url, { method: 'PUT', headers: h, body: JSON.stringify(body) });
+                if(p.ok) { alert(`【せいこう！】\n${filename} にGitHubへ同期・セーブしました。`); this.fetchFiles(); }
+                else alert(`【エラー】セーブに失敗しました。\n理由: ${(await p.json()).message}`);
+            } catch(e) { alert(`【通信エラー】${e}`); }
+        }
+    }
+    customElements.define('github-manager', GithubManager);
+
+    // --- コアロジック ---
+    let audioCtx = null;
+    let currentAbortController = null; // 処理全体のキャンセル用
+    const out = () => document.querySelector('output-console');
+
+    function uint8ToBase64(bytes) {
+        let b = ''; for (let i = 0; i < bytes.length; i += 0x8000) b += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+        return btoa(b);
+    }
+
+    const SecureStore = {
+        async deriveKey(pw, salt) {
+            const km = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), {name:"PBKDF2"}, false, ["deriveBits","deriveKey"]);
+            return crypto.subtle.deriveKey({name:"PBKDF2", salt, iterations:100000, hash:"SHA-256"}, km, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]);
+        },
+        async encrypt(text, pw) {
+            const enc = new TextEncoder(), salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+            const key = await this.deriveKey(pw, salt), encrypted = await crypto.subtle.encrypt({name:"AES-GCM", iv}, key, enc.encode(text));
+            const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
+            combined.set(salt, 0); combined.set(iv, 16); combined.set(new Uint8Array(encrypted), 28);
+            return uint8ToBase64(combined);
+        },
+        async decrypt(b64, pw) {
+            const s = atob(b64), c = new Uint8Array(s.length);
+            for(let i=0; i<s.length; i++) c[i] = s.charCodeAt(i);
+            const key = await this.deriveKey(pw, c.slice(0,16));
+            return new TextDecoder().decode(await crypto.subtle.decrypt({name:"AES-GCM", iv:c.slice(16,28)}, key, c.slice(28)));
+        }
+    };
+
+    const KeyVault = (() => {
+        let _geminiKeys = ["", "", "", "", ""];
+        let _ghToken = "";
+        let _groqKey = "";
+        let _orKey = "";
+        return {
+            setGeminiKey: (index, val) => { if(index >= 0 && index < 5) _geminiKeys[index] = val; },
+            getGeminiKeys: () => [..._geminiKeys],
+            setGhToken: (val) => { _ghToken = val; },
+            getGhToken: () => _ghToken,
+            setGroqKey: (val) => { _groqKey = val; },
+            getGroqKey: () => _groqKey,
+            setOrKey: (val) => { _orKey = val; },
+            getOrKey: () => _orKey,
+            clear: () => { _geminiKeys = ["", "", "", "", ""]; _ghToken = ""; _groqKey = ""; _orKey = ""; }
+        };
+    })();
+
+    async function encryptAndSaveKeys() {
+        const pwd = $('master-password').value, gh = $('gh-token').value;
+        const groq = $('groq-key').value, or = $('openrouter-key').value;
+        const rawKeys = $('gemini-keys-area').value.split('\n').map(k => k.trim()).filter(k => k !== '').slice(0, 5);
+        const keys = [0,1,2,3,4].map(i => rawKeys[i] || "");
+        if(!pwd) return alert("マスターパスワードを入力してください。");
+        if(!keys.some(k => k) && !gh && !groq && !or) return alert("保存するキーが入力されていません。");
+        try {
+            for(let i=0; i<5; i++) {
+                localStorage.setItem(`enc_gemini_${i+1}`, keys[i] ? await SecureStore.encrypt(keys[i], pwd) : "");
+                KeyVault.setGeminiKey(i, keys[i]);
+            }
+            localStorage.setItem('enc_gh', gh ? await SecureStore.encrypt(gh, pwd) : "");
+            KeyVault.setGhToken(gh);
+            localStorage.setItem('enc_groq', groq ? await SecureStore.encrypt(groq, pwd) : "");
+            KeyVault.setGroqKey(groq);
+            localStorage.setItem('enc_or', or ? await SecureStore.encrypt(or, pwd) : "");
+            KeyVault.setOrKey(or);
+            alert("🔑 暗号化して安全に保存しました！\n次回起動時はマスターパスワードでロックを解除してください。");
+        } catch(e) { alert("暗号化エラー: " + e.message); }
+    }
+
+    async function unlockKeys() {
+        const pwd = $('master-password').value;
+        if(!pwd) return alert("マスターパスワードを入力してください。");
+        const et = localStorage.getItem('enc_gh'), egroq = localStorage.getItem('enc_groq'), eor = localStorage.getItem('enc_or');
+        let hasAnyKey = !!et || !!egroq || !!eor;
+        for(let i=1; i<=5; i++) { if(localStorage.getItem(`enc_gemini_${i}`)) hasAnyKey = true; }
+        if(!hasAnyKey) return alert("保存された暗号化キーが見つかりません。");
+        try {
+            const unlockedKeys = [];
+            for(let i=1; i<=5; i++) {
+                const eg = localStorage.getItem(`enc_gemini_${i}`);
+                if(eg) { 
+                    const d = await SecureStore.decrypt(eg, pwd); 
+                    if (d) { unlockedKeys.push(d); KeyVault.setGeminiKey(i-1, d); }
+                }
+            }
+            if (unlockedKeys.length > 0) $('gemini-keys-area').value = unlockedKeys.join('\n');
+            if(et) { const d = await SecureStore.decrypt(et, pwd); $('gh-token').value = d; KeyVault.setGhToken(d); }
+            if(egroq) { const d = await SecureStore.decrypt(egroq, pwd); $('groq-key').value = d; KeyVault.setGroqKey(d); localStorage.setItem('groqKey', d); }
+            if(eor) { const d = await SecureStore.decrypt(eor, pwd); $('openrouter-key').value = d; KeyVault.setOrKey(d); localStorage.setItem('orKey', d); }
+            alert("🔓 ロック解除成功！キーをセキュアメモリにロードしました。");
+            if(getToken()) document.querySelector('github-manager').fetchFiles();
+        } catch(e) { alert("❌ パスワードが間違っているか、復号に失敗しました。"); }
+    }
+
+    const getKeys = () => {
+        const txt = $('gemini-keys-area').value.trim();
+        if(txt) return txt.split('\n').map(k => k.trim()).filter(k => k !== '').slice(0, 5);
+        return KeyVault.getGeminiKeys().filter(k => k && k.trim() !== '');
+    };
+    const getToken = () => KeyVault.getGhToken() || $('gh-token').value;
+    const getGroqKey = () => KeyVault.getGroqKey() || $('groq-key').value || localStorage.getItem('groqKey') || '';
+    const getOrKey = () => KeyVault.getOrKey() || $('openrouter-key').value || localStorage.getItem('orKey') || '';
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Data Binder (Declarative LocalStorage Sync)
+        document.querySelectorAll('[data-store-key]').forEach(el => {
+            const k = el.dataset.storeKey, def = el.dataset.default || '';
+            // 旧キーのマイグレーション
+            if (k === 'ghOwner' && localStorage.getItem('gh_owner')) { localStorage.setItem(k, localStorage.getItem('gh_owner')); localStorage.removeItem('gh_owner'); }
+            if (k === 'ghRepo' && localStorage.getItem('gh_repo')) { localStorage.setItem(k, localStorage.getItem('gh_repo')); localStorage.removeItem('gh_repo'); }
+            
+            el.value = localStorage.getItem(k) || def;
+            el.addEventListener('input', e => localStorage.setItem(k, e.target.value));
+        });
+        $('soundToggle').checked = localStorage.getItem('sound_toggle') !== 'false';
+        $('soundToggle').addEventListener('change', e => localStorage.setItem('sound_toggle', e.target.checked));
+        $('staticAuditToggle').checked = localStorage.getItem('static_audit_toggle') === 'true'; // 既定OFF
+        $('staticAuditToggle').addEventListener('change', e => localStorage.setItem('static_audit_toggle', e.target.checked));
+        
+        $('code-editor').addEventListener('input', () => { _editorDirty = true; });
+        
+        if(getToken() && $('gh-owner').value && $('gh-repo').value) document.querySelector('github-manager').fetchFiles();
+
+        // 追加修正ボタンの非活性化コントロールをバインド
+        const subBtn = $('sub-order-btn');
+        store.subscribe(s => {
+            if (subBtn) {
+                subBtn.disabled = s.isProcessing;
+                if (s.isProcessing && s.currentMode === 'suborder') {
+                    subBtn.textContent = "⏳ 追加修正中...";
+                } else {
+                    subBtn.textContent = "🛠️ 追加修正を実行";
+                }
+            }
+        });
+
+        // 追加修正ボタンのクリックイベント
+        if (subBtn) {
+            subBtn.addEventListener('click', runSubOrder);
+        }
+
+        // パネル開閉トグルの共通化
+        ['generator', 'editor', 'sub-order', 'github'].forEach(id => {
+            const h = $(`${id}-header`), d = $(`${id}-details`);
+            if (h && d) {
+                h.setAttribute('role', 'button');
+                h.setAttribute('aria-expanded', d.style.display !== 'none');
+                h.addEventListener('click', e => {
+                    if (!e.target.closest('button')) {
+                        const isHidden = d.style.display === 'none';
+                        d.style.display = isHidden ? 'block' : 'none';
+                        h.setAttribute('aria-expanded', isHidden);
+                    }
+                });
+            }
+        });
+        
+        switchTab('edit');
+    });
+
+    function switchTab(name) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        const btn = $(`tab-${name}-btn`), panel = $(`panel-${name}`);
+        if(btn) btn.classList.add('active');
+        if(panel) panel.classList.add('active');
+        if(name === 'preview-full' && _editorDirty) {
+            syncPreview($('code-editor').value);
+            _editorDirty = false;
+        }
+    }
+
+    function clearAllForNew() {
+        if(confirm('入力内容と生成コードをすべて消去して新規作成しますか？')) {
+            $('userInput').value = '';
+            $('code-editor').value = '';
+            $('sub-order-input').value = '';
+            localStorage.setItem('savedCode', '');
+            
+            const subDetails = $('sub-order-details');
+            if (subDetails) subDetails.style.display = 'none';
+            const genDetails = $('generator-details');
+            if (genDetails) genDetails.style.display = 'block';
+            const edDetails = $('editor-details');
+            if (edDetails) edDetails.style.display = 'block';
+            const ghDetails = $('github-details');
+            if (ghDetails) ghDetails.style.display = 'block';
+        }
+    }
+
+    function applyTemplate(num) {
+        const el = $('userInput'), tmpl = $(`tmpl-text-${num}`).value;
+        if(!tmpl.trim()) return alert(`定型${num}が未登録です。「せってい」タブで登録してください。`);
+        el.value = el.value.trim() ? el.value.trim() + "\n" + tmpl : tmpl;
+        el.scrollTop = el.scrollHeight; out().log(`定型${num}を追記しました。`);
+    }
+
+    function clearEditor() { if(confirm('書きかけのコードをすべて消去しますか？')) { $('code-editor').value = ''; localStorage.setItem('savedCode', ''); } }
+    function copyEditorOnly() {
+        const code = $('code-editor').value;
+        if(!code.trim() || code === "生成中...") return alert("コピーするコードがありません。");
+        clipCopy(code, "コードをコピーしました！");
+    }
+
+    function initAudio() {
+        if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        // resumeはplayBeep内で必要時のみ実行（冗長呼び出し回避）
+    }
+    function playBeep() {
+        if(!$('soundToggle').checked || !audioCtx) return;
+        if(audioCtx.state === 'suspended') audioCtx.resume(); // lazy resume
+        try {
+            const o = audioCtx.createOscillator(), g = audioCtx.createGain(), t = audioCtx.currentTime;
+            o.type = ['square','sine'][Math.random()*2|0]; o.frequency.setValueAtTime(BEEP.base + Math.random()*BEEP.range, t);
+            g.gain.setValueAtTime(BEEP.gain, t); g.gain.exponentialRampToValueAtTime(.001, t + BEEP.dur);
+            o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(t + BEEP.dur);
+        } catch(e) { /* ignore */ }
+    }
+
+    // --- Gemini API 通信・構成ロジック ---
+    const gHeaders = key => ({ 'Content-Type': 'application/json', 'x-goog-api-key': key });
+    const extractText = data => data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const step = (id, state, aMsg, cMsg) => { if(id) StoreActions.updateAgent(id, state, aMsg); if(cMsg) out().log(cMsg); };
+
+    const patchTool = {
+        functionDeclarations: [{
+            name: "apply_code_patch", description: "既存コードの一部を完全一致で検索し、新しいコードに置換します。",
+            parameters: { type: "OBJECT", properties: {
+                target_content: { type: "STRING", description: "置換対象の既存コード（完全に一致すること）" },
+                replacement_content: { type: "STRING", description: "新しいコードスニペット" }
+            }, required: ["target_content", "replacement_content"] }
+        }]
+    };
+
+    let availableEndpoints = [];
+    
+    async function checkEndpoints() {
+        out().log('[System] API総当たりチェック開始 (models.list)...');
+        const keys = getKeys();
+        if(!keys.length) return false;
+        
+        const targetModels = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-3.1-flash-lite'];
+        const P = {'gemini-3.5-flash': 1, 'gemini-2.5-flash': 2, 'gemini-3.1-flash-lite': 3};
+        let valid = [];
+        const seen = new Set();
+
+        for (const key of keys) {
+            try {
+                // generateContentではなく軽量なmodels APIで利用可能モデルを取得（スパイク防止）
+                const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+                if (!r.ok) {
+                    out().log(`  ❌ キーが無効、または制限超過 (HTTP ${r.status})`);
+                    continue;
+                }
+                const data = await r.json();
+                if (data.models) {
+                    for (const m of data.models) {
+                        const mName = m.name.replace('models/', '');
+                        if (targetModels.includes(mName) && !seen.has(`${key}::${mName}`)) {
+                            valid.push({ key, model: mName });
+                            seen.add(`${key}::${mName}`);
+                            out().log(`  ✅ ${mName} — OK`);
+                        }
+                    }
+                }
+            } catch(e) {
+                out().log(`  ❌ 通信エラー: ${e.message}`);
+            }
+        }
+        
+        valid.sort((a, b) => P[a.model] - P[b.model]);
+        availableEndpoints = valid;
+        
+        if (valid.length) {
+            const mc = {}; valid.forEach(ep => mc[ep.model] = (mc[ep.model]||0)+1);
+            out().log(`[System] ✅ ${valid.length}EP利用可能 [${Object.entries(mc).map(([m,c])=>`${m}(${c})`).join(', ')}]`);
+            return true;
+        }
+        out().error('[System] ❌ 利用可能なGeminiモデルが見つかりません。キーの権限を確認してください。');
+        return false;
+    }
+
+    async function apiGemini({ prompt, endpoint, json, schema, tools, stream, onChunk, think = true, signal, maxTokens = MAX_TOKENS }, retries = 5) {
+        const allEps = [endpoint, ...availableEndpoints.filter(ep => ep.key !== endpoint.key || ep.model !== endpoint.model)];
+        const maxAttempts = Math.max(retries, allEps.length);
+        let lastError = null;
+        
+        for (let i = 0; i < maxAttempts; i++) {
+            const ep = allEps[i % allEps.length];
+            const body = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: maxTokens } };
+            
+            // Thinkingパラメータの世代別制御
+            if (ep.model.includes('gemini-3.')) {
+                body.generationConfig.thinkingConfig = { thinkingLevel: think ? 'high' : 'minimal' }; // OFFは使用不可
+            } else if (ep.model.includes('gemini-2.5')) {
+                body.generationConfig.thinkingConfig = { thinkingBudget: think ? 1024 : 0 }; // 0で無効化
+            }
+            
+            if (json) {
+                body.generationConfig.responseMimeType = 'application/json';
+                if (schema) body.generationConfig.responseSchema = schema;
+            }
+            if (tools) { body.tools = tools; body.toolConfig = { functionCallingConfig: { mode: 'ANY' } }; }
+            
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${ep.model}`;
+
+            try {
+                if (i > 0) out().log(`[API] ${ep.model} で再試行... (${i+1}/${maxAttempts}回目)`);
+                
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+                if (signal) signal.addEventListener('abort', () => controller.abort(), { once: true });
+                
+                const r = await fetch(`${apiUrl}:${stream ? 'streamGenerateContent?alt=sse' : 'generateContent'}`, { 
+                    method: 'POST', 
+                    headers: gHeaders(ep.key), 
+                    body: JSON.stringify(body),
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                
+                if(!r.ok) throw new Error(`API Error: ${r.status}`);
+                
+                if (stream) {
+                    const reader = r.body.getReader(), dec = new TextDecoder();
+                    const chunks = []; // 配列蓄積→最後にjoin（文字列連結のGC負荷削減）
+                    let buf = "";
+                    const processEvent = (ev) => {
+                        const lines = ev.split(/\r?\n/);
+                        for(const l of lines) {
+                            if(!l.startsWith('data: ')) continue;
+                            const d = l.substring(6).trim(); if(!d) continue;
+                            try { const t = extractText(JSON.parse(d)); if(t) { chunks.push(t); onChunk(t); playBeep(); } } catch(e) {}
+                        }
+                    };
+
+                    while(true) {
+                        const { done, value } = await reader.read();
+                        if (value) buf += dec.decode(value, { stream: true });
+                        
+                        const parts = buf.split(/(?:\r?\n){2,}/);
+                        buf = parts.pop() || "";
+                        for (const ev of parts) processEvent(ev);
+                        
+                        if (done) {
+                            if (buf.trim()) processEvent(buf);
+                            break;
+                        }
+                    }
+                    out().log(`[API] ✅ ${ep.model} で応答完了 (stream)`);
+                    return chunks.join('');
+                } else {
+                    const j = await r.json();
+                    if (tools) {
+                        out().log(`[API] ✅ ${ep.model} で応答完了 (tool call)`);
+                        return j?.candidates?.[0]?.content?.parts?.find(p => p.functionCall)?.functionCall;
+                    }
+                    const t = extractText(j); if(!t) throw new Error('API Safety Filter Block');
+                    out().log(`[API] ✅ ${ep.model} で応答完了 (${t.length}文字)`);
+                    if (!json) return t.trim();
+                    // fence除去・brace抽出してからparse。失敗時のみ既存フォールバック(throw→次EP)へ
+                    try { return JSON.parse(sanitizeJsonText(t)); }
+                    catch(_) { return JSON.parse(t); }
+                }
+            } catch (e) {
+                lastError = e;
+                const isTimeout = e.name === 'AbortError';
+                const errMsg = isTimeout ? `タイムアウト(${API_TIMEOUT_MS / 1000}秒)` : e.message;
+                
+                if ((errMsg.includes('503') || errMsg.includes('429') || errMsg.includes('500') || isTimeout || errMsg.includes('fetch')) && i < maxAttempts - 1) {
+                    const nextEp = allEps[(i + 1) % allEps.length];
+                    const round = Math.floor(i / allEps.length) + 1;
+                    const waitTime = errMsg.includes('429') ? 10000 * round : 1500 * round;
+                    out().log(`[API] ${ep.model}: ${errMsg} → ${nextEp.model} にフォールバック (${waitTime/1000}秒後)`);
+                    await sleep(waitTime);
+                    continue;
+                }
+                throw new Error(`${ep.model}: ${errMsg}`);
+            }
+        }
+        throw lastError;
+    }
+
+    async function apiGroq({ prompt, model, signal }) {
+        const key = getGroqKey();
+        if(!key) throw new Error("Groq API Key not set");
+        const body = {
+            model: model || 'llama-3.3-70b-versatile',
+            messages: [
+                { role: "system", content: "You are an expert programmer. Output ONLY the raw source code based on the instructions. NO markdown formatting, NO explanations." },
+                { role: "user", content: prompt }
+            ],
+            temperature: 0.1
+        };
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+        if (signal) signal.addEventListener('abort', () => controller.abort(), { once: true });
+        
+        try {
+            const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+                body: JSON.stringify(body),
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            if (!r.ok) {
+                const err = await r.json().catch(()=>({}));
+                throw new Error(`Groq API Error: ${err.error?.message || r.status}`);
+            }
+            const data = await r.json();
+            const text = data.choices[0].message.content;
+            out().log(`[API] ✅ Groq (${model}) 応答完了 (${text.length}文字)`);
+            return text;
+        } catch(e) {
+            clearTimeout(timeoutId);
+            throw new Error(`Groq (${model}): ${e.name === 'AbortError' ? 'タイムアウト' : e.message}`);
+        }
+    }
+
+    async function apiOpenRouter({ prompt, model, signal }) {
+        const key = getOrKey();
+        if(!key) throw new Error("OpenRouter API Key not set");
+        const body = {
+            model: model || 'mistralai/mistral-small-2603',
+            messages: [
+                { role: "system", content: "You are an expert programmer. Output ONLY the raw source code based on the instructions. NO markdown formatting, NO explanations." },
+                { role: "user", content: prompt }
+            ],
+            temperature: 0.1
+        };
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+        if (signal) signal.addEventListener('abort', () => controller.abort(), { once: true });
+        
+        try {
+            const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+                body: JSON.stringify(body),
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            if (!r.ok) {
+                const err = await r.json().catch(()=>({}));
+                throw new Error(`OpenRouter Error: ${err.error?.message || r.status}`);
+            }
+            const data = await r.json();
+            const text = data.choices[0].message.content;
+            out().log(`[API] ✅ OpenRouter (${model}) 応答完了 (${text.length}文字)`);
+            return text;
+        } catch(e) {
+            clearTimeout(timeoutId);
+            throw new Error(`OpenRouter (${model}): ${e.name === 'AbortError' ? 'タイムアウト' : e.message}`);
+        }
+    }
+
+    async function ensureEndpoints() {
+        if (availableEndpoints.length > 0) return true;
+        return await checkEndpoints();
+    }
+
+    async function validateAndInit(mode) {
+        const input = $('userInput').value, ctx = $('myContext').value || '特になし';
+        if(!getKeys().length) { alert('API Keyを入力してください。'); switchTab('config'); return null; }
+        if(!input) { alert('要望を入力してください。'); return null; }
+        initAudio(); StoreActions.setProcessing(true, mode);
+        return { input, ctx };
+    }
+
+    async function runSwarms() {
+        const v = await validateAndInit('swarms'); if(!v) return;
+        // モード判定: 直列パイプラインか、従来の並列ブレストか
+        if (swarmsExecutionMode === 'sequential') {
+            return await runSequentialDev(v);
+        }
+        // --- 以下、従来の並列Swarmsロジック ---
+        out().clear();
+        if (!await ensureEndpoints()) { StoreActions.setProcessing(false); return; }
+        StoreActions.initBaseAgents();
+        step('sys', 'run', '並列Swarmsプロセスを開始しました。');
+        
+        const bestEndpoint = availableEndpoints[0];
+        step('pm', 'run', 'チーム編成中...', `${bestEndpoint.model} が超推論(HIGH)でマッピングとチーム召喚を精査中...`);
+
+        try {
+            const spawnTool = { functionDeclarations: [{ name: "spawn_swarms", description: "タスク用エージェント編成。各エージェントには重複しない、明確に分離可能な担当範囲のみを割り当てること（同じ機能や同じUI領域を複数のエージェントに担当させてはならない）。",
+                parameters: { type: "OBJECT", properties: { design_constitution: { type: "STRING" }, agents: { type: "ARRAY", items: { type: "OBJECT", properties: { role: { type: "STRING" }, task: { type: "STRING", description: "他のエージェントと重複しない、独立して完結する担当範囲" } } } } }, required: ["design_constitution", "agents"] }
+            }] };
+
+            const fc = await apiGemini({ prompt: `前提条件: ${v.ctx}\n要望: ${v.input}\nチームを自動編成し 'spawn_swarms' 実行。`, endpoint: bestEndpoint, tools: [spawnTool], maxTokens: PM_MAX_TOKENS });
+            if(!fc) throw new Error("PM召喚失敗");
+
+            const constitution = fc.args.design_constitution, team = fc.args.agents;
+            step('pm', 'done', `憲法樹立。 ${team.length}名編成。`, `チーム編成: ${team.length}名`);
+            StoreActions.initSwarmAgents(team);
+
+            out().append(mkEl('div', 'section-title', '--- [ Design Constitution ] ---'), Object.assign(mkEl('div', 'constitution-text', constitution), {id:'constitution-text'}), mkEl('div', 'section-title', '=== SWARM OUTPUT ==='));
+            const sText = mkEl('div'); sText.id = 'swarm-text'; out().appendChild(sText);
+
+            // 子エージェント用モデルプール (Gemini + 外部モデル)
+            const groqModels = getGroqKey() ? ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'] : [];
+            const orModels = getOrKey() ? ['meta-llama/llama-3.3-70b-instruct', 'mistralai/mistral-small-2603'] : [];
+            const childPool = [
+                ...groqModels.map(m => ({provider:'groq', model:m})), 
+                ...orModels.map(m => ({provider:'or', model:m})),
+                ...availableEndpoints.map(ep => ({provider:'gemini', ep}))
+            ];
+
+            const codingPromises = team.map(async (agent, i) => {
+                const node = childPool[i % childPool.length];
+                const modelName = node.provider === 'gemini' ? node.ep.model : node.model;
+                const prompt = `[Constitution]:\n${constitution}\n\nRole: ${agent.role}\nConstraint: English strictly. Raw artifact only.\nTask: ${agent.task}`;
+                
+                const agentDiv = mkEl('div');
+                agentDiv.innerHTML = `<div style="color:var(--green); font-weight:bold; margin-top:8px;">### [担当: ${agent.role} | モデル: ${modelName}]</div><div id="swarm-out-${i}"></div><br>`;
+                sText.appendChild(agentDiv);
+                const textContainer = agentDiv.querySelector(`#swarm-out-${i}`);
+
+                try {
+                    if (i > 0 && node.provider === 'gemini') { step(`child-${i}`, 'run', '時差分散待機中...'); await sleep(i * STAGGER_DELAY); }
+                    step(`child-${i}`, 'run', `生成中(${modelName})...`, `[${agent.role}] 並列推論開始... (${modelName})`);
+                    
+                    let result = "";
+                    if (node.provider === 'groq') {
+                        textContainer.textContent = "待機中...(APIからの応答を一括取得中)";
+                        result = await apiGroq({ prompt, model: node.model });
+                        textContainer.textContent = result;
+                    } else if (node.provider === 'or') {
+                        textContainer.textContent = "待機中...(APIからの応答を一括取得中)";
+                        result = await apiOpenRouter({ prompt, model: node.model });
+                        textContainer.textContent = result;
+                    } else {
+                        await apiGemini({ prompt, endpoint: node.ep, stream: true, think: false, onChunk: c => { textContainer.textContent += c; result += c; } });
+                    }
+                    
+                    step(`child-${i}`, 'done', '完了！');
+                    const isHtmlLike = /<[a-z/][\s\S]*>/i.test(result) || result.includes("```");
+                    return { role: agent.role, result, html: isHtmlLike };
+                } catch(e) { 
+                    step(`child-${i}`, 'err', '失敗'); 
+                    textContainer.textContent = `\n[Fatal Error]: ${e.message}`;
+                    return { role: agent.role, result: `Error: ${e.message}`, html: false }; 
+                }
+            });
+
+            const results = await Promise.all(codingPromises);
+            
+            // --- 統合フェーズ (Integrator) ---
+            step('pm', 'run', '最終コード統合中...', `[${bestEndpoint.model}] が全ての子エージェントの成果物を統合・最適化中...`);
+            
+            const integratorSystemPrompt = `You are a Lead Integrator. Your ONLY job is to MERGE the provided parts into a single, complete HTML file (with embedded CSS/JS).
+PRESERVE each part's own approach, style, and individuality. Keep the original wording, structure, and implementation of every part intact.
+FORBIDDEN: Do NOT rewrite, recreate, refactor, or restyle any part. Do NOT unify their visual style or implementation policy. Do NOT add placeholders.
+ALLOWED: Only resolve duplications and conflicts (e.g. clashing IDs, duplicate <html>/<head>/<body> wrappers, colliding function/variable names) so the parts coexist in one working file.
+Output ONE complete, self-contained HTML file. Output raw HTML only. Do NOT use markdown code blocks (\`\`\`). No explanations.`;
+            const integratorUserPrompt = `User's original request: ${v.input}\n\nHere are the components created by the team:\n${sText.textContent}\n\nCombine them into one file. Resolve only duplications/conflicts so everything works together. Do not change how each part looks or is implemented.`;
+            
+            $('code-editor').value = "";
+            let finalCode = await apiGemini({ prompt: `${integratorSystemPrompt}\n\n${integratorUserPrompt}`, endpoint: bestEndpoint, stream: true, think: false, onChunk: c => $('code-editor').value += c });
+            
+            step('pm', 'done', '統合完了！');
+            finalizeCode(finalCode, { preview: true });
+            out().log(`統合コードを同期しました。`);
+
+            const details = $('sub-order-details');
+            if (details) {
+                details.style.display = 'block';
+            }
+            step('sys', 'done', '正常終了'); 
+            
+            // 作成完了をわかりやすくするため、自動で「みる」タブに切り替える
+            await generateStudioReflection(v.input, $('code-editor').value); // 👈 追加
+            
+            setTimeout(() => {
+                switchTab('preview-full');
+                alert('🎉 開発プロジェクトが正常に完了しました！成果物のプレビューを表示します。');
+            }, 300);
+        } catch(e) { out().error(e.message); step('pm', 'err', e.message); step('sys', 'err', '異常停止'); availableEndpoints = []; }
+        finally { StoreActions.setProcessing(false); }
+    }
+
+    // --- 直列パイプライン (Sequential Dev) ---
+    async function runSequentialDev(v) {
+        out().clear();
+        if (!await ensureEndpoints()) { StoreActions.setProcessing(false); return; }
+        
+        // ステータスボード初期化（直列用の固定エージェント構成）
+        store.set({ ...store.get(), agents: [
+            { id: 'sys', icon: '📡', label: 'システム', state: 'wait', text: '待機中...', visible: true },
+            { id: 'pm', icon: '🧠', label: '親(PM)', state: 'wait', text: '待機中...', visible: true },
+            { id: 'skeleton', icon: '🦴', label: 'Skeleton', state: 'wait', text: '待機中...', visible: true },
+            { id: 'stylist', icon: '🎨', label: 'Stylist', state: 'wait', text: '待機中...', visible: true },
+            { id: 'logic', icon: '⚡', label: 'Logic', state: 'wait', text: '待機中...', visible: true },
+            { id: 'audit', icon: '🕵️', label: '監査(AU)', state: 'wait', text: '待機中...', visible: false }
+        ]});
+        
+        const ep = availableEndpoints[0];
+        step('sys', 'run', '直列パイプライン起動');
+        
+        try {
+            // Step 1: PM が憲法を策定
+            step('pm', 'run', `憲法構築中(${ep.model})...`, `Step 1: 戦略決定中 (${ep.model})`);
+            const pmSchemaObj = {
+                type: "OBJECT",
+                properties: {
+                    design_constitution: { type: "STRING", description: "UI/UXルールと全体アーキテクチャの指針" },
+                    english_prompt: { type: "STRING", description: "後続エージェントに渡すための詳細な英語の要件定義" }
+                },
+                required: ["design_constitution", "english_prompt"]
+            };
+            const pm = await apiGemini({ prompt: `前提条件: ${v.ctx}\n要望: ${v.input}`, endpoint: ep, json: true, schema: pmSchemaObj, maxTokens: PM_MAX_TOKENS });
+            const constitution = pm.design_constitution;
+            step('pm', 'done', '憲法樹立');
+            
+            // コンソールにレイアウト表示
+            out().append(
+                mkEl('div', 'section-title', '--- [ Design Constitution (魂) ] ---'),
+                Object.assign(mkEl('div', 'constitution-text', constitution), {id:'constitution-text'}),
+                mkEl('div', 'section-title', '=== SEQUENTIAL PIPELINE ===')
+            );
+            const pipeDiv = mkEl('div'); pipeDiv.id = 'pipeline-text'; out().appendChild(pipeDiv);
+            
+            // ヘルパー関数: パイプラインの各フェーズのUI生成とAI実行を共通化
+            async function runPipePhase(agentId, phaseNum, icon, title, color, prompt, onChunkCb = null) {
+                step(agentId, 'run', `${title.split(' ')[0]}生成中(${ep.model})...`, `Phase ${phaseNum}: ${title.split(' ')[0]} Agent 起動 (${ep.model})`);
+                const div = mkEl('div');
+                div.innerHTML = `<div style="color:${color}; font-weight:bold; margin-top:8px;">### [Phase ${phaseNum}: ${icon} ${title}]</div><div id="pipe-${agentId}"></div>`;
+                pipeDiv.appendChild(div);
+                const outEl = div.querySelector(`#pipe-${agentId}`);
+                
+                let res = await apiGemini({ prompt, endpoint: ep, stream: true, think: false, onChunk: c => {
+                    outEl.textContent += c;
+                    if(onChunkCb) onChunkCb(c);
+                }});
+                res = extractHtmlFromResponse(res);
+                step(agentId, 'done', '完了');
+                out().log(`${title.split(' ')[0]}完了: ${res.length} bytes`);
+                return res;
+            }
+            
+            // Phase 1: Skeleton
+            const skeletonPrompt = `[Constitution]: ${constitution}\nRole: Skeleton Architect\nTask: Create ONLY the semantic HTML structure (DOCTYPE, head with meta/title, body with all sections/divs/buttons/inputs using proper IDs and classes). Include placeholder text content. Do NOT include any <style> or <script> tags. Output raw HTML only.\nRequirements: ${pm.english_prompt}`;
+            const skeletonCode = await runPipePhase('skeleton', 1, '🦴', 'Skeleton — HTML骨格', '#f39c12', skeletonPrompt);
+            
+            // Phase 2: Stylist
+            const stylistPrompt = `[Constitution]: ${constitution}\nRole: Stylist Designer\nTask: Take the following HTML skeleton and ADD a complete <style> block inside <head>. Apply stunning, premium CSS design with animations, gradients, and modern aesthetics. DO NOT modify any HTML structure, IDs, or classes. Output the COMPLETE HTML file with your CSS added.\n\n[HTML Skeleton]:\n${skeletonCode}`;
+            const styledCode = await runPipePhase('stylist', 2, '🎨', 'Stylist — CSS注入', '#e74c3c', stylistPrompt);
+            
+            // Phase 3: Logic
+            $('code-editor').value = "";
+            const logicPrompt = `[Constitution]: ${constitution}\nRole: Logic Engineer\nTask: Take the following styled HTML and ADD all necessary <script> blocks before </body>. Implement all interactivity, animations, state management, and event handling. DO NOT modify existing HTML structure or CSS. Only ADD JavaScript. Output the COMPLETE final HTML file.\n\n[Styled HTML]:\n${styledCode}`;
+            const finalCode = await runPipePhase('logic', 3, '⚡', 'Logic — JS実装', '#2ecc71', logicPrompt, c => $('code-editor').value += c);
+            
+            finalizeCode(finalCode, { preview: true });
+            out().log(`Logic完了 → 統合コードを同期しました。`);
+            
+            // Step 5: 完了処理
+            const details = $('sub-order-details');
+            if (details) details.style.display = 'block';
+            step('sys', 'done', '正常終了');
+            
+            syncPreview($('code-editor').value);
+            _editorDirty = false;
+            
+            await generateStudioReflection(v.input, $('code-editor').value); // 👈 これを追加！
+
+            setTimeout(() => {
+                switchTab('preview-full');
+                alert('🎉 直列パイプラインが正常に完了しました！成果物のプレビューを表示します。');
+            }, 300);
+        } catch(e) { out().error(e.message); step('pm', 'err', e.message); step('sys', 'err', '異常停止'); availableEndpoints = []; }
+        finally { StoreActions.setProcessing(false); }
+    }
+
+    async function runMultiAgent(mode) {
+        const v = await validateAndInit(mode); if(!v) return;
+        if (!await ensureEndpoints()) { StoreActions.setProcessing(false); return; }
+        out().initLayout();
+        StoreActions.initBaseAgents();
+        
+        const bestEndpoint = availableEndpoints[0];
+        step('sys', 'run', 'パイプライン起動'); step('pm', 'run', '憲法構築中...', "Step 1: 戦略決定中");
+        const constEl = $('constitution-text'), enEl = $('en-text'), auditEl = $('audit-text');
+        
+        function fuzzyPatch(code, target, repl) {
+            if (code.includes(target)) return code.replace(target, repl);
+            // HTMLエンティティをデコードしてリトライ
+            const decoded = target.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+            if (decoded !== target && code.includes(decoded)) return code.replace(decoded, repl);
+            const tokens = target.trim().split(/\s+/);
+            if (!tokens.length) return code;
+            const rxStr = tokens.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/['"`]/g, "['\"`]")).join('\\s*');
+            try { const rx = new RegExp(rxStr); return rx.test(code) ? code.replace(rx, repl) : null; } catch(e) { return null; }
+        }
+
+        try {
+            const pmSchemaObj = {
+                type: "OBJECT",
+                properties: {
+                    design_constitution: { type: "STRING", description: "UI/UXルール" },
+                    strategy: { type: "STRING", description: "full または differential" },
+                    english_prompt: { type: "STRING", description: "英語プロンプト" },
+                    ...(mode === 'dev' ? { core_logic: { type: "STRING", description: "コード仕様" } } : {})
+                },
+                required: mode === 'dev'
+                    ? ["design_constitution", "strategy", "english_prompt", "core_logic"]
+                    : ["design_constitution", "strategy", "english_prompt"]
+            };
+            const pm = await apiGemini({ prompt: `前提条件: ${v.ctx}\n要望: ${v.input}`, endpoint: bestEndpoint, json: true, schema: pmSchemaObj, maxTokens: PM_MAX_TOKENS });
+            const strat = pm.strategy || 'full';
+            constEl.textContent = `[Strategy: ${strat}] ${pm.design_constitution}`;
+            step('pm', 'done', '戦略策定完了', `戦略: ${strat} [担当: ${bestEndpoint.model}]`);
+
+            step('en', 'run', `プロンプト生成中(${bestEndpoint.model})...`, `Step 2: コンパイル開始 [${bestEndpoint.model}]`);
+            let enRes = await apiGemini({ prompt: `[Constitution]: ${pm.design_constitution}\n[Strategy]: ${strat}\nConstraint: English strictly. Raw artifact only.\n【要件】:\n${pm.english_prompt}`, endpoint: bestEndpoint, stream: true, think: false, onChunk: c => enEl.textContent += c });
+            step('en', 'done', '生成完了', `完了 (${enRes.length} bytes) [担当: ${bestEndpoint.model}]`);
+
+            let cdRes = "";
+            if(mode === 'prompt') {
+                cdRes = finalizeCode(enRes);
+            }
+            if(mode === 'dev') {
+                const MAX_LOOPS = 3; let loopCount = 0;
+                let currentCode = $('code-editor').value, auditAnalysis = "";
+
+                while (loopCount < MAX_LOOPS) {
+                    if (loopCount === 0) {
+                        step('code', 'run', strat === 'differential' ? `差分パッチ(${bestEndpoint.model})...` : `コード生成(${bestEndpoint.model})...`, `Step 3: コード生成（${strat}）[${bestEndpoint.model}]`);
+                        if (strat === 'differential') {
+                            const patchFc = await apiGemini({ prompt: `【既存のコード】\n${currentCode}\n\n【要件】\n${pm.core_logic}\n\nこの要件を満たすため、apply_code_patchで特定部分を置換せよ。`, endpoint: bestEndpoint, tools: [patchTool] });
+                            if (patchFc?.args.target_content) {
+                                const patched = fuzzyPatch(currentCode, patchFc.args.target_content, patchFc.args.replacement_content);
+                                if (patched) { currentCode = patched; out().log("差分パッチ適用成功"); }
+                                else out().error("パッチ適用失敗: 対象コード不一致 (FuzzyMatch適用済)");
+                            }
+                        } else {
+                            $('code-editor').value = "";
+                            currentCode = await apiGemini({ prompt: `[Constitution]: ${pm.design_constitution}\n[Strategy]: ${strat}\nConstraint: Pure code only.\n【要件】:\n${pm.core_logic}`, endpoint: bestEndpoint, stream: true, think: false, onChunk: c => $('code-editor').value += c });
+                        }
+                    } else {
+                        step('code', 'run', `自己修復中(${bestEndpoint.model}) ${loopCount}/${MAX_LOOPS}...`, `修復ループ ${loopCount} [${bestEndpoint.model}]`);
+                        const patchFc = await apiGemini({ prompt: `【既存コード】\n${currentCode}\n\n【AUエラー指摘】\n${auditAnalysis}\n\nこのエラーを解消するためapply_code_patchで修正せよ。`, endpoint: bestEndpoint, tools: [patchTool] });
+                        if (patchFc?.args.target_content) {
+                            const patched = fuzzyPatch(currentCode, patchFc.args.target_content, patchFc.args.replacement_content);
+                            if (patched) { currentCode = patched; out().log("修復パッチ適用成功"); }
+                            else out().error("修復パッチ適用失敗: 対象コード不一致 (FuzzyMatch適用済)");
+                        }
+                    }
+
+                    cdRes = finalizeCode(currentCode);
+                    
+                    previewErrors = []; 
+                    syncPreview(cdRes, true);
+                    
+                    out().log("プレビュー検証中 (1.5秒)..."); await sleep(1500);
+
+                    if (previewErrors.length > 0) {
+                        out().error(`ランタイムエラー検知: ${previewErrors.length}件`);
+                        $('audit-section').style.display = "block"; step('audit', 'run', 'エラー解析中...');
+                        auditAnalysis = await apiGemini({ prompt: `【JSエラー】\n${previewErrors.join('\n')}\n\nエラー原因と修正箇所を簡潔に分析せよ。`, endpoint: bestEndpoint, maxTokens: PM_MAX_TOKENS });
+                        auditEl.textContent += `\n[Loop ${loopCount}] Error Analysis:\n${auditAnalysis}\n`;
+                        out().log(`監査解析完了。再帰的修復に入ります`); loopCount++;
+                    } else { out().log("ランタイムエラーなし！"); step('code', 'done', '同期完了'); break; }
+                }
+                if (loopCount >= MAX_LOOPS) out().error("修復上限到達。手動で修正してください。");
+            }
+
+            // Step 4: 静的監査（任意）。設定トグルがONのときのみ実行。
+            if ($('staticAuditToggle') && $('staticAuditToggle').checked) {
+                step('audit', 'run', `適合性検証中(${bestEndpoint.model})...`, `Step 4: 静的監査 [${bestEndpoint.model}]`); $('audit-section').style.display = "block";
+                await apiGemini({ prompt: `憲法と成果物のバグや未実装を指摘せよ。\n\n【憲法】\n${pm.design_constitution}\n\n【成果物】\n${cdRes || enRes}`, endpoint: bestEndpoint, stream: true, think: true, maxTokens: PM_MAX_TOKENS, onChunk: c => auditEl.textContent += c });
+                step('audit', 'done', '監査完了');
+            }
+            const details = $('sub-order-details');
+            if (details) {
+                details.style.display = 'block';
+            }
+            step('sys', 'done', '正常終了', "フィードバック完了"); 
+            
+            // 作成完了をわかりやすくするため、プレビューへ同期して自動で「みる」タブに切り替える
+            syncPreview($('code-editor').value);
+            _editorDirty = false;
+            
+            await generateStudioReflection(v.input, $('code-editor').value); // 👈 これを追加！
+            
+            setTimeout(() => {
+                switchTab('preview-full');
+                alert('🎉 開発プロジェクトが正常に完了しました！成果物のプレビューを表示します。');
+            }, 300);
+        } catch(e) { out().error(e.message); step('pm', 'err', 'エラー停止'); step('sys', 'err', `システムエラー: ${e.message}`); }
+        finally { StoreActions.setProcessing(false); }
+    }
+
+    // --- 追加修正（追加オーダー）処理の非同期関数 ---
+    async function runSubOrder() {
+        const currentCode = $('code-editor').value;
+        const subRequest = $('sub-order-input').value.trim();
+        const keys = getKeys();
+        
+        if (!keys.length) {
+            alert('Gemini API Key を入力してください。');
+            switchTab('config');
+            return;
+        }
+        if (!currentCode.trim() || currentCode === "ここに生成されたHTMLコードが入ります。" || currentCode === "生成中...") {
+            alert('修正対象のコードがありません。先にコードを生成してください。');
+            return;
+        }
+        if (!subRequest) {
+            alert('追加の修正指示を入力してください。');
+            return;
+        }
+
+        initAudio();
+        StoreActions.setProcessing(true, 'suborder');
+        out().clear();
+        StoreActions.initBaseAgents();
+        step('sys', 'run', '追加オーダー処理を開始しました。');
+        
+        // エンドポイント確保
+        if (!await ensureEndpoints()) {
+            StoreActions.setProcessing(false);
+            return;
+        }
+
+        const bestEndpoint = availableEndpoints[0];
+        step('pm', 'run', '指示解析中...', `[${bestEndpoint.model}] がコード構成と要望の統合性を精査中...`);
+
+        try {
+            const systemPrompt = `You are a Lead Frontend Engineer. You are given an existing HTML/CSS/JS file and a user request to update it.
+Modify the code to satisfy the request. Ensure the design remains cohesive and beautiful.
+CRITICAL: Do NOT write explanations. Do NOT wrap the code in markdown code blocks (\`\`\`).
+Output ONLY the complete updated, working HTML code. Do NOT output partial snippets. The output must be directly executable.`;
+
+            const userPrompt = `【Existing HTML Code】:\n${currentCode}\n\n【User's Modification Request】:\n${subRequest}\n\nPlease update the HTML and output the complete updated code.`;
+
+            step('pm', 'done', '解析完了');
+            step('code', 'run', '追加修正中...', 'エージェントが既存コードに変更を統合しています...');
+
+            let updatedCode = await apiGemini({
+                prompt: `${systemPrompt}\n\n${userPrompt}`,
+                endpoint: bestEndpoint,
+                stream: true,
+                think: false,
+                onChunk: c => {
+                    const ed = $('code-editor');
+                    if (ed.value === currentCode) ed.value = "";
+                    ed.value += c;
+                }
+            });
+
+            // HTMLタグのみを厳密に抽出してマークダウン解説等を完全に排除
+            finalizeCode(updatedCode, { preview: true, errorCatcher: true });
+            
+            step('code', 'done', '同期完了');
+            step('sys', 'done', '正常終了', "追加修正を反映しました！プレビューを確認してください。");
+            
+            // つくる画面に戻す
+            switchTab('edit');
+            $('sub-order-input').value = ""; // フィールド初期化
+            
+        } catch (e) {
+            out().error(e.message);
+            step('sys', 'err', `システムエラー: ${e.message}`);
+        } finally {
+            StoreActions.setProcessing(false);
+        }
+    }
+
+    function clipCopy(text, msg) { navigator.clipboard.writeText(text.trim()).then(() => alert(msg)).catch(e => alert('コピー失敗: ' + e)); }
+    function copyOutput() {
+        const sw = $('swarm-text')?.textContent, c = $('constitution-text')?.textContent, en = $('en-text')?.textContent, cd = $('code-editor').value;
+        const t = sw ? `=== SWARM OUTPUT ===\n${sw}\n` : [c && `--- [ Design Constitution ] ---\n${c}\n`, en && `--- [ Task / EN Prompt ] ---\n${en}\n`, cd && cd !== "生成中..." && `--- [ Code ] ---\n${cd}\n`].filter(Boolean).join('\n');
+        if(!t.trim()) return alert('コピーする成果物がありません。'); clipCopy(t, 'クリップボードにコピーしました！');
+    }
+    function copyPromptsOnly() {
+        const c = $('constitution-text')?.textContent, en = $('en-text')?.textContent;
+        const t = [c && c !== "思考中..." && `--- [ System Design Constitution ] ---\n${c}\n`, en && `--- [ Task / EN Prompt ] ---\n${en}\n`].filter(Boolean).join('\n');
+        if(!t.trim()) return alert('プロンプトがありません。'); clipCopy(t, 'プロンプトのみコピーしました！');
+    }
+
+// --- studio.md への反省点自動生成 ＆ 追記コミット処理 ---
+
+// 開発完了時に、コードの文脈から「良い点」「改善点」を短く2行で自動生成する関数
+async function generateStudioReflection(userInput, finalCode) {
+    const keys = getKeys();
+    if (!keys.length) return;
+    const ep = availableEndpoints[0] || { model: 'gemini-2.5-flash', key: keys[0] };
+    
+    const prompt = `あなたは優秀な開発アシスタントです。ユーザーの要望と完成したコードを比較し、今回の開発の「良かった点（1行）」と「改善点・反省（1行）」を日本語で短く要約してください。
+    
+    【ユーザーの要望】: ${userInput}
+    【出力形式】: 必ず以下の2行（Markdownの箇条書き形式）のみを出力してください。余計な解説は一切不要です。
+    - **良かった点:** （ここに1行で記述）
+    - **改善点・反省:** （ここに1行で記述）`;
+
+    try {
+        const reflection = await apiGemini({ prompt, endpoint: ep, maxTokens: 512, think: false });
+        $('studio-input').value = reflection.trim();
+    } catch (e) {
+        $('studio-input').value = "- **良かった点:** 開発が正常に完了した。\n- **改善点・反省:** 自動生成に失敗したため手動で記載してください。";
+    }
+}
+
+// GitHub上の html-studio/studio.md に追記（Fetch -> Append -> PUT）する関数
+async function appendToStudioMd() {
+    const token = getToken();
+    const owner = $('gh-owner').value;
+    const repo = $('gh-repo').value;
+    const reflectionText = $('studio-input').value.trim();
+    
+    if (!token || !owner || !repo) {
+        alert('【エラー】GitHub認証情報（設定タブのトークン、Owner、Repo）が不足しています。');
+        return switchTab('config');
+    }
+    if (!reflectionText) {
+        return alert('反省点の内容が空です。');
+    }
+
+    const filename = "studio.md";
+    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filename}`;
+    const h = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' };
+
+    try {
+        initAudio();
+        $('studio-report-btn').disabled = true;
+        $('studio-report-btn').textContent = "⏳ studio.md に追記中...";
+
+        let sha = null;
+        let currentContent = "";
+
+        // 1. 既存の studio.md を取得（存在しなければ新規作成として扱う）
+        const g = await fetch(url, { headers: h });
+        if (g.ok) {
+            const resData = await g.json();
+            sha = resData.sha;
+            // Base64をデコード（日本語対応のため一度デコード処理を通す）
+            currentContent = decodeURIComponent(escape(atob(resData.content)));
+        } else if (g.status !== 404) {
+            throw new Error(`ファイル取得エラー: ${g.status}`);
+        }
+
+        // 2. 指定されたフォーマットに従って末尾に追記文言を組み立て
+        const today = new Date().toISOString().split('T')[0];
+        const appendText = `\n\n### 📅 開発ログ (${today})\n${reflectionText}`;
+        const updatedContent = currentContent ? currentContent + appendText : `# Studio Reflection Logs${appendText}`;
+
+        // 3. Base64エンコードしてGitHub API経由でコミット（PUT）
+        const encoded = btoa(unescape(encodeURIComponent(updatedContent)));
+        const body = { 
+            message: `📝 studio.md に反省点を追記 (via HTML STUDIO)`, 
+            content: encoded 
+        };
+        if (sha) body.sha = sha;
+
+        const p = await fetch(url, { method: 'PUT', headers: h, body: JSON.stringify(body) });
+        if (p.ok) {
+            alert(`🎉 html-studio/studio.md への反省点の追記コミットが成功しました！`);
+            $('studio-input').value = ""; // 送信したらクリア
+        } else {
+            alert(`【エラー】保存に失敗しました。\n理由: ${(await p.json()).message}`);
+        }
+    } catch (e) {
+        alert(`【通信エラー】${e.message}`);
+    } finally {
+        $('studio-report-btn').disabled = false;
+        $('studio-report-btn').textContent = "📝 studio.md に反省点を追記保存";
+    }
+}
+
+// ドキュメント読み込み時のイベントバインド（既存の DOMContentLoaded 内に追加するか、独立して記載）
+document.addEventListener('DOMContentLoaded', () => {
+    const sBtn = $('studio-report-btn');
+    if (sBtn) sBtn.addEventListener('click', appendToStudioMd);
+    
+    // ヘッダー開閉トグルを有効化
+    const h = $('studio-header'), d = $('studio-details');
+    if (h && d) {
+        h.setAttribute('role', 'button');
+        h.addEventListener('click', () => {
+            const isHidden = d.style.display === 'none';
+            d.style.display = isHidden ? 'block' : 'none';
+        });
+    }
+});
+</script>
+</body>
+</html>
