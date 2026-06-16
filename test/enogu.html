@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>カロリィカルク - AIカロリー管理アプリ</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
+    
+    body {
+      font-family: 'Outfit', 'Noto Sans JP', sans-serif;
+      background-color: #f3f4f6;
+    }
+
+    /* Custom scrollbar for history list */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+
+    /* Scanning animation */
+    @keyframes scan {
+      0% { top: 0%; }
+      50% { top: 100%; }
+      100% { top: 0%; }
+    }
+    .scanner-line {
+      animation: scan 2s linear infinite;
+    }
+
+    /* Circular Progress Ring */
+    .progress-ring__circle {
+      transition: stroke-dashoffset 0.35s;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+    }
+  </style>
+</head>
+<body class="flex justify-center items-center min-h-screen bg-slate-900 p-0 sm:p-4">
+
+  <!-- Mobile Device Wrapper -->
+  <div class="w-full max-w-md bg-white sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col h-screen sm:h-[850px] relative border border-slate-100">
+    
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-6 py-4 flex justify-between items-center shadow-md shrink-0">
+      <div class="flex items-center space-x-2">
+        <div class="bg-white/20 p-1.5 rounded-lg backdrop-blur-sm">
+          <i data-lucide="flame" class="w-6 h-6 text-amber-300 fill-amber-300"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-wider">カロリィカルク</h1>
+          <p class="text-[10px] text-emerald-100 tracking-widest">CALORIE CALC AI</p>
+        </div>
+      </div>
+      <button onclick="openSettings()" class="p-2 hover:bg-white/10 rounded-full transition-colors">
+        <i data-lucide="settings" class="w-5 h-5"></i>
+      </button>
+    </header>
+
+    <!-- Main Content Area (Scrollable) -->
+    <main class="flex-1 overflow-y-auto custom-scrollbar pb-24 bg-slate-50">
+      
+      <!-- TAB 1: DASHBOARD -->
+      <div id="tab-dashboard" class="p-5 space-y-6">
+        <!-- Today's Summary Card -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col items-center">
+          <h2 class="text-sm font-bold text-slate-500 mb-4 self-start flex items-center gap-1">
+            <i data-lucide="calendar" class="w-4 h-4 text-emerald-500"></i> 本日の摂取カロリー
+          </h2>
+          
+          <!-- Circular Progress -->
+          <div class="relative flex items-center justify-center mb-4">
+            <svg class="w-40 h-40">
+              <circle class="text-slate-100" stroke-width="10" stroke="currentColor" fill="transparent" r="70" cx="80" cy="80"/>
+              <circle class="text-emerald-500 progress-ring__circle" id="progress-circle" stroke-width="10" stroke-dasharray="439.8" stroke-dashoffset="439.8" stroke-linecap="round" stroke="currentColor" fill="transparent" r="70" cx="80" cy="80"/>
+            </svg>
+            <div class="absolute text-center">
+              <span id="today-calories" class="text-3xl font-extrabold text-slate-800">0</span>
+              <span class="text-xs text-slate-400 block">/ <span id="target-calories-display">2000</span> kcal</span>
+            </div>
+          </div>
+
+          <!-- Quick Stats Grid -->
+          <div class="grid grid-cols-3 gap-4 w-full text-center border-t border-slate-100 pt-4">
+            <div>
+              <span class="text-xs text-slate-400 block">目標</span>
+              <span id="stat-target" class="text-sm font-bold text-slate-700">2000 kcal</span>
+            </div>
+            <div class="border-x border-slate-100">
+              <span class="text-xs text-slate-400 block">摂取済</span>
+              <span id="stat-consumed" class="text-sm font-bold text-emerald-600">0 kcal</span>
+            </div>
+            <div>
+              <span class="text-xs text-slate-400 block">残り</span>
+              <span id="stat-remaining" class="text-sm font-bold text-amber-500">2000 kcal</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- PFC Balance Card -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+          <h3 class="text-sm font-bold text-slate-500 mb-4 flex items-center gap-1">
+            <i data-lucide="pie-chart" class="w-4 h-4 text-emerald-500"></i> PFCバランス (目安)
+          </h3>
+          <div class="space-y-3">
+            <!-- Protein -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="font-medium text-slate-600">たんぱく質 (P)</span>
+                <span class="text-slate-500"><span id="pfc-p-val">0</span>g / 60g</span>
+              </div>
+              <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                <div id="pfc-p-bar" class="bg-blue-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+              </div>
+            </div>
+            <!-- Fat -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="font-medium text-slate-600">脂質 (F)</span>
+                <span class="text-slate-500"><span id="pfc-f-val">0</span>g / 55g</span>
+              </div>
+              <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                <div id="pfc-f-bar" class="bg-amber-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+              </div>
+            </div>
+            <!-- Carbs -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="font-medium text-slate-600">炭水化物 (C)</span>
+                <span class="text-slate-500"><span id="pfc-c-val">0</span>g / 250g</span>
+              </div>
+              <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                <div id="pfc-c-bar" class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Weekly Chart Card -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+          <h3 class="text-sm font-bold text-slate-500 mb-4 flex items-center gap-1">
+            <i data-lucide="trending-up" class="w-4 h-4 text-emerald-500"></i> 今週の推移
+          </h3>
+          <div class="h-48 w-full">
+            <canvas id="weeklyChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: ADD LOG -->
+      <div id="tab-add" class="p-5 space-y-6 hidden">
+        <!-- Input Method Selector -->
+        <div class="flex bg-slate-200/60 p-1 rounded-xl">
+          <button onclick="setInputMethod('camera')" id="btn-method-camera" class="flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 bg-white text-slate-800 shadow-sm">
+            <i data-lucide="camera" class="w-4 h-4"></i> カメラで撮影
+          </button>
+          <button onclick="setInputMethod('text')" id="btn-method-text" class="flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 text-slate-500 hover:text-slate-800">
+            <i data-lucide="text-cursor-input" class="w-4 h-4"></i> テキスト入力
+          </button>
+        </div>
+
+        <!-- Camera Input Section -->
+        <div id="section-camera" class="space-y-4">
+          <div class="relative bg-slate-950 rounded-2xl overflow-hidden aspect-square flex flex-col items-center justify-center border border-slate-800 shadow-inner">
+            <!-- Live Video Stream -->
+            <video id="video" class="w-full h-full object-cover hidden" autoplay playsinline></video>
+            <!-- Captured Image Preview -->
+            <img id="image-preview" class="w-full h-full object-cover hidden" alt="Captured food">
+            
+            <!-- Camera Placeholder / Upload Trigger -->
+            <div id="camera-placeholder" class="text-center p-6 space-y-3 z-10">
+              <div class="w-16 h-16 bg-slate-800/80 rounded-full flex items-center justify-center mx-auto text-emerald-400 border border-slate-700">
+                <i data-lucide="image" class="w-8 h-8"></i>
+              </div>
+              <p class="text-sm text-slate-400">写真を撮影するか、ライブラリから選択</p>
+              <label class="inline-block bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded-full cursor-pointer transition-colors shadow-md">
+                ファイルを選択
+                <input type="file" id="file-input" accept="image/*" class="hidden" onchange="handleFileSelect(event)">
+              </label>
+            </div>
+
+            <!-- Scanning Overlay -->
+            <div id="scanning-overlay" class="absolute inset-0 bg-emerald-950/40 hidden z-20">
+              <div class="absolute w-full h-1 bg-emerald-400 shadow-[0_0_15px_#34c759] scanner-line"></div>
+              <div class="absolute inset-0 flex items-center justify-center">
+                <div class="bg-slate-900/80 text-white text-xs font-bold px-4 py-2 rounded-full flex items-center gap-2 backdrop-blur-sm border border-emerald-500/30">
+                  <svg class="animate-spin h-4 w-4 text-emerald-400" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  AIが食事を解析中...
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Camera Controls -->
+          <div class="flex justify-center gap-4">
+            <button id="btn-start-camera" onclick="initCamera()" class="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 transition-colors">
+              <i data-lucide="aperture" class="w-4 h-4"></i> カメラを起動
+            </button>
+            <button id="btn-capture" onclick="capturePhoto()" class="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 transition-colors hidden">
+              <i data-lucide="camera" class="w-4 h-4"></i> シャッターを切る
+            </button>
+            <button id="btn-reset-photo" onclick="resetPhoto()" class="bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 transition-colors hidden">
+              <i data-lucide="rotate-ccw" class="w-4 h-4"></i> 撮り直す
+            </button>
+          </div>
+        </div>
+
+        <!-- Text Input Section -->
+        <div id="section-text" class="space-y-4 hidden">
+          <div class="space-y-2">
+            <label class="text-xs font-bold text-slate-500 block">食べたものを入力してください</label>
+            <textarea id="text-food-input" rows="3" class="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none text-sm text-slate-700 placeholder-slate-400 resize-none" placeholder="例: カツカレーとミニサラダ、ウーロン茶"></textarea>
+          </div>
+          
+          <!-- Quick Suggestions -->
+          <div class="space-y-2">
+            <span class="text-[11px] font-bold text-slate-400 block">人気のキーワード</span>
+            <div class="flex flex-wrap gap-1.5">
+              <button onclick="applySuggestion('ラーメン')" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs px-3 py-1.5 rounded-full transition-colors">🍜 ラーメン</button>
+              <button onclick="applySuggestion('牛丼')" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs px-3 py-1.5 rounded-full transition-colors">🍚 牛丼</button>
+              <button onclick="applySuggestion('アボカドトースト')" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs px-3 py-1.5 rounded-full transition-colors">🥑 アボカドトースト</button>
+              <button onclick="applySuggestion('チキンサラダ')" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs px-3 py-1.5 rounded-full transition-colors">🥗 チキンサラダ</button>
+              <button onclick="applySuggestion('マルゲリータピザ')" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs px-3 py-1.5 rounded-full transition-colors">🍕 ピザ</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Button -->
+        <button id="btn-analyze" onclick="startAIAnalysis()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2">
+          <i data-lucide="sparkles" class="w-5 h-5 text-amber-300 fill-amber-300"></i> AIカロリー解析を実行
+        </button>
+
+        <!-- AI Result Card -->
+        <div id="ai-result-card" class="bg-white rounded-2xl p-5 shadow-md border border-emerald-100 space-y-4 hidden">
+          <div class="flex justify-between items-start border-b border-slate-100 pb-3">
+            <div>
+              <span class="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full">AI解析結果</span>
+              <h4 id="result-food-name" class="text-lg font-bold text-slate-800 mt-1">カツカレー</h4>
+            </div>
+            <div class="text-right">
+              <span id="result-calories" class="text-2xl font-extrabold text-emerald-600">850</span>
+              <span class="text-xs text-slate-400"> kcal</span>
+            </div>
+          </div>
+
+          <!-- Macros Breakdown -->
+          <div class="grid grid-cols-3 gap-2 text-center bg-slate-50 p-3 rounded-xl">
+            <div>
+              <span class="text-[10px] text-slate-400 block">たんぱく質 (P)</span>
+              <span id="result-p" class="text-sm font-bold text-slate-700">22g</span>
+            </div>
+            <div class="border-x border-slate-200">
+              <span class="text-[10px] text-slate-400 block">脂質 (F)</span>
+              <span id="result-f" class="text-sm font-bold text-slate-700">28g</span>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-400 block">炭水化物 (C)</span>
+              <span id="result-c" class="text-sm font-bold text-slate-700">110g</span>
+            </div>
+          </div>
+
+          <!-- Save Button -->
+          <button onclick="saveAnalyzedLog()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
+            <i data-lucide="check-circle" class="w-5 h-5"></i> この内容で記録する
+          </button>
+        </div>
+      </div>
+
+      <!-- TAB 3: HISTORY -->
+      <div id="tab-history" class="p-5 space-y-4 hidden">
+        <div class="flex justify-between items-center">
+          <h3 class="text-sm font-bold text-slate-500 flex items-center gap-1">
+            <i data-lucide="history" class="w-4 h-4 text-emerald-500"></i> 履歴一覧
+          </h3>
+          <button onclick="clearAllLogs()" class="text-xs text-rose-500 hover:text-rose-600 font-bold flex items-center gap-1">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> 全て削除
+          </button>
+        </div>
+
+        <!-- History List Container -->
+        <div id="history-list" class="space-y-3">
+          <!-- Dynamic items will be injected here -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="history-empty" class="text-center py-12 space-y-3 hidden">
+          <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
+            <i data-lucide="clipboard-list" class="w-8 h-8"></i>
+          </div>
+          <p class="text-sm text-slate-500">まだ記録がありません。<br>食事を登録してみましょう！</p>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Settings Modal (Overlay) -->
+    <div id="settings-modal" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end justify-center hidden transition-opacity duration-300">
+      <div class="bg-white w-full rounded-t-3xl p-6 space-y-6 shadow-2xl transform translate-y-0 transition-transform duration-300">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-4">
+          <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <i data-lucide="sliders" class="w-5 h-5 text-emerald-500"></i> 設定
+          </h3>
+          <button onclick="closeSettings()" class="p-1 hover:bg-slate-100 rounded-full transition-colors">
+            <i data-lucide="x" class="w-6 h-6 text-slate-400"></i>
+          </button>
+        </div>
+
+        <!-- Target Calorie Setting -->
+        <div class="space-y-2">
+          <label class="text-sm font-bold text-slate-600 block">1日の目標摂取カロリー (kcal)</label>
+          <div class="flex gap-2">
+            <input type="number" id="input-target-calories" class="flex-1 p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none text-slate-700 font-bold" value="2000">
+            <button onclick="saveSettings()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-6 rounded-xl transition-colors">保存</button>
+          </div>
+        </div>
+
+        <!-- App Info -->
+        <div class="bg-slate-50 p-4 rounded-2xl space-y-2 text-xs text-slate-500">
+          <div class="flex justify-between">
+            <span>アプリバージョン</span>
+            <span class="font-mono">v1.2.0 (AI Multimodal)</span>
+          </div>
+          <div class="flex justify-between">
+            <span>データベース同期</span>
+            <span class="text-emerald-600 font-bold flex items-center gap-1">
+              <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> ローカル保護中
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="absolute bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-100 px-6 py-2 flex justify-around items-center shrink-0 z-40 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
+      <button onclick="switchTab('dashboard')" id="nav-dashboard" class="flex flex-col items-center space-y-1 text-emerald-500 transition-colors py-1">
+        <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+        <span class="text-[10px] font-bold">ダッシュボード</span>
+      </button>
+      <button onclick="switchTab('add')" id="nav-add" class="flex flex-col items-center space-y-1 text-slate-400 hover:text-slate-600 transition-colors py-1">
+        <i data-lucide="plus-circle" class="w-5 h-5"></i>
+        <span class="text-[10px] font-bold">記録する</span>
+      </button>
+      <button onclick="switchTab('history')" id="nav-history" class="flex flex-col items-center space-y-1 text-slate-400 hover:text-slate-600 transition-colors py-1">
+        <i data-lucide="history" class="w-5 h-5"></i>
+        <span class="text-[10px] font-bold">履歴</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- Hidden Canvas for capturing photo frames -->
+  <canvas id="canvas" class="hidden"></canvas>
+
+  <script>
+    // --- STATE MANAGEMENT ---
+    let logs = JSON.parse(localStorage.getItem('calorie_logs')) || [];
+    let targetCalories = parseInt(localStorage.getItem('target_calories')) || 2000;
+    let currentTab = 'dashboard';
+    let currentInputMethod = 'camera';
+    let stream = null;
+    let capturedImageBase64 = null;
+    let currentAnalysisResult = null;
+    let weeklyChartInstance = null;
+
+    // --- FOOD DICTIONARY FOR AI SIMULATION ---
+    const foodDictionary = {
+      'ラーメン': { name: '醤油ラーメン', calories: 680, p: 22, f: 18, c: 95 },
+      'カレー': { name: 'カツカレー', calories: 850, p: 24, f: 32, c: 115 },
+      'カレーライス': { name: 'ビーフカレー', calories: 750, p: 18, f: 22, c: 110 },
+      '牛丼': { name: '牛丼 (並盛)', calories: 650, p: 20, f: 21, c: 92 },
+      '寿司': { name: '握り寿司盛り合わせ', calories: 550, p: 24, f: 6, c: 98 },
+      'サラダ': { name: 'チキンシーザーサラダ', calories: 280, p: 18, f: 18, c: 12 },
+      'チキンサラダ': { name: '蒸し鶏のグリーンサラダ', calories: 180, p: 22, f: 6, c: 8 },
+      'ハンバーガー': { name: 'チーズバーガー', calories: 450, p: 22, f: 25, c: 38 },
+      'ピザ': { name: 'マルゲリータピザ (1/2)', calories: 580, p: 20, f: 22, c: 75 },
+      'マルゲリータピザ': { name: 'マルゲリータピザ (1/2)', calories: 580, p: 20, f: 22, c: 75 },
+      'ステーキ': { name: 'サーロインステーキ (200g)', calories: 620, p: 42, f: 48, c: 2 },
+      'パスタ': { name: 'カルボナーラパスタ', calories: 740, p: 22, f: 28, c: 88 },
+      'おにぎり': { name: '鮭おにぎり', calories: 180, p: 4, f: 1, c: 38 },
+      '唐揚げ': { name: '鶏の唐揚げ (4個)', calories: 320, p: 18, f: 22, c: 10 },
+      'ビール': { name: '生ビール (中ジョッキ)', calories: 150, p: 1, f: 0, c: 12 },
+      'コーヒー': { name: 'ブラックコーヒー', calories: 8, p: 0, f: 0, c: 1.5 },
+      'アボカドトースト': { name: 'アボカドエッグトースト', calories: 380, p: 12, f: 22, c: 34 },
+      'オムライス': { name: 'ふわとろオムライス', calories: 710, p: 18, f: 20, c: 98 },
+      '餃子': { name: '焼き餃子 (6個)', calories: 290, p: 10, f: 16, c: 24 },
+      'うどん': { name: 'きつねうどん', calories: 420, p: 14, f: 6, c: 74 },
+      'そば': { name: '天ぷらそば', calories: 480, p: 16, f: 12, c: 72 }
+    };
+
+    // --- INITIALIZATION ---
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      updateDashboard();
+      initWeeklyChart();
+      
+      // Set initial target calorie input value
+      document.getElementById('input-target-calories').value = targetCalories;
+      document.getElementById('target-calories-display').textContent = targetCalories;
+    });
+
+    // --- TAB SWITCHING ---
+    function switchTab(tabId) {
+      currentTab = tabId;
+      
+      // Hide all tabs
+      document.getElementById('tab-dashboard').classList.add('hidden');
+      document.getElementById('tab-add').classList.add('hidden');
+      document.getElementById('tab-history').classList.add('hidden');
+      
+      // Show active tab
+      document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+      
+      // Update Nav Bar styling
+      const navs = ['dashboard', 'add', 'history'];
+      navs.forEach(nav => {
+        const btn = document.getElementById(`nav-${nav}`);
+        if (nav === tabId) {
+          btn.classList.remove('text-slate-400', 'hover:text-slate-600');
+          btn.classList.add('text-emerald-500');
+        } else {
+          btn.classList.remove('text-emerald-500');
+          btn.classList.add('text-slate-400', 'hover:text-slate-600');
+        }
+      });
+
+      // Stop camera if leaving the add tab
+      if (tabId !== 'add') {
+        stopCamera();
+      }
+
+      // Refresh data if switching to dashboard or history
+      if (tabId === 'dashboard') {
+        updateDashboard();
+      } else if (tabId === 'history') {
+        renderHistory();
+      }
+    }
+
+    // --- SETTINGS MODAL ---
+    function openSettings() {
+      const modal = document.getElementById('settings-modal');
+      modal.classList.remove('hidden');
+    }
+
+    function closeSettings() {
+      const modal = document.getElementById('settings-modal');
+      modal.classList.add('hidden');
+    }
+
+    function saveSettings() {
+      const inputVal = parseInt(document.getElementById('input-target-calories').value);
+      if (inputVal && inputVal > 0) {
+        targetCalories = inputVal;
+        localStorage.setItem('target_calories', targetCalories);
+        document.getElementById('target-calories-display').textContent = targetCalories;
+        updateDashboard();
+        closeSettings();
+      }
+    }
+
+    // --- DASHBOARD LOGIC ---
+    function updateDashboard() {
+      // Filter logs for today
+      const today = new Date().toDateString();
+      const todayLogs = logs.filter(log => new Date(log.date).toDateString() === today);
+      
+      const totalCalories = todayLogs.reduce((sum, log) => sum + log.calories, 0);
+      const totalP = todayLogs.reduce((sum, log) => sum + log.p, 0);
+      const totalF = todayLogs.reduce((sum, log) => sum + log.f, 0);
+      const totalC = todayLogs.reduce((sum, log) => sum + log.c, 0);
+
+      // Update text values
+      document.getElementById('today-calories').textContent = totalCalories;
+      document.getElementById('stat-consumed').textContent = `${totalCalories} kcal`;
+      
+      const remaining = Math.max(0, targetCalories - totalCalories);
+      document.getElementById('stat-remaining').textContent = `${remaining} kcal`;
+      document.getElementById('stat-target').textContent = `${targetCalories} kcal`;
+
+      // Update Circular Progress Ring
+      const circle = document.getElementById('progress-circle');
+      const radius = circle.r.baseVal.value;
+      const circumference = radius * 2 * Math.PI;
+      const percent = Math.min(100, (totalCalories / targetCalories) * 100);
+      const offset = circumference - (percent / 100) * circumference;
+      circle.style.strokeDashoffset = offset;
+
+      // Update PFC Progress Bars (Standard targets: P: 60g, F: 55g, C: 250g)
+      document.getElementById('pfc-p-val').textContent = totalP;
+      document.getElementById('pfc-p-bar').style.width = `${Math.min(100, (totalP / 60) * 100)}%`;
+      
+      document.getElementById('pfc-f-val').textContent = totalF;
+      document.getElementById('pfc-f-bar').style.width = `${Math.min(100, (totalF / 55) * 100)}%`;
+      
+      document.getElementById('pfc-c-val').textContent = totalC;
+      document.getElementById('pfc-c-bar').style.width = `${Math.min(100, (totalC / 250) * 100)}%`;
+
+      // Update Chart
+      updateWeeklyChart();
+    }
+
+    // --- CHART LOGIC ---
+    function initWeeklyChart() {
+      const ctx = document.getElementById('weeklyChart').getContext('2d');
+      
+      // Generate last 7 days labels
+      const labels = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        labels.push(`${d.getMonth() + 1}/${d.getDate()}`);
+      }
+
+      weeklyChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: '摂取カロリー',
+            data: [0, 0, 0, 0, 0, 0, 0],
+            backgroundColor: 'rgba(52, 199, 89, 0.8)',
+            borderColor: 'rgba(52, 199, 89, 1)',
+            borderWidth: 1,
+            borderRadius: 6,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: { color: '#f1f5f9' },
+              ticks: { font: { size: 10 } }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { font: { size: 10 } }
+            }
+          }
+        }
+      });
+    }
+
+    function updateWeeklyChart() {
+      if (!weeklyChartInstance) return;
+
+      const data = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dayString = d.toDateString();
+        
+        const dayLogs = logs.filter(log => new Date(log.date).toDateString() === dayString);
+        const dayTotal = dayLogs.reduce((sum, log) => sum + log.calories, 0);
+        data.push(dayTotal);
+      }
+
+      weeklyChartInstance.data.datasets[0].data = data;
+      weeklyChartInstance.update();
+    }
+
+    // --- ADD LOG LOGIC ---
+    function setInputMethod(method) {
+      currentInputMethod = method;
+      
+      const btnCamera = document.getElementById('btn-method-camera');
+      const btnText = document.getElementById('btn-method-text');
+      const secCamera = document.getElementById('section-camera');
+      const secText = document.getElementById('section-text');
+
+      if (method === 'camera') {
+        btnCamera.className = "flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 bg-white text-slate-800 shadow-sm";
+        btnText.className = "flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 text-slate-500 hover:text-slate-800";
+        secCamera.classList.remove('hidden');
+        secText.classList.add('hidden');
+      } else {
+        btnText.className = "flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 bg-white text-slate-800 shadow-sm";
+        btnCamera.className = "flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 text-slate-500 hover:text-slate-800";
+        secText.classList.remove('hidden');
+        secCamera.classList.add('hidden');
+        stopCamera();
+      }
+    }
+
+    // --- CAMERA & FILE UPLOAD ---
+    async function initCamera() {
+      const video = document.getElementById('video');
+      const placeholder = document.getElementById('camera-placeholder');
+      const btnStart = document.getElementById('btn-start-camera');
+      const btnCapture = document.getElementById('btn-capture');
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+        video.srcObject = stream;
+        video.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+        btnStart.classList.add('hidden');
+        btnCapture.classList.remove('hidden');
+      } catch (err) {
+        alert('カメラの起動に失敗しました。ファイルアップロードをご利用ください。');
+        console.error(err);
+      }
+    }
+
+    function stopCamera() {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
+      const video = document.getElementById('video');
+      if (video) video.classList.add('hidden');
+      
+      document.getElementById('camera-placeholder').classList.remove('hidden');
+      document.getElementById('btn-start-camera').classList.remove('hidden');
+      document.getElementById('btn-capture').classList.add('hidden');
+    }
+
+    function capturePhoto() {
+      const video = document.getElementById('video');
+      const canvas = document.getElementById('canvas');
+      const preview = document.getElementById('image-preview');
+      const ctx = canvas.getContext('2d');
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      capturedImageBase64 = canvas.toDataURL('image/jpeg');
+      preview.src = capturedImageBase64;
+      
+      preview.classList.remove('hidden');
+      video.classList.add('hidden');
+      
+      document.getElementById('btn-capture').classList.add('hidden');
+      document.getElementById('btn-reset-photo').classList.remove('hidden');
+      
+      stopCamera();
+    }
+
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        capturedImageBase64 = e.target.result;
+        const preview = document.getElementById('image-preview');
+        preview.src = capturedImageBase64;
+        preview.classList.remove('hidden');
+        document.getElementById('camera-placeholder').classList.add('hidden');
+        document.getElementById('btn-start-camera').classList.add('hidden');
+        document.getElementById('btn-reset-photo').classList.remove('hidden');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function resetPhoto() {
+      capturedImageBase64 = null;
+      document.getElementById('image-preview').classList.add('hidden');
+      document.getElementById('camera-placeholder').classList.remove('hidden');
+      document.getElementById('btn-start-camera').classList.remove('hidden');
+      document.getElementById('btn-reset-photo').classList.add('hidden');
+      document.getElementById('file-input').value = '';
+    }
+
+    function applySuggestion(text) {
+      document.getElementById('text-food-input').value = text;
+    }
+
+    // --- AI ANALYSIS SIMULATION ---
+    function startAIAnalysis() {
+      let foodQuery = "";
+
+      if (currentInputMethod === 'text') {
+        foodQuery = document.getElementById('text-food-input').value.trim();
+        if (!foodQuery) {
+          alert('食べたものを入力してください。');
+          return;
+        }
+      } else {
+        if (!capturedImageBase64) {
+          alert('写真を撮影するか、ファイルを選択してください。');
+          return;
+        }
+        // For image analysis, we simulate visual recognition by picking a random popular food
+        const keys = Object.keys(foodDictionary);
+        foodQuery = keys[Math.floor(Math.random() * keys.length)];
+      }
+
+      // Show scanning overlay
+      const overlay = document.getElementById('scanning-overlay');
+      overlay.classList.remove('hidden');
+
+      // Simulate network/AI processing delay
+      setTimeout(() => {
+        overlay.classList.add('hidden');
+        performAnalysis(foodQuery);
+      }, 2000);
+    }
+
+    function performAnalysis(query) {
+      // Simple keyword matching in our dictionary
+      let matchedFood = null;
+      
+      for (const key in foodDictionary) {
+        if (query.toLowerCase().includes(key)) {
+          matchedFood = foodDictionary[key];
+          break;
+        }
+      }
+
+      // Fallback if no match is found (generate realistic values based on string length)
+      if (!matchedFood) {
+        const hash = query.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        const generatedCalories = 150 + (hash % 650); // 150 to 800 kcal
+        const generatedP = 5 + (hash % 35); // 5 to 40g
+        const generatedF = 2 + (hash % 28); // 2 to 30g
+        const generatedC = 10 + (hash % 90); // 10 to 100g
+        
+        matchedFood = {
+          name: query,
+          calories: generatedCalories,
+          p: generatedP,
+          f: generatedF,
+          c: generatedC
+        };
+      }
+
+      // Store current result
+      currentAnalysisResult = {
+        ...matchedFood,
+        image: capturedImageBase64 || null
+      };
+
+      // Update Result Card UI
+      document.getElementById('result-food-name').textContent = currentAnalysisResult.name;
+      document.getElementById('result-calories').textContent = currentAnalysisResult.calories;
+      document.getElementById('result-p').textContent = `${currentAnalysisResult.p}g`;
+      document.getElementById('result-f').textContent = `${currentAnalysisResult.f}g`;
+      document.getElementById('result-c').textContent = `${currentAnalysisResult.c}g`;
+
+      // Show Result Card
+      document.getElementById('ai-result-card').classList.remove('hidden');
+      
+      // Scroll to result card
+      document.getElementById('ai-result-card').scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+
+    function saveAnalyzedLog() {
+      if (!currentAnalysisResult) return;
+
+      const newLog = {
+        id: Date.now(),
+        date: new Date().toISOString(),
+        name: currentAnalysisResult.name,
+        calories: currentAnalysisResult.calories,
+        p: currentAnalysisResult.p,
+        f: currentAnalysisResult.f,
+        c: currentAnalysisResult.c,
+        image: currentAnalysisResult.image
+      };
+
+      logs.unshift(newLog);
+      localStorage.setItem('calorie_logs', JSON.stringify(logs));
+
+      // Reset Add Log Form
+      resetPhoto();
+      document.getElementById('text-food-input').value = '';
+      document.getElementById('ai-result-card').classList.add('hidden');
+      currentAnalysisResult = null;
+
+      // Switch to Dashboard and show success
+      switchTab('dashboard');
+    }
+
+    // --- HISTORY LOGIC ---
+    function renderHistory() {
+      const listContainer = document.getElementById('history-list');
+      const emptyState = document.getElementById('history-empty');
+      
+      listContainer.innerHTML = '';
+
+      if (logs.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+
+      // Group logs by date
+      const groups = {};
+      logs.forEach(log => {
+        const dateStr = new Date(log.date).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+        if (!groups[dateStr]) groups[dateStr] = [];
+        groups[dateStr].push(log);
+      });
+
+      for (const dateStr in groups) {
+        // Create Date Header
+        const dateHeader = document.createElement('div');
+        dateHeader.className = "text-xs font-bold text-slate-400 mt-4 mb-2 px-1";
+        dateHeader.textContent = dateStr;
+        listContainer.appendChild(dateHeader);
+
+        // Create Log Cards
+        groups[dateStr].forEach(log => {
+          const card = document.createElement('div');
+          card.className = "bg-white rounded-xl p-3.5 shadow-sm border border-slate-100 flex items-center justify-between gap-3";
+          
+          // Thumbnail
+          const imgHtml = log.image 
+            ? `<img src="${log.image}" class="w-12 h-12 rounded-lg object-cover shrink-0 border border-slate-100">`
+            : `<div class="w-12 h-12 rounded-lg bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0"><i data-lucide="utensils" class="w-5 h-5"></i></div>`;
+
+          card.innerHTML = `
+            <div class="flex items-center gap-3 min-w-0 flex-1">
+              ${imgHtml}
+              <div class="min-w-0">
+                <h4 class="text-sm font-bold text-slate-700 truncate">${log.name}</h4>
+                <div class="flex gap-2 text-[10px] text-slate-400 mt-0.5">
+                  <span>P: ${log.p}g</span>
+                  <span>F: ${log.f}g</span>
+                  <span>C: ${log.c}g</span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="text-right">
+                <span class="text-base font-extrabold text-slate-800">${log.calories}</span>
+                <span class="text-[10px] text-slate-400"> kcal</span>
+              </div>
+              <button onclick="deleteLog(${log.id})" class="p-1.5 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-lg transition-colors">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+          `;
+          listContainer.appendChild(card);
+        });
+      }
+      
+      lucide.createIcons();
+    }
+
+    function deleteLog(id) {
+      if (confirm('この記録を削除しますか？')) {
+        logs = logs.filter(log => log.id !== id);
+        localStorage.setItem('calorie_logs', JSON.stringify(logs));
+        renderHistory();
+      }
+    }
+
+    function clearAllLogs() {
+      if (confirm('すべての記録を削除しますか？この操作は取り消せません。')) {
+        logs = [];
+        localStorage.removeItem('calorie_logs');
+        renderHistory();
+      }
+    }
+  </script>
+</body>
+</html>
