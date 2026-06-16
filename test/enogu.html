@@ -3,878 +3,805 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>カロリィカルク - AIカロリー管理アプリ</title>
+  <title>絵の具コレクション - PaletteKeeper</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&family=Noto+Sans+JP:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
-    
     body {
-      font-family: 'Outfit', 'Noto Sans JP', sans-serif;
-      background-color: #f3f4f6;
+      font-family: 'Noto Sans JP', 'Fredoka', sans-serif;
+      background-color: #fcfbf7;
+      background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+      background-size: 24px 24px;
     }
 
-    /* Custom scrollbar for history list */
-    .custom-scrollbar::-webkit-scrollbar {
-      width: 6px;
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
     }
-    .custom-scrollbar::-webkit-scrollbar-track {
-      background: transparent;
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 10px;
     }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
+    ::-webkit-scrollbar-thumb {
       background: #cbd5e1;
-      border-radius: 3px;
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
     }
 
-    /* Scanning animation */
-    @keyframes scan {
-      0% { top: 0%; }
-      50% { top: 100%; }
-      100% { top: 0%; }
-    }
-    .scanner-line {
-      animation: scan 2s linear infinite;
+    /* Paint Tube Shriveling Animations */
+    .paint-tube-svg {
+      filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.08));
+      transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
-    /* Circular Progress Ring */
-    .progress-ring__circle {
-      transition: stroke-dashoffset 0.35s;
-      transform: rotate(-90deg);
-      transform-origin: 50% 50%;
+    /* Normal State */
+    .tube-top, .tube-middle, .tube-bottom {
+      transform-origin: 50% 170px;
+    }
+
+    /* Shriveled (Low Paint) State */
+    .low-paint .tube-middle {
+      transform: scaleX(0.42) scaleY(0.7) skewX(-14deg) translateX(24px);
+      filter: drop-shadow(-2px 4px 6px rgba(0,0,0,0.12));
+    }
+    .low-paint .tube-top {
+      transform: translateY(48px) translateX(14px) rotate(-14deg);
+    }
+    .low-paint .tube-bottom {
+      transform: scaleX(0.95);
+    }
+
+    /* Color Picker Custom Styling */
+    .color-preview-btn {
+      position: relative;
+      overflow: hidden;
+      border: 3px solid #ffffff;
+      box-shadow: 0 0 0 2px #cbd5e1;
+      transition: all 0.2s ease;
+    }
+    .color-preview-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 0 2px #6366f1;
+    }
+
+    /* Glassmorphism Card */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+    }
+
+    /* Splatter decoration */
+    .splatter {
+      position: absolute;
+      opacity: 0.08;
+      pointer-events: none;
+      z-index: 0;
     }
   </style>
 </head>
-<body class="flex justify-center items-center min-h-screen bg-slate-900 p-0 sm:p-4">
+<body class="min-h-screen text-slate-800 pb-12">
 
-  <!-- Mobile Device Wrapper -->
-  <div class="w-full max-w-md bg-white sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col h-screen sm:h-[850px] relative border border-slate-100">
-    
-    <!-- Header -->
-    <header class="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-6 py-4 flex justify-between items-center shadow-md shrink-0">
-      <div class="flex items-center space-x-2">
-        <div class="bg-white/20 p-1.5 rounded-lg backdrop-blur-sm">
-          <i data-lucide="flame" class="w-6 h-6 text-amber-300 fill-amber-300"></i>
+  <!-- Decorative Splatters -->
+  <svg class="splatter top-12 left-6 w-32 h-32 text-pink-400" viewBox="0 0 100 100" fill="currentColor">
+    <path d="M50,15 C40,10 25,20 30,35 C20,40 10,55 25,65 C20,80 40,90 55,80 C70,90 85,75 80,60 C90,50 85,30 70,25 C75,10 55,5 50,15 Z" />
+  </svg>
+  <svg class="splatter top-1/2 right-8 w-40 h-40 text-blue-400" viewBox="0 0 100 100" fill="currentColor">
+    <path d="M45,20 C35,15 15,30 25,45 C10,55 20,75 35,70 C45,85 70,80 75,65 C90,55 80,35 65,30 C60,15 50,10 45,20 Z" />
+  </svg>
+
+  <!-- Header -->
+  <header class="relative z-10 max-w-7xl mx-auto px-4 pt-8 pb-6">
+    <div class="flex flex-col md:flex-row items-center justify-between gap-4 border-b border-slate-200/80 pb-6">
+      <div class="flex items-center gap-4">
+        <div class="w-14 h-14 bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+          <i class="fa-solid fa-palette text-white text-2xl"></i>
         </div>
         <div>
-          <h1 class="text-xl font-bold tracking-wider">カロリィカルク</h1>
-          <p class="text-[10px] text-emerald-100 tracking-widest">CALORIE CALC AI</p>
+          <h1 class="text-2xl md:text-3xl font-black tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+            PaletteKeeper
+          </h1>
+          <p class="text-xs md:text-sm text-slate-500 font-medium mt-0.5">
+            たくさん買っても大丈夫！お気に入りの絵の具をスマートに管理・記録
+          </p>
         </div>
       </div>
-      <button onclick="openSettings()" class="p-2 hover:bg-white/10 rounded-full transition-colors">
-        <i data-lucide="settings" class="w-5 h-5"></i>
-      </button>
-    </header>
-
-    <!-- Main Content Area (Scrollable) -->
-    <main class="flex-1 overflow-y-auto custom-scrollbar pb-24 bg-slate-50">
       
-      <!-- TAB 1: DASHBOARD -->
-      <div id="tab-dashboard" class="p-5 space-y-6">
-        <!-- Today's Summary Card -->
-        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col items-center">
-          <h2 class="text-sm font-bold text-slate-500 mb-4 self-start flex items-center gap-1">
-            <i data-lucide="calendar" class="w-4 h-4 text-emerald-500"></i> 本日の摂取カロリー
-          </h2>
-          
-          <!-- Circular Progress -->
-          <div class="relative flex items-center justify-center mb-4">
-            <svg class="w-40 h-40">
-              <circle class="text-slate-100" stroke-width="10" stroke="currentColor" fill="transparent" r="70" cx="80" cy="80"/>
-              <circle class="text-emerald-500 progress-ring__circle" id="progress-circle" stroke-width="10" stroke-dasharray="439.8" stroke-dashoffset="439.8" stroke-linecap="round" stroke="currentColor" fill="transparent" r="70" cx="80" cy="80"/>
-            </svg>
-            <div class="absolute text-center">
-              <span id="today-calories" class="text-3xl font-extrabold text-slate-800">0</span>
-              <span class="text-xs text-slate-400 block">/ <span id="target-calories-display">2000</span> kcal</span>
-            </div>
-          </div>
-
-          <!-- Quick Stats Grid -->
-          <div class="grid grid-cols-3 gap-4 w-full text-center border-t border-slate-100 pt-4">
-            <div>
-              <span class="text-xs text-slate-400 block">目標</span>
-              <span id="stat-target" class="text-sm font-bold text-slate-700">2000 kcal</span>
-            </div>
-            <div class="border-x border-slate-100">
-              <span class="text-xs text-slate-400 block">摂取済</span>
-              <span id="stat-consumed" class="text-sm font-bold text-emerald-600">0 kcal</span>
-            </div>
-            <div>
-              <span class="text-xs text-slate-400 block">残り</span>
-              <span id="stat-remaining" class="text-sm font-bold text-amber-500">2000 kcal</span>
-            </div>
-          </div>
+      <!-- Quick Stats -->
+      <div class="flex gap-3 bg-white/80 border border-slate-200/60 rounded-2xl p-2 shadow-sm">
+        <div class="px-4 py-2 text-center">
+          <span class="block text-xs text-slate-400 font-bold">総コレクション</span>
+          <span id="stat-total" class="text-xl font-black text-indigo-600">0</span>
         </div>
-
-        <!-- PFC Balance Card -->
-        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-          <h3 class="text-sm font-bold text-slate-500 mb-4 flex items-center gap-1">
-            <i data-lucide="pie-chart" class="w-4 h-4 text-emerald-500"></i> PFCバランス (目安)
-          </h3>
-          <div class="space-y-3">
-            <!-- Protein -->
-            <div>
-              <div class="flex justify-between text-xs mb-1">
-                <span class="font-medium text-slate-600">たんぱく質 (P)</span>
-                <span class="text-slate-500"><span id="pfc-p-val">0</span>g / 60g</span>
-              </div>
-              <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                <div id="pfc-p-bar" class="bg-blue-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
-              </div>
-            </div>
-            <!-- Fat -->
-            <div>
-              <div class="flex justify-between text-xs mb-1">
-                <span class="font-medium text-slate-600">脂質 (F)</span>
-                <span class="text-slate-500"><span id="pfc-f-val">0</span>g / 55g</span>
-              </div>
-              <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                <div id="pfc-f-bar" class="bg-amber-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
-              </div>
-            </div>
-            <!-- Carbs -->
-            <div>
-              <div class="flex justify-between text-xs mb-1">
-                <span class="font-medium text-slate-600">炭水化物 (C)</span>
-                <span class="text-slate-500"><span id="pfc-c-val">0</span>g / 250g</span>
-              </div>
-              <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                <div id="pfc-c-bar" class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Weekly Chart Card -->
-        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-          <h3 class="text-sm font-bold text-slate-500 mb-4 flex items-center gap-1">
-            <i data-lucide="trending-up" class="w-4 h-4 text-emerald-500"></i> 今週の推移
-          </h3>
-          <div class="h-48 w-full">
-            <canvas id="weeklyChart"></canvas>
-          </div>
-        </div>
-      </div>
-
-      <!-- TAB 2: ADD LOG -->
-      <div id="tab-add" class="p-5 space-y-6 hidden">
-        <!-- Input Method Selector -->
-        <div class="flex bg-slate-200/60 p-1 rounded-xl">
-          <button onclick="setInputMethod('camera')" id="btn-method-camera" class="flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 bg-white text-slate-800 shadow-sm">
-            <i data-lucide="camera" class="w-4 h-4"></i> カメラで撮影
-          </button>
-          <button onclick="setInputMethod('text')" id="btn-method-text" class="flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 text-slate-500 hover:text-slate-800">
-            <i data-lucide="text-cursor-input" class="w-4 h-4"></i> テキスト入力
-          </button>
-        </div>
-
-        <!-- Camera Input Section -->
-        <div id="section-camera" class="space-y-4">
-          <div class="relative bg-slate-950 rounded-2xl overflow-hidden aspect-square flex flex-col items-center justify-center border border-slate-800 shadow-inner">
-            <!-- Live Video Stream -->
-            <video id="video" class="w-full h-full object-cover hidden" autoplay playsinline></video>
-            <!-- Captured Image Preview -->
-            <img id="image-preview" class="w-full h-full object-cover hidden" alt="Captured food">
-            
-            <!-- Camera Placeholder / Upload Trigger -->
-            <div id="camera-placeholder" class="text-center p-6 space-y-3 z-10">
-              <div class="w-16 h-16 bg-slate-800/80 rounded-full flex items-center justify-center mx-auto text-emerald-400 border border-slate-700">
-                <i data-lucide="image" class="w-8 h-8"></i>
-              </div>
-              <p class="text-sm text-slate-400">写真を撮影するか、ライブラリから選択</p>
-              <label class="inline-block bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded-full cursor-pointer transition-colors shadow-md">
-                ファイルを選択
-                <input type="file" id="file-input" accept="image/*" class="hidden" onchange="handleFileSelect(event)">
-              </label>
-            </div>
-
-            <!-- Scanning Overlay -->
-            <div id="scanning-overlay" class="absolute inset-0 bg-emerald-950/40 hidden z-20">
-              <div class="absolute w-full h-1 bg-emerald-400 shadow-[0_0_15px_#34c759] scanner-line"></div>
-              <div class="absolute inset-0 flex items-center justify-center">
-                <div class="bg-slate-900/80 text-white text-xs font-bold px-4 py-2 rounded-full flex items-center gap-2 backdrop-blur-sm border border-emerald-500/30">
-                  <svg class="animate-spin h-4 w-4 text-emerald-400" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  AIが食事を解析中...
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Camera Controls -->
-          <div class="flex justify-center gap-4">
-            <button id="btn-start-camera" onclick="initCamera()" class="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 transition-colors">
-              <i data-lucide="aperture" class="w-4 h-4"></i> カメラを起動
-            </button>
-            <button id="btn-capture" onclick="capturePhoto()" class="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 transition-colors hidden">
-              <i data-lucide="camera" class="w-4 h-4"></i> シャッターを切る
-            </button>
-            <button id="btn-reset-photo" onclick="resetPhoto()" class="bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 transition-colors hidden">
-              <i data-lucide="rotate-ccw" class="w-4 h-4"></i> 撮り直す
-            </button>
-          </div>
-        </div>
-
-        <!-- Text Input Section -->
-        <div id="section-text" class="space-y-4 hidden">
-          <div class="space-y-2">
-            <label class="text-xs font-bold text-slate-500 block">食べたものを入力してください</label>
-            <textarea id="text-food-input" rows="3" class="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none text-sm text-slate-700 placeholder-slate-400 resize-none" placeholder="例: カツカレーとミニサラダ、ウーロン茶"></textarea>
-          </div>
-          
-          <!-- Quick Suggestions -->
-          <div class="space-y-2">
-            <span class="text-[11px] font-bold text-slate-400 block">人気のキーワード</span>
-            <div class="flex flex-wrap gap-1.5">
-              <button onclick="applySuggestion('ラーメン')" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs px-3 py-1.5 rounded-full transition-colors">🍜 ラーメン</button>
-              <button onclick="applySuggestion('牛丼')" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs px-3 py-1.5 rounded-full transition-colors">🍚 牛丼</button>
-              <button onclick="applySuggestion('アボカドトースト')" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs px-3 py-1.5 rounded-full transition-colors">🥑 アボカドトースト</button>
-              <button onclick="applySuggestion('チキンサラダ')" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs px-3 py-1.5 rounded-full transition-colors">🥗 チキンサラダ</button>
-              <button onclick="applySuggestion('マルゲリータピザ')" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs px-3 py-1.5 rounded-full transition-colors">🍕 ピザ</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Action Button -->
-        <button id="btn-analyze" onclick="startAIAnalysis()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2">
-          <i data-lucide="sparkles" class="w-5 h-5 text-amber-300 fill-amber-300"></i> AIカロリー解析を実行
-        </button>
-
-        <!-- AI Result Card -->
-        <div id="ai-result-card" class="bg-white rounded-2xl p-5 shadow-md border border-emerald-100 space-y-4 hidden">
-          <div class="flex justify-between items-start border-b border-slate-100 pb-3">
-            <div>
-              <span class="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full">AI解析結果</span>
-              <h4 id="result-food-name" class="text-lg font-bold text-slate-800 mt-1">カツカレー</h4>
-            </div>
-            <div class="text-right">
-              <span id="result-calories" class="text-2xl font-extrabold text-emerald-600">850</span>
-              <span class="text-xs text-slate-400"> kcal</span>
-            </div>
-          </div>
-
-          <!-- Macros Breakdown -->
-          <div class="grid grid-cols-3 gap-2 text-center bg-slate-50 p-3 rounded-xl">
-            <div>
-              <span class="text-[10px] text-slate-400 block">たんぱく質 (P)</span>
-              <span id="result-p" class="text-sm font-bold text-slate-700">22g</span>
-            </div>
-            <div class="border-x border-slate-200">
-              <span class="text-[10px] text-slate-400 block">脂質 (F)</span>
-              <span id="result-f" class="text-sm font-bold text-slate-700">28g</span>
-            </div>
-            <div>
-              <span class="text-[10px] text-slate-400 block">炭水化物 (C)</span>
-              <span id="result-c" class="text-sm font-bold text-slate-700">110g</span>
-            </div>
-          </div>
-
-          <!-- Save Button -->
-          <button onclick="saveAnalyzedLog()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
-            <i data-lucide="check-circle" class="w-5 h-5"></i> この内容で記録する
-          </button>
-        </div>
-      </div>
-
-      <!-- TAB 3: HISTORY -->
-      <div id="tab-history" class="p-5 space-y-4 hidden">
-        <div class="flex justify-between items-center">
-          <h3 class="text-sm font-bold text-slate-500 flex items-center gap-1">
-            <i data-lucide="history" class="w-4 h-4 text-emerald-500"></i> 履歴一覧
-          </h3>
-          <button onclick="clearAllLogs()" class="text-xs text-rose-500 hover:text-rose-600 font-bold flex items-center gap-1">
-            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> 全て削除
-          </button>
-        </div>
-
-        <!-- History List Container -->
-        <div id="history-list" class="space-y-3">
-          <!-- Dynamic items will be injected here -->
-        </div>
-
-        <!-- Empty State -->
-        <div id="history-empty" class="text-center py-12 space-y-3 hidden">
-          <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
-            <i data-lucide="clipboard-list" class="w-8 h-8"></i>
-          </div>
-          <p class="text-sm text-slate-500">まだ記録がありません。<br>食事を登録してみましょう！</p>
-        </div>
-      </div>
-
-    </main>
-
-    <!-- Settings Modal (Overlay) -->
-    <div id="settings-modal" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end justify-center hidden transition-opacity duration-300">
-      <div class="bg-white w-full rounded-t-3xl p-6 space-y-6 shadow-2xl transform translate-y-0 transition-transform duration-300">
-        <div class="flex justify-between items-center border-b border-slate-100 pb-4">
-          <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-            <i data-lucide="sliders" class="w-5 h-5 text-emerald-500"></i> 設定
-          </h3>
-          <button onclick="closeSettings()" class="p-1 hover:bg-slate-100 rounded-full transition-colors">
-            <i data-lucide="x" class="w-6 h-6 text-slate-400"></i>
-          </button>
-        </div>
-
-        <!-- Target Calorie Setting -->
-        <div class="space-y-2">
-          <label class="text-sm font-bold text-slate-600 block">1日の目標摂取カロリー (kcal)</label>
-          <div class="flex gap-2">
-            <input type="number" id="input-target-calories" class="flex-1 p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none text-slate-700 font-bold" value="2000">
-            <button onclick="saveSettings()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-6 rounded-xl transition-colors">保存</button>
-          </div>
-        </div>
-
-        <!-- App Info -->
-        <div class="bg-slate-50 p-4 rounded-2xl space-y-2 text-xs text-slate-500">
-          <div class="flex justify-between">
-            <span>アプリバージョン</span>
-            <span class="font-mono">v1.2.0 (AI Multimodal)</span>
-          </div>
-          <div class="flex justify-between">
-            <span>データベース同期</span>
-            <span class="text-emerald-600 font-bold flex items-center gap-1">
-              <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> ローカル保護中
-            </span>
-          </div>
+        <div class="w-px bg-slate-200 my-2"></div>
+        <div class="px-4 py-2 text-center">
+          <span class="block text-xs text-slate-400 font-bold">残りわずか</span>
+          <span id="stat-low" class="text-xl font-black text-amber-500">0</span>
         </div>
       </div>
     </div>
+  </header>
 
-    <!-- Bottom Navigation Bar -->
-    <nav class="absolute bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-100 px-6 py-2 flex justify-around items-center shrink-0 z-40 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
-      <button onclick="switchTab('dashboard')" id="nav-dashboard" class="flex flex-col items-center space-y-1 text-emerald-500 transition-colors py-1">
-        <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
-        <span class="text-[10px] font-bold">ダッシュボード</span>
-      </button>
-      <button onclick="switchTab('add')" id="nav-add" class="flex flex-col items-center space-y-1 text-slate-400 hover:text-slate-600 transition-colors py-1">
-        <i data-lucide="plus-circle" class="w-5 h-5"></i>
-        <span class="text-[10px] font-bold">記録する</span>
-      </button>
-      <button onclick="switchTab('history')" id="nav-history" class="flex flex-col items-center space-y-1 text-slate-400 hover:text-slate-600 transition-colors py-1">
-        <i data-lucide="history" class="w-5 h-5"></i>
-        <span class="text-[10px] font-bold">履歴</span>
-      </button>
-    </nav>
+  <!-- Main Content -->
+  <main class="relative z-10 max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-8 mt-6">
+    
+    <!-- Left Column: Add/Edit Form -->
+    <section class="lg:col-span-4">
+      <div class="glass-card rounded-3xl p-6 shadow-xl border border-white/60 sticky top-6">
+        <div class="flex items-center justify-between mb-6">
+          <h2 id="form-title" class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-circle-plus text-indigo-500"></i>
+            絵の具を登録する
+          </h2>
+          <button id="cancel-edit-btn" class="hidden text-xs text-slate-500 hover:text-red-500 font-bold flex items-center gap-1">
+            <i class="fa-solid fa-xmark"></i> キャンセル
+          </button>
+        </div>
 
-  </div>
-
-  <!-- Hidden Canvas for capturing photo frames -->
-  <canvas id="canvas" class="hidden"></canvas>
-
-  <script>
-    // --- STATE MANAGEMENT ---
-    let logs = JSON.parse(localStorage.getItem('calorie_logs')) || [];
-    let targetCalories = parseInt(localStorage.getItem('target_calories')) || 2000;
-    let currentTab = 'dashboard';
-    let currentInputMethod = 'camera';
-    let stream = null;
-    let capturedImageBase64 = null;
-    let currentAnalysisResult = null;
-    let weeklyChartInstance = null;
-
-    // --- FOOD DICTIONARY FOR AI SIMULATION ---
-    const foodDictionary = {
-      'ラーメン': { name: '醤油ラーメン', calories: 680, p: 22, f: 18, c: 95 },
-      'カレー': { name: 'カツカレー', calories: 850, p: 24, f: 32, c: 115 },
-      'カレーライス': { name: 'ビーフカレー', calories: 750, p: 18, f: 22, c: 110 },
-      '牛丼': { name: '牛丼 (並盛)', calories: 650, p: 20, f: 21, c: 92 },
-      '寿司': { name: '握り寿司盛り合わせ', calories: 550, p: 24, f: 6, c: 98 },
-      'サラダ': { name: 'チキンシーザーサラダ', calories: 280, p: 18, f: 18, c: 12 },
-      'チキンサラダ': { name: '蒸し鶏のグリーンサラダ', calories: 180, p: 22, f: 6, c: 8 },
-      'ハンバーガー': { name: 'チーズバーガー', calories: 450, p: 22, f: 25, c: 38 },
-      'ピザ': { name: 'マルゲリータピザ (1/2)', calories: 580, p: 20, f: 22, c: 75 },
-      'マルゲリータピザ': { name: 'マルゲリータピザ (1/2)', calories: 580, p: 20, f: 22, c: 75 },
-      'ステーキ': { name: 'サーロインステーキ (200g)', calories: 620, p: 42, f: 48, c: 2 },
-      'パスタ': { name: 'カルボナーラパスタ', calories: 740, p: 22, f: 28, c: 88 },
-      'おにぎり': { name: '鮭おにぎり', calories: 180, p: 4, f: 1, c: 38 },
-      '唐揚げ': { name: '鶏の唐揚げ (4個)', calories: 320, p: 18, f: 22, c: 10 },
-      'ビール': { name: '生ビール (中ジョッキ)', calories: 150, p: 1, f: 0, c: 12 },
-      'コーヒー': { name: 'ブラックコーヒー', calories: 8, p: 0, f: 0, c: 1.5 },
-      'アボカドトースト': { name: 'アボカドエッグトースト', calories: 380, p: 12, f: 22, c: 34 },
-      'オムライス': { name: 'ふわとろオムライス', calories: 710, p: 18, f: 20, c: 98 },
-      '餃子': { name: '焼き餃子 (6個)', calories: 290, p: 10, f: 16, c: 24 },
-      'うどん': { name: 'きつねうどん', calories: 420, p: 14, f: 6, c: 74 },
-      'そば': { name: '天ぷらそば', calories: 480, p: 16, f: 12, c: 72 }
-    };
-
-    // --- INITIALIZATION ---
-    window.addEventListener('DOMContentLoaded', () => {
-      lucide.createIcons();
-      updateDashboard();
-      initWeeklyChart();
-      
-      // Set initial target calorie input value
-      document.getElementById('input-target-calories').value = targetCalories;
-      document.getElementById('target-calories-display').textContent = targetCalories;
-    });
-
-    // --- TAB SWITCHING ---
-    function switchTab(tabId) {
-      currentTab = tabId;
-      
-      // Hide all tabs
-      document.getElementById('tab-dashboard').classList.add('hidden');
-      document.getElementById('tab-add').classList.add('hidden');
-      document.getElementById('tab-history').classList.add('hidden');
-      
-      // Show active tab
-      document.getElementById(`tab-${tabId}`).classList.remove('hidden');
-      
-      // Update Nav Bar styling
-      const navs = ['dashboard', 'add', 'history'];
-      navs.forEach(nav => {
-        const btn = document.getElementById(`nav-${nav}`);
-        if (nav === tabId) {
-          btn.classList.remove('text-slate-400', 'hover:text-slate-600');
-          btn.classList.add('text-emerald-500');
-        } else {
-          btn.classList.remove('text-emerald-500');
-          btn.classList.add('text-slate-400', 'hover:text-slate-600');
-        }
-      });
-
-      // Stop camera if leaving the add tab
-      if (tabId !== 'add') {
-        stopCamera();
-      }
-
-      // Refresh data if switching to dashboard or history
-      if (tabId === 'dashboard') {
-        updateDashboard();
-      } else if (tabId === 'history') {
-        renderHistory();
-      }
-    }
-
-    // --- SETTINGS MODAL ---
-    function openSettings() {
-      const modal = document.getElementById('settings-modal');
-      modal.classList.remove('hidden');
-    }
-
-    function closeSettings() {
-      const modal = document.getElementById('settings-modal');
-      modal.classList.add('hidden');
-    }
-
-    function saveSettings() {
-      const inputVal = parseInt(document.getElementById('input-target-calories').value);
-      if (inputVal && inputVal > 0) {
-        targetCalories = inputVal;
-        localStorage.setItem('target_calories', targetCalories);
-        document.getElementById('target-calories-display').textContent = targetCalories;
-        updateDashboard();
-        closeSettings();
-      }
-    }
-
-    // --- DASHBOARD LOGIC ---
-    function updateDashboard() {
-      // Filter logs for today
-      const today = new Date().toDateString();
-      const todayLogs = logs.filter(log => new Date(log.date).toDateString() === today);
-      
-      const totalCalories = todayLogs.reduce((sum, log) => sum + log.calories, 0);
-      const totalP = todayLogs.reduce((sum, log) => sum + log.p, 0);
-      const totalF = todayLogs.reduce((sum, log) => sum + log.f, 0);
-      const totalC = todayLogs.reduce((sum, log) => sum + log.c, 0);
-
-      // Update text values
-      document.getElementById('today-calories').textContent = totalCalories;
-      document.getElementById('stat-consumed').textContent = `${totalCalories} kcal`;
-      
-      const remaining = Math.max(0, targetCalories - totalCalories);
-      document.getElementById('stat-remaining').textContent = `${remaining} kcal`;
-      document.getElementById('stat-target').textContent = `${targetCalories} kcal`;
-
-      // Update Circular Progress Ring
-      const circle = document.getElementById('progress-circle');
-      const radius = circle.r.baseVal.value;
-      const circumference = radius * 2 * Math.PI;
-      const percent = Math.min(100, (totalCalories / targetCalories) * 100);
-      const offset = circumference - (percent / 100) * circumference;
-      circle.style.strokeDashoffset = offset;
-
-      // Update PFC Progress Bars (Standard targets: P: 60g, F: 55g, C: 250g)
-      document.getElementById('pfc-p-val').textContent = totalP;
-      document.getElementById('pfc-p-bar').style.width = `${Math.min(100, (totalP / 60) * 100)}%`;
-      
-      document.getElementById('pfc-f-val').textContent = totalF;
-      document.getElementById('pfc-f-bar').style.width = `${Math.min(100, (totalF / 55) * 100)}%`;
-      
-      document.getElementById('pfc-c-val').textContent = totalC;
-      document.getElementById('pfc-c-bar').style.width = `${Math.min(100, (totalC / 250) * 100)}%`;
-
-      // Update Chart
-      updateWeeklyChart();
-    }
-
-    // --- CHART LOGIC ---
-    function initWeeklyChart() {
-      const ctx = document.getElementById('weeklyChart').getContext('2d');
-      
-      // Generate last 7 days labels
-      const labels = [];
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        labels.push(`${d.getMonth() + 1}/${d.getDate()}`);
-      }
-
-      weeklyChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: '摂取カロリー',
-            data: [0, 0, 0, 0, 0, 0, 0],
-            backgroundColor: 'rgba(52, 199, 89, 0.8)',
-            borderColor: 'rgba(52, 199, 89, 1)',
-            borderWidth: 1,
-            borderRadius: 6,
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false }
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              grid: { color: '#f1f5f9' },
-              ticks: { font: { size: 10 } }
-            },
-            x: {
-              grid: { display: false },
-              ticks: { font: { size: 10 } }
-            }
-          }
-        }
-      });
-    }
-
-    function updateWeeklyChart() {
-      if (!weeklyChartInstance) return;
-
-      const data = [];
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const dayString = d.toDateString();
-        
-        const dayLogs = logs.filter(log => new Date(log.date).toDateString() === dayString);
-        const dayTotal = dayLogs.reduce((sum, log) => sum + log.calories, 0);
-        data.push(dayTotal);
-      }
-
-      weeklyChartInstance.data.datasets[0].data = data;
-      weeklyChartInstance.update();
-    }
-
-    // --- ADD LOG LOGIC ---
-    function setInputMethod(method) {
-      currentInputMethod = method;
-      
-      const btnCamera = document.getElementById('btn-method-camera');
-      const btnText = document.getElementById('btn-method-text');
-      const secCamera = document.getElementById('section-camera');
-      const secText = document.getElementById('section-text');
-
-      if (method === 'camera') {
-        btnCamera.className = "flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 bg-white text-slate-800 shadow-sm";
-        btnText.className = "flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 text-slate-500 hover:text-slate-800";
-        secCamera.classList.remove('hidden');
-        secText.classList.add('hidden');
-      } else {
-        btnText.className = "flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 bg-white text-slate-800 shadow-sm";
-        btnCamera.className = "flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 text-slate-500 hover:text-slate-800";
-        secText.classList.remove('hidden');
-        secCamera.classList.add('hidden');
-        stopCamera();
-      }
-    }
-
-    // --- CAMERA & FILE UPLOAD ---
-    async function initCamera() {
-      const video = document.getElementById('video');
-      const placeholder = document.getElementById('camera-placeholder');
-      const btnStart = document.getElementById('btn-start-camera');
-      const btnCapture = document.getElementById('btn-capture');
-
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-        video.srcObject = stream;
-        video.classList.remove('hidden');
-        placeholder.classList.add('hidden');
-        btnStart.classList.add('hidden');
-        btnCapture.classList.remove('hidden');
-      } catch (err) {
-        alert('カメラの起動に失敗しました。ファイルアップロードをご利用ください。');
-        console.error(err);
-      }
-    }
-
-    function stopCamera() {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        stream = null;
-      }
-      const video = document.getElementById('video');
-      if (video) video.classList.add('hidden');
-      
-      document.getElementById('camera-placeholder').classList.remove('hidden');
-      document.getElementById('btn-start-camera').classList.remove('hidden');
-      document.getElementById('btn-capture').classList.add('hidden');
-    }
-
-    function capturePhoto() {
-      const video = document.getElementById('video');
-      const canvas = document.getElementById('canvas');
-      const preview = document.getElementById('image-preview');
-      const ctx = canvas.getContext('2d');
-
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      capturedImageBase64 = canvas.toDataURL('image/jpeg');
-      preview.src = capturedImageBase64;
-      
-      preview.classList.remove('hidden');
-      video.classList.add('hidden');
-      
-      document.getElementById('btn-capture').classList.add('hidden');
-      document.getElementById('btn-reset-photo').classList.remove('hidden');
-      
-      stopCamera();
-    }
-
-    function handleFileSelect(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        capturedImageBase64 = e.target.result;
-        const preview = document.getElementById('image-preview');
-        preview.src = capturedImageBase64;
-        preview.classList.remove('hidden');
-        document.getElementById('camera-placeholder').classList.add('hidden');
-        document.getElementById('btn-start-camera').classList.add('hidden');
-        document.getElementById('btn-reset-photo').classList.remove('hidden');
-      };
-      reader.readAsDataURL(file);
-    }
-
-    function resetPhoto() {
-      capturedImageBase64 = null;
-      document.getElementById('image-preview').classList.add('hidden');
-      document.getElementById('camera-placeholder').classList.remove('hidden');
-      document.getElementById('btn-start-camera').classList.remove('hidden');
-      document.getElementById('btn-reset-photo').classList.add('hidden');
-      document.getElementById('file-input').value = '';
-    }
-
-    function applySuggestion(text) {
-      document.getElementById('text-food-input').value = text;
-    }
-
-    // --- AI ANALYSIS SIMULATION ---
-    function startAIAnalysis() {
-      let foodQuery = "";
-
-      if (currentInputMethod === 'text') {
-        foodQuery = document.getElementById('text-food-input').value.trim();
-        if (!foodQuery) {
-          alert('食べたものを入力してください。');
-          return;
-        }
-      } else {
-        if (!capturedImageBase64) {
-          alert('写真を撮影するか、ファイルを選択してください。');
-          return;
-        }
-        // For image analysis, we simulate visual recognition by picking a random popular food
-        const keys = Object.keys(foodDictionary);
-        foodQuery = keys[Math.floor(Math.random() * keys.length)];
-      }
-
-      // Show scanning overlay
-      const overlay = document.getElementById('scanning-overlay');
-      overlay.classList.remove('hidden');
-
-      // Simulate network/AI processing delay
-      setTimeout(() => {
-        overlay.classList.add('hidden');
-        performAnalysis(foodQuery);
-      }, 2000);
-    }
-
-    function performAnalysis(query) {
-      // Simple keyword matching in our dictionary
-      let matchedFood = null;
-      
-      for (const key in foodDictionary) {
-        if (query.toLowerCase().includes(key)) {
-          matchedFood = foodDictionary[key];
-          break;
-        }
-      }
-
-      // Fallback if no match is found (generate realistic values based on string length)
-      if (!matchedFood) {
-        const hash = query.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        const generatedCalories = 150 + (hash % 650); // 150 to 800 kcal
-        const generatedP = 5 + (hash % 35); // 5 to 40g
-        const generatedF = 2 + (hash % 28); // 2 to 30g
-        const generatedC = 10 + (hash % 90); // 10 to 100g
-        
-        matchedFood = {
-          name: query,
-          calories: generatedCalories,
-          p: generatedP,
-          f: generatedF,
-          c: generatedC
-        };
-      }
-
-      // Store current result
-      currentAnalysisResult = {
-        ...matchedFood,
-        image: capturedImageBase64 || null
-      };
-
-      // Update Result Card UI
-      document.getElementById('result-food-name').textContent = currentAnalysisResult.name;
-      document.getElementById('result-calories').textContent = currentAnalysisResult.calories;
-      document.getElementById('result-p').textContent = `${currentAnalysisResult.p}g`;
-      document.getElementById('result-f').textContent = `${currentAnalysisResult.f}g`;
-      document.getElementById('result-c').textContent = `${currentAnalysisResult.c}g`;
-
-      // Show Result Card
-      document.getElementById('ai-result-card').classList.remove('hidden');
-      
-      // Scroll to result card
-      document.getElementById('ai-result-card').scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }
-
-    function saveAnalyzedLog() {
-      if (!currentAnalysisResult) return;
-
-      const newLog = {
-        id: Date.now(),
-        date: new Date().toISOString(),
-        name: currentAnalysisResult.name,
-        calories: currentAnalysisResult.calories,
-        p: currentAnalysisResult.p,
-        f: currentAnalysisResult.f,
-        c: currentAnalysisResult.c,
-        image: currentAnalysisResult.image
-      };
-
-      logs.unshift(newLog);
-      localStorage.setItem('calorie_logs', JSON.stringify(logs));
-
-      // Reset Add Log Form
-      resetPhoto();
-      document.getElementById('text-food-input').value = '';
-      document.getElementById('ai-result-card').classList.add('hidden');
-      currentAnalysisResult = null;
-
-      // Switch to Dashboard and show success
-      switchTab('dashboard');
-    }
-
-    // --- HISTORY LOGIC ---
-    function renderHistory() {
-      const listContainer = document.getElementById('history-list');
-      const emptyState = document.getElementById('history-empty');
-      
-      listContainer.innerHTML = '';
-
-      if (logs.length === 0) {
-        emptyState.classList.remove('hidden');
-        return;
-      }
-
-      emptyState.classList.add('hidden');
-
-      // Group logs by date
-      const groups = {};
-      logs.forEach(log => {
-        const dateStr = new Date(log.date).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
-        if (!groups[dateStr]) groups[dateStr] = [];
-        groups[dateStr].push(log);
-      });
-
-      for (const dateStr in groups) {
-        // Create Date Header
-        const dateHeader = document.createElement('div');
-        dateHeader.className = "text-xs font-bold text-slate-400 mt-4 mb-2 px-1";
-        dateHeader.textContent = dateStr;
-        listContainer.appendChild(dateHeader);
-
-        // Create Log Cards
-        groups[dateStr].forEach(log => {
-          const card = document.createElement('div');
-          card.className = "bg-white rounded-xl p-3.5 shadow-sm border border-slate-100 flex items-center justify-between gap-3";
+        <!-- Live Preview Area -->
+        <div class="bg-gradient-to-b from-slate-50 to-slate-100/50 rounded-2xl p-4 mb-6 flex flex-col items-center justify-center relative overflow-hidden border border-slate-200/40">
+          <span class="absolute top-3 left-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Live Preview</span>
           
-          // Thumbnail
-          const imgHtml = log.image 
-            ? `<img src="${log.image}" class="w-12 h-12 rounded-lg object-cover shrink-0 border border-slate-100">`
-            : `<div class="w-12 h-12 rounded-lg bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0"><i data-lucide="utensils" class="w-5 h-5"></i></div>`;
+          <!-- Interactive SVG Paint Tube -->
+          <div id="preview-tube-container" class="relative transition-all duration-500">
+            <svg class="paint-tube-svg w-24 h-48" viewBox="0 0 100 200">
+              <!-- Cap & Neck -->
+              <g class="tube-top transition-all duration-500 ease-in-out">
+                <rect x="35" y="10" width="30" height="18" rx="3" fill="#2d3748" />
+                <line x1="40" y1="10" x2="40" y2="28" stroke="#1a202c" stroke-width="1.5" />
+                <line x1="45" y1="10" x2="45" y2="28" stroke="#1a202c" stroke-width="1.5" />
+                <line x1="50" y1="10" x2="50" y2="28" stroke="#1a202c" stroke-width="1.5" />
+                <line x1="55" y1="10" x2="55" y2="28" stroke="#1a202c" stroke-width="1.5" />
+                <line x1="60" y1="10" x2="60" y2="28" stroke="#1a202c" stroke-width="1.5" />
+                <rect x="42" y="28" width="16" height="12" fill="#cbd5e1" />
+                <line x1="42" y1="34" x2="58" y2="34" stroke="#94a3b8" stroke-width="1" />
+              </g>
+              <!-- Squeezable Body -->
+              <g class="tube-middle transition-all duration-500 ease-in-out">
+                <path class="tube-body-path" d="M 25 40 C 25 40, 20 100, 20 170 L 80 170 C 80 100, 75 40, 75 40 Z" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" />
+                <path d="M 25 40 C 25 40, 22 100, 22 170" stroke="#ffffff" stroke-width="3" fill="none" opacity="0.8" />
+                <!-- Color Label (Dynamic Fill) -->
+                <path id="preview-tube-label" class="tube-label-path" d="M 23 65 C 23 65, 21 100, 21 140 L 79 140 C 79 100, 77 65, 77 65 Z" fill="#6366f1" />
+                <path d="M 24 65 C 24 65, 22 100, 22 140" stroke="#ffffff" stroke-width="2" fill="none" opacity="0.4" />
+                <text x="50" y="95" fill="#ffffff" font-size="8" font-weight="bold" text-anchor="middle" letter-spacing="1" opacity="0.9" style="mix-blend-mode: difference;">ARTIST</text>
+                <text x="50" y="115" fill="#ffffff" font-size="10" font-weight="900" text-anchor="middle" letter-spacing="1" opacity="0.9" style="mix-blend-mode: difference;">COLOR</text>
+                <circle cx="50" cy="130" r="4" fill="#ffffff" opacity="0.5" style="mix-blend-mode: difference;" />
+              </g>
+              <!-- Crimped Bottom -->
+              <g class="tube-bottom transition-all duration-500 ease-in-out">
+                <rect x="14" y="170" width="72" height="16" rx="2" fill="#94a3b8" stroke="#64748b" stroke-width="1" />
+                <line x1="20" y1="170" x2="20" y2="186" stroke="#475569" stroke-width="1.5" />
+                <line x1="26" y1="170" x2="26" y2="186" stroke="#475569" stroke-width="1.5" />
+                <line x1="32" y1="170" x2="32" y2="186" stroke="#475569" stroke-width="1.5" />
+                <line x1="38" y1="170" x2="38" y2="186" stroke="#475569" stroke-width="1.5" />
+                <line x1="44" y1="170" x2="44" y2="186" stroke="#475569" stroke-width="1.5" />
+                <line x1="50" y1="170" x2="50" y2="186" stroke="#475569" stroke-width="1.5" />
+                <line x1="56" y1="170" x2="56" y2="186" stroke="#475569" stroke-width="1.5" />
+                <line x1="62" y1="170" x2="62" y2="186" stroke="#475569" stroke-width="1.5" />
+                <line x1="68" y1="170" x2="68" y2="186" stroke="#475569" stroke-width="1.5" />
+                <line x1="74" y1="170" x2="74" y2="186" stroke="#475569" stroke-width="1.5" />
+                <line x1="80" y1="170" x2="80" y2="186" stroke="#475569" stroke-width="1.5" />
+              </g>
+            </svg>
+          </div>
+        </div>
 
-          card.innerHTML = `
-            <div class="flex items-center gap-3 min-w-0 flex-1">
-              ${imgHtml}
-              <div class="min-w-0">
-                <h4 class="text-sm font-bold text-slate-700 truncate">${log.name}</h4>
-                <div class="flex gap-2 text-[10px] text-slate-400 mt-0.5">
-                  <span>P: ${log.p}g</span>
-                  <span>F: ${log.f}g</span>
-                  <span>C: ${log.c}g</span>
+        <!-- Form Fields -->
+        <form id="paint-form" class="space-y-4">
+          <input type="hidden" id="paint-id">
+          
+          <!-- Manufacturer -->
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1.5">メーカー</label>
+            <input type="text" id="manufacturer" required placeholder="例: ホルベイン, リキテックス" 
+              class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition text-sm">
+            
+            <!-- Quick Select Tags -->
+            <div class="flex flex-wrap gap-1.5 mt-2">
+              <button type="button" onclick="setManufacturer('ホルベイン')" class="text-[11px] px-2 py-1 bg-slate-100 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 rounded-lg transition font-medium">ホルベイン</button>
+              <button type="button" onclick="setManufacturer('リキテックス')" class="text-[11px] px-2 py-1 bg-slate-100 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 rounded-lg transition font-medium">リキテックス</button>
+              <button type="button" onclick="setManufacturer('ターナー')" class="text-[11px] px-2 py-1 bg-slate-100 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 rounded-lg transition font-medium">ターナー</button>
+              <button type="button" onclick="setManufacturer('W&N')" class="text-[11px] px-2 py-1 bg-slate-100 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 rounded-lg transition font-medium">W&N</button>
+            </div>
+          </div>
+
+          <!-- Color Name -->
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1.5">色名</label>
+            <input type="text" id="color-name" required placeholder="例: コバルトブルー, 茜色" 
+              class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition text-sm">
+          </div>
+
+          <!-- Color Picker & Hex -->
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1.5">カラーチャートの色</label>
+            <div class="flex items-center gap-3">
+              <button type="button" id="color-picker-trigger" class="color-preview-btn w-10 h-10 rounded-full bg-indigo-500 flex-shrink-0 cursor-pointer"></button>
+              <input type="color" id="color-picker" value="#6366f1" class="sr-only">
+              <input type="text" id="color-hex" placeholder="#6366f1" 
+                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition text-sm font-mono">
+            </div>
+          </div>
+
+          <!-- Photo Upload -->
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1.5">写真 (任意)</label>
+            <div class="relative border-2 border-dashed border-slate-200 hover:border-indigo-500/50 rounded-xl p-4 transition text-center cursor-pointer bg-white/50">
+              <input type="file" id="paint-photo" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+              <div id="photo-placeholder" class="space-y-1">
+                <i class="fa-regular fa-image text-slate-400 text-xl"></i>
+                <p class="text-xs text-slate-500 font-medium">クリックして写真をアップロード</p>
+              </div>
+              <div id="photo-preview-container" class="hidden flex items-center justify-center gap-3">
+                <img id="photo-preview" src="" alt="Preview" class="w-12 h-12 object-cover rounded-lg border border-slate-200">
+                <div class="text-left">
+                  <p class="text-xs font-bold text-slate-700 truncate max-w-[180px]" id="photo-filename">image.jpg</p>
+                  <button type="button" id="remove-photo-btn" class="text-[10px] text-red-500 hover:underline font-bold">削除する</button>
                 </div>
               </div>
             </div>
-            <div class="flex items-center gap-3">
-              <div class="text-right">
-                <span class="text-base font-extrabold text-slate-800">${log.calories}</span>
-                <span class="text-[10px] text-slate-400"> kcal</span>
+          </div>
+
+          <!-- Running Low Toggle -->
+          <div class="bg-amber-50/50 border border-amber-100 rounded-xl p-3.5 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center text-amber-600">
+                <i class="fa-solid fa-compress"></i>
               </div>
-              <button onclick="deleteLog(${log.id})" class="p-1.5 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-lg transition-colors">
-                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              <div>
+                <span class="block text-xs font-bold text-slate-700">残り少ない？</span>
+                <span class="text-[10px] text-slate-500">チェックするとチューブが萎みます</span>
+              </div>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="is-running-low" class="sr-only peer">
+              <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+            </label>
+          </div>
+
+          <!-- Submit Button -->
+          <button type="submit" id="submit-btn" class="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 transition duration-200 flex items-center justify-center gap-2 text-sm">
+            <i class="fa-solid fa-circle-check"></i>
+            <span>絵の具を登録する</span>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Right Column: Paint List & Filters -->
+    <section class="lg:col-span-8 space-y-6">
+      
+      <!-- Search, Filter & Sort Bar -->
+      <div class="glass-card rounded-3xl p-4 shadow-md border border-white/60 flex flex-col md:flex-row gap-4 items-center justify-between">
+        <!-- Search -->
+        <div class="relative w-full md:w-72">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+          <input type="text" id="search-input" placeholder="メーカー名、色名で検索..." 
+            class="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition text-sm">
+        </div>
+
+        <!-- Filters & Sort -->
+        <div class="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
+          <!-- Filter Buttons -->
+          <div class="flex bg-slate-100 p-1 rounded-xl text-xs font-bold">
+            <button onclick="setFilter('all')" id="filter-all" class="px-3 py-1.5 rounded-lg bg-white text-slate-800 shadow-sm transition">すべて</button>
+            <button onclick="setFilter('low')" id="filter-low" class="px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 transition">残りわずか</button>
+            <button onclick="setFilter('full')" id="filter-full" class="px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 transition">たっぷり</button>
+          </div>
+
+          <!-- Sort Dropdown -->
+          <div class="relative">
+            <select id="sort-select" class="appearance-none bg-white border border-slate-200 rounded-xl pl-4 pr-8 py-2 text-xs font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer">
+              <option value="newest">登録が新しい順</option>
+              <option value="manufacturer">メーカー順</option>
+              <option value="colorName">色名順</option>
+            </select>
+            <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] pointer-events-none"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Color Palette Quick View -->
+      <div class="glass-card rounded-3xl p-5 shadow-md border border-white/60">
+        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+          <i class="fa-solid fa-palette"></i> マイカラーパレット
+        </h3>
+        <div id="color-palette-container" class="flex flex-wrap gap-2">
+          <!-- Dynamic Color Swatches will be injected here -->
+        </div>
+      </div>
+
+      <!-- Paint Grid -->
+      <div id="paint-list" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+        <!-- Paint Cards will be dynamically injected here -->
+      </div>
+
+      <!-- Empty State -->
+      <div id="empty-state" class="hidden flex flex-col items-center justify-center py-16 text-center">
+        <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-4">
+          <i class="fa-solid fa-box-open text-3xl"></i>
+        </div>
+        <h3 class="text-lg font-bold text-slate-700">登録された絵の具がありません</h3>
+        <p class="text-sm text-slate-400 mt-1 max-w-xs">左側のフォームから、お持ちの絵の具を登録してみましょう！</p>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="max-w-7xl mx-auto px-4 mt-16 pt-8 border-t border-slate-200/60 text-center text-xs text-slate-400 font-medium">
+    <p>&copy; 2025 PaletteKeeper. All rights reserved.</p>
+  </footer>
+
+  <!-- App Logic -->
+  <script>
+    // Paint Class
+    class Paint {
+      constructor(id, manufacturer, colorName, hexColorCode, photoUrl = '', isRunningLow = false) {
+        this.id = id || Date.now().toString();
+        this.manufacturer = manufacturer;
+        this.colorName = colorName;
+        this.hexColorCode = hexColorCode;
+        this.photoUrl = photoUrl;
+        this.isRunningLow = isRunningLow;
+      }
+    }
+
+    // Local Storage Service
+    class PaintStorage {
+      static getPaints() {
+        const stored = localStorage.getItem('paints');
+        if (stored) {
+          return JSON.parse(stored);
+        }
+        // Default paints if empty
+        const defaults = [
+          new Paint('1', 'ホルベイン', 'コバルトブルー', '#0047ab', '', false),
+          new Paint('2', 'リキテックス', 'カドミウムレッド', '#e30022', '', true),
+          new Paint('3', 'ターナー', 'パーマネントイエロー', '#ffbf00', '', false),
+          new Paint('4', 'W&N', 'ビリジアン', '#007f5c', '', false),
+          new Paint('5', 'ゴールデン', 'キナクリドンマゼンタ', '#8e3a59', '', true)
+        ];
+        this.savePaints(defaults);
+        return defaults;
+      }
+
+      static savePaints(paints) {
+        localStorage.setItem('paints', JSON.stringify(paints));
+      }
+    }
+
+    // App State
+    let paints = PaintStorage.getPaints();
+    let currentFilter = 'all'; // 'all', 'low', 'full'
+    let editingPaintId = null;
+    let uploadedPhotoBase64 = '';
+
+    // DOM Elements
+    const paintForm = document.getElementById('paint-form');
+    const paintList = document.getElementById('paint-list');
+    const emptyState = document.getElementById('empty-state');
+    const searchInput = document.getElementById('search-input');
+    const sortSelect = document.getElementById('sort-select');
+    const colorPaletteContainer = document.getElementById('color-palette-container');
+    
+    // Form Inputs
+    const paintIdInput = document.getElementById('paint-id');
+    const manufacturerInput = document.getElementById('manufacturer');
+    const colorNameInput = document.getElementById('color-name');
+    const colorPicker = document.getElementById('color-picker');
+    const colorHexInput = document.getElementById('color-hex');
+    const isRunningLowInput = document.getElementById('is-running-low');
+    const paintPhotoInput = document.getElementById('paint-photo');
+    const photoPlaceholder = document.getElementById('photo-placeholder');
+    const photoPreviewContainer = document.getElementById('photo-preview-container');
+    const photoPreview = document.getElementById('photo-preview');
+    const photoFilename = document.getElementById('photo-filename');
+    const removePhotoBtn = document.getElementById('remove-photo-btn');
+    
+    // Form UI Elements
+    const formTitle = document.getElementById('form-title');
+    const submitBtn = document.getElementById('submit-btn');
+    const cancelEditBtn = document.getElementById('cancel-edit-btn');
+    const colorPickerTrigger = document.getElementById('color-picker-trigger');
+    const previewTubeContainer = document.getElementById('preview-tube-container');
+    const previewTubeLabel = document.getElementById('preview-tube-label');
+
+    // Stats Elements
+    const statTotal = document.getElementById('stat-total');
+    const statLow = document.getElementById('stat-low');
+
+    // Initialize App
+    function init() {
+      renderPaints();
+      setupEventListeners();
+      updateLivePreview();
+    }
+
+    // Setup Event Listeners
+    function setupEventListeners() {
+      // Live Preview Sync
+      colorPicker.addEventListener('input', (e) => {
+        colorHexInput.value = e.target.value;
+        updateLivePreview();
+      });
+      colorHexInput.addEventListener('input', (e) => {
+        let val = e.target.value;
+        if (val.startsWith('#') && val.length === 7) {
+          colorPicker.value = val;
+          updateLivePreview();
+        }
+      });
+      colorPickerTrigger.addEventListener('click', () => {
+        colorPicker.click();
+      });
+      isRunningLowInput.addEventListener('change', updateLivePreview);
+
+      // Photo Upload
+      paintPhotoInput.addEventListener('change', handlePhotoUpload);
+      removePhotoBtn.addEventListener('click', removeUploadedPhoto);
+
+      // Form Submit
+      paintForm.addEventListener('submit', handleFormSubmit);
+
+      // Cancel Edit
+      cancelEditBtn.addEventListener('click', resetForm);
+
+      // Search & Sort
+      searchInput.addEventListener('input', renderPaints);
+      sortSelect.addEventListener('change', renderPaints);
+    }
+
+    // Set Manufacturer from Quick Tags
+    window.setManufacturer = function(name) {
+      manufacturerInput.value = name;
+    };
+
+    // Update Live Preview Tube
+    function updateLivePreview() {
+      const color = colorPicker.value;
+      previewTubeLabel.setAttribute('fill', color);
+      colorPickerTrigger.style.backgroundColor = color;
+      
+      if (isRunningLowInput.checked) {
+        previewTubeContainer.classList.add('low-paint');
+      } else {
+        previewTubeContainer.classList.remove('low-paint');
+      }
+    }
+
+    // Handle Photo Upload & Convert to Base64
+    function handlePhotoUpload(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          uploadedPhotoBase64 = event.target.result;
+          photoPlaceholder.classList.add('hidden');
+          photoPreviewContainer.classList.remove('hidden');
+          photoPreview.src = uploadedPhotoBase64;
+          photoFilename.textContent = file.name;
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    // Remove Uploaded Photo
+    function removeUploadedPhoto() {
+      uploadedPhotoBase64 = '';
+      paintPhotoInput.value = '';
+      photoPlaceholder.classList.remove('hidden');
+      photoPreviewContainer.classList.add('hidden');
+      photoPreview.src = '';
+    }
+
+    // Handle Form Submit (Create or Update)
+    function handleFormSubmit(e) {
+      e.preventDefault();
+
+      const id = paintIdInput.value || Date.now().toString();
+      const manufacturer = manufacturerInput.value.trim();
+      const colorName = colorNameInput.value.trim();
+      const hexColorCode = colorPicker.value;
+      const isRunningLow = isRunningLowInput.checked;
+
+      if (editingPaintId) {
+        // Update existing
+        const index = paints.findIndex(p => p.id === editingPaintId);
+        if (index !== -1) {
+          paints[index] = new Paint(editingPaintId, manufacturer, colorName, hexColorCode, uploadedPhotoBase64 || paints[index].photoUrl, isRunningLow);
+        }
+      } else {
+        // Create new
+        const newPaint = new Paint(id, manufacturer, colorName, hexColorCode, uploadedPhotoBase64, isRunningLow);
+        paints.push(newPaint);
+      }
+
+      PaintStorage.savePaints(paints);
+      resetForm();
+      renderPaints();
+    }
+
+    // Reset Form to Default State
+    function resetForm() {
+      editingPaintId = null;
+      paintIdInput.value = '';
+      paintForm.reset();
+      uploadedPhotoBase64 = '';
+      removeUploadedPhoto();
+      
+      // Reset color picker
+      colorPicker.value = '#6366f1';
+      colorHexInput.value = '#6366f1';
+      
+      // Reset UI
+      formTitle.innerHTML = `<i class="fa-solid fa-circle-plus text-indigo-500"></i> 絵の具を登録する`;
+      submitBtn.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span>絵の具を登録する</span>`;
+      cancelEditBtn.classList.add('hidden');
+      
+      updateLivePreview();
+    }
+
+    // Set Filter
+    window.setFilter = function(filterType) {
+      currentFilter = filterType;
+      
+      // Update active button styles
+      ['all', 'low', 'full'].forEach(type => {
+        const btn = document.getElementById(`filter-${type}`);
+        if (type === filterType) {
+          btn.classList.add('bg-white', 'text-slate-800', 'shadow-sm');
+          btn.classList.remove('text-slate-500');
+        } else {
+          btn.classList.remove('bg-white', 'text-slate-800', 'shadow-sm');
+          btn.classList.add('text-slate-500');
+        }
+      });
+
+      renderPaints();
+    };
+
+    // Toggle Low Status directly from Card
+    window.toggleLowStatus = function(id) {
+      const paint = paints.find(p => p.id === id);
+      if (paint) {
+        paint.isRunningLow = !paint.isRunningLow;
+        PaintStorage.savePaints(paints);
+        renderPaints();
+        
+        // If we are editing this paint, sync the form
+        if (editingPaintId === id) {
+          isRunningLowInput.checked = paint.isRunningLow;
+          updateLivePreview();
+        }
+      }
+    };
+
+    // Edit Paint
+    window.editPaint = function(id) {
+      const paint = paints.find(p => p.id === id);
+      if (paint) {
+        editingPaintId = id;
+        paintIdInput.value = paint.id;
+        manufacturerInput.value = paint.manufacturer;
+        colorNameInput.value = paint.colorName;
+        colorPicker.value = paint.hexColorCode;
+        colorHexInput.value = paint.hexColorCode;
+        isRunningLowInput.checked = paint.isRunningLow;
+
+        if (paint.photoUrl) {
+          uploadedPhotoBase64 = paint.photoUrl;
+          photoPlaceholder.classList.add('hidden');
+          photoPreviewContainer.classList.remove('hidden');
+          photoPreview.src = paint.photoUrl;
+          photoFilename.textContent = '保存済みの写真';
+        } else {
+          removeUploadedPhoto();
+        }
+
+        // Update UI
+        formTitle.innerHTML = `<i class="fa-solid fa-pen-to-square text-indigo-500"></i> 絵の具を編集する`;
+        submitBtn.innerHTML = `<i class="fa-solid fa-arrows-rotate"></i> <span>変更を保存する</span>`;
+        cancelEditBtn.classList.remove('hidden');
+
+        updateLivePreview();
+        
+        // Scroll to form on mobile
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+
+    // Delete Paint
+    window.deletePaint = function(id) {
+      if (confirm('この絵の具を削除してもよろしいですか？')) {
+        paints = paints.filter(p => p.id !== id);
+        PaintStorage.savePaints(paints);
+        if (editingPaintId === id) {
+          resetForm();
+        }
+        renderPaints();
+      }
+    };
+
+    // Render Paints Grid & Stats
+    function renderPaints() {
+      // Update Stats
+      statTotal.textContent = paints.length;
+      statLow.textContent = paints.filter(p => p.isRunningLow).length;
+
+      // Filter & Sort
+      let filtered = paints.filter(paint => {
+        // Search query match
+        const query = searchInput.value.toLowerCase();
+        const matchesSearch = paint.manufacturer.toLowerCase().includes(query) || 
+                              paint.colorName.toLowerCase().includes(query);
+        
+        // Filter type match
+        if (currentFilter === 'low') {
+          return matchesSearch && paint.isRunningLow;
+        } else if (currentFilter === 'full') {
+          return matchesSearch && !paint.isRunningLow;
+        }
+        return matchesSearch;
+      });
+
+      // Sort
+      const sortBy = sortSelect.value;
+      filtered.sort((a, b) => {
+        if (sortBy === 'manufacturer') {
+          return a.manufacturer.localeCompare(b.manufacturer, 'ja');
+        } else if (sortBy === 'colorName') {
+          return a.colorName.localeCompare(b.colorName, 'ja');
+        } else {
+          // Newest first (default)
+          return b.id - a.id;
+        }
+      });
+
+      // Render Color Palette Quick View
+      renderColorPalette();
+
+      // Render Grid
+      paintList.innerHTML = '';
+      if (filtered.length === 0) {
+        emptyState.classList.remove('hidden');
+        paintList.classList.add('hidden');
+      } else {
+        emptyState.classList.add('hidden');
+        paintList.classList.remove('hidden');
+
+        filtered.forEach(paint => {
+          const card = document.createElement('div');
+          card.className = `glass-card rounded-3xl p-5 shadow-md border border-white/60 flex flex-col justify-between transition-all duration-300 hover:shadow-lg hover:-translate-y-1 relative overflow-hidden ${paint.isRunningLow ? 'bg-amber-50/20' : ''}`;
+          
+          // Photo or Color Splatter Background
+          const photoSection = paint.photoUrl 
+            ? `<img src="${paint.photoUrl}" alt="${paint.colorName}" class="w-full h-28 object-cover rounded-2xl border border-slate-100 shadow-inner">`
+            : `<div class="w-full h-28 rounded-2xl flex items-center justify-center relative overflow-hidden border border-slate-100" style="background: linear-gradient(135deg, ${paint.hexColorCode}22, ${paint.hexColorCode}44)">
+                 <i class="fa-solid fa-palette text-3xl opacity-30" style="color: ${paint.hexColorCode}"></i>
+               </div>`;
+
+          card.innerHTML = `
+            <div>
+              <!-- Photo / Swatch -->
+              <div class="relative mb-4">
+                ${photoSection}
+                <span class="absolute top-2.5 left-2.5 px-2.5 py-1 bg-white/90 backdrop-blur-md text-[10px] font-black rounded-full text-slate-700 shadow-sm border border-white/40">
+                  ${paint.manufacturer}
+                </span>
+              </div>
+
+              <!-- Tube & Info Row -->
+              <div class="flex gap-4 items-start">
+                <!-- Squeezable SVG Tube -->
+                <div class="flex-shrink-0 cursor-pointer" onclick="toggleLowStatus('${paint.id}')" title="クリックして残量を切り替え">
+                  <div class="paint-tube-container ${paint.isRunningLow ? 'low-paint' : ''}">
+                    <svg class="paint-tube-svg w-14 h-28" viewBox="0 0 100 200">
+                      <!-- Cap & Neck -->
+                      <g class="tube-top transition-all duration-500 ease-in-out">
+                        <rect x="35" y="10" width="30" height="18" rx="3" fill="#2d3748" />
+                        <line x1="40" y1="10" x2="40" y2="28" stroke="#1a202c" stroke-width="1.5" />
+                        <line x1="45" y1="10" x2="45" y2="28" stroke="#1a202c" stroke-width="1.5" />
+                        <line x1="50" y1="10" x2="50" y2="28" stroke="#1a202c" stroke-width="1.5" />
+                        <line x1="55" y1="10" x2="55" y2="28" stroke="#1a202c" stroke-width="1.5" />
+                        <line x1="60" y1="10" x2="60" y2="28" stroke="#1a202c" stroke-width="1.5" />
+                        <rect x="42" y="28" width="16" height="12" fill="#cbd5e1" />
+                      </g>
+                      <!-- Squeezable Body -->
+                      <g class="tube-middle transition-all duration-500 ease-in-out">
+                        <path class="tube-body-path" d="M 25 40 C 25 40, 20 100, 20 170 L 80 170 C 80 100, 75 40, 75 40 Z" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" />
+                        <path d="M 25 40 C 25 40, 22 100, 22 170" stroke="#ffffff" stroke-width="3" fill="none" opacity="0.8" />
+                        <!-- Color Label -->
+                        <path class="tube-label-path" d="M 23 65 C 23 65, 21 100, 21 140 L 79 140 C 79 100, 77 65, 77 65 Z" fill="${paint.hexColorCode}" />
+                        <path d="M 24 65 C 24 65, 22 100, 22 140" stroke="#ffffff" stroke-width="2" fill="none" opacity="0.4" />
+                        <text x="50" y="95" fill="#ffffff" font-size="8" font-weight="bold" text-anchor="middle" letter-spacing="1" opacity="0.9" style="mix-blend-mode: difference;">ARTIST</text>
+                        <text x="50" y="115" fill="#ffffff" font-size="10" font-weight="900" text-anchor="middle" letter-spacing="1" opacity="0.9" style="mix-blend-mode: difference;">COLOR</text>
+                      </g>
+                      <!-- Crimped Bottom -->
+                      <g class="tube-bottom transition-all duration-500 ease-in-out">
+                        <rect x="14" y="170" width="72" height="16" rx="2" fill="#94a3b8" stroke="#64748b" stroke-width="1" />
+                      </g>
+                    </svg>
+                  </div>
+                </div>
+
+                <!-- Paint Details -->
+                <div class="flex-1 min-w-0">
+                  <h4 class="font-black text-slate-800 text-base truncate" title="${paint.colorName}">
+                    ${paint.colorName}
+                  </h4>
+                  <div class="flex items-center gap-1.5 mt-1">
+                    <span class="w-3.5 h-3.5 rounded-full border border-slate-200 shadow-sm inline-block" style="background-color: ${paint.hexColorCode}"></span>
+                    <span class="text-xs font-mono text-slate-500 font-medium">${paint.hexColorCode.toUpperCase()}</span>
+                  </div>
+                  
+                  <!-- Status Badge -->
+                  <div class="mt-3">
+                    <button onclick="toggleLowStatus('${paint.id}')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${paint.isRunningLow ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}">
+                      <i class="fa-solid ${paint.isRunningLow ? 'fa-compress' : 'fa-droplet'}"></i>
+                      <span>${paint.isRunningLow ? '残りわずか！' : 'たっぷりある'}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card Actions -->
+            <div class="flex items-center justify-end gap-2 mt-5 pt-3 border-t border-slate-100">
+              <button onclick="editPaint('${paint.id}')" class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition" title="編集">
+                <i class="fa-solid fa-pen-to-square text-sm"></i>
+              </button>
+              <button onclick="deletePaint('${paint.id}')" class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition" title="削除">
+                <i class="fa-solid fa-trash-can text-sm"></i>
               </button>
             </div>
           `;
-          listContainer.appendChild(card);
+          paintList.appendChild(card);
         });
       }
-      
-      lucide.createIcons();
     }
 
-    function deleteLog(id) {
-      if (confirm('この記録を削除しますか？')) {
-        logs = logs.filter(log => log.id !== id);
-        localStorage.setItem('calorie_logs', JSON.stringify(logs));
-        renderHistory();
+    // Render Color Palette Quick View
+    function renderColorPalette() {
+      colorPaletteContainer.innerHTML = '';
+      if (paints.length === 0) {
+        colorPaletteContainer.innerHTML = `<span class="text-xs text-slate-400">登録するとここにカラーチャートが並びます</span>`;
+        return;
       }
+
+      paints.forEach(paint => {
+        const swatch = document.createElement('button');
+        swatch.className = `w-7 h-7 rounded-full border-2 border-white shadow-md hover:scale-115 transition relative group flex items-center justify-center`;
+        swatch.style.backgroundColor = paint.hexColorCode;
+        swatch.title = `${paint.manufacturer} - ${paint.colorName}`;
+        
+        // If running low, show a small warning dot
+        if (paint.isRunningLow) {
+          swatch.innerHTML = `<span class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 border border-white rounded-full"></span>`;
+        }
+
+        swatch.addEventListener('click', () => {
+          searchInput.value = paint.colorName;
+          renderPaints();
+        });
+
+        colorPaletteContainer.appendChild(swatch);
+      });
     }
 
-    function clearAllLogs() {
-      if (confirm('すべての記録を削除しますか？この操作は取り消せません。')) {
-        logs = [];
-        localStorage.removeItem('calorie_logs');
-        renderHistory();
-      }
-    }
+    // Run App
+    init();
   </script>
 </body>
 </html>
