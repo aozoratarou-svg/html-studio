@@ -1,482 +1,1214 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>夜の虚 (Null Void)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>月までタッチ！トランポリン・ジャンプ</title>
     <style>
+        :root {
+            --primary-color: #ff007f;
+            --secondary-color: #00f0ff;
+            --accent-color: #ffeb3b;
+            --background-color: #0a0a1e;
+            --text-color: #ffffff;
+            --panel-bg: rgba(15, 15, 35, 0.85);
+            --panel-border: rgba(255, 255, 255, 0.1);
+        }
+
         * {
             box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
             margin: 0;
             padding: 0;
         }
-        body, html {
-            width: 100%;
-            height: 100%;
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
             overflow: hidden;
-            background-color: #000000;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            cursor: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%), auto;
-            user-select: none;
-            -webkit-user-select: none;
-        }
-        canvas {
-            display: block;
             width: 100vw;
             height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 600px;
+            max-height: 900px;
+            aspect-ratio: 2 / 3;
+            background: #000;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.3);
+            border-radius: 16px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* HUD Overlay */
+        .hud {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            right: 16px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .hud-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            padding: 10px 16px;
+            border-radius: 12px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        .hud-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #8a8ab0;
+            margin-bottom: 2px;
+        }
+
+        .hud-value {
+            font-size: 20px;
+            font-weight: 800;
+            font-family: monospace;
+            color: var(--secondary-color);
+            text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
+        }
+
+        #height-display {
+            color: var(--accent-color);
+            text-shadow: 0 0 8px rgba(255, 235, 59, 0.5);
+        }
+
+        /* Progress Bar */
+        #progress-container {
+            position: absolute;
+            right: 16px;
+            top: 100px;
+            bottom: 100px;
+            width: 12px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.2);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #progress-bar {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: linear-gradient(to top, var(--primary-color), var(--secondary-color), var(--accent-color));
+            border-radius: 6px;
+            height: 0%;
+            transition: height 0.1s ease-out;
+            box-shadow: 0 0 10px var(--secondary-color);
+        }
+
+        #progress-marker {
+            position: absolute;
+            right: 18px;
+            background: var(--accent-color);
+            color: #000;
+            font-size: 9px;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 4px;
+            transform: translateY(50%);
+            white-space: nowrap;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+
+        /* Screen Overlays */
+        .screen-overlay {
             position: absolute;
             top: 0;
             left: 0;
-            z-index: 1;
+            width: 100%;
+            height: 100%;
+            background: rgba(5, 5, 15, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            padding: 30px;
+            text-align: center;
+            transition: opacity 0.3s ease;
         }
-        #ui {
+
+        .screen-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 900;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #a0a0c0;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--primary-color), #d00060);
+            color: white;
+            border: none;
+            padding: 14px 36px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(255, 0, 127, 0.4);
+            transition: transform 0.1s, box-shadow 0.2s;
+            outline: none;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(255, 0, 127, 0.6);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Audio Toggle */
+        #audio-toggle {
             position: absolute;
-            bottom: 40px;
+            bottom: 16px;
+            left: 16px;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            color: var(--text-color);
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            z-index: 15;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            backdrop-filter: blur(8px);
+        }
+
+        /* Instructions */
+        #tap-instruction {
+            position: absolute;
+            bottom: 15%;
             left: 50%;
             transform: translateX(-50%);
-            z-index: 2;
-            color: rgba(255, 255, 255, 0.25);
-            font-size: 10px;
-            letter-spacing: 0.25em;
-            text-transform: uppercase;
+            font-size: 16px;
+            font-weight: bold;
+            color: rgba(255,255,255,0.7);
             pointer-events: none;
-            transition: color 0.5s ease;
-            font-weight: 300;
+            z-index: 5;
+            animation: pulse 1.5s infinite;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
             text-align: center;
+            width: 80%;
         }
-        #ui.active {
-            color: rgba(255, 255, 255, 0.05);
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; transform: translate(-50%, 0) scale(0.95); }
+            50% { opacity: 1; transform: translate(-50%, -5px) scale(1.05); }
         }
-        #interaction-prompt {
+
+        /* Combo Counter */
+        #combo-container {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 3;
-            color: rgba(255, 255, 255, 0.35);
-            font-size: 11px;
-            letter-spacing: 0.4em;
-            text-transform: uppercase;
+            top: 100px;
+            left: 16px;
             pointer-events: none;
-            transition: opacity 1.5s ease;
-            font-weight: 300;
+            z-index: 10;
+            display: none;
+        }
+
+        .combo-badge {
+            background: linear-gradient(45deg, #ff9800, #ff5722);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: 900;
+            font-size: 14px;
+            box-shadow: 0 4px 10px rgba(255, 152, 0, 0.4);
+            animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes pop {
+            0% { transform: scale(0.5); }
+            100% { transform: scale(1); }
         }
     </style>
 </head>
 <body>
-    <canvas id="glCanvas"></canvas>
-    <div id="interaction-prompt">Tap to awaken the void</div>
-    <div id="ui">Null // Breath</div>
+
+    <div id="game-container">
+        <!-- HUD -->
+        <div class="hud">
+            <div class="hud-panel">
+                <div class="hud-label">HIGH SCORE</div>
+                <div id="high-score-display" class="hud-value">0m</div>
+            </div>
+            <div class="hud-panel" style="text-align: right;">
+                <div class="hud-label">ALTITUDE</div>
+                <div id="height-display" class="hud-value">0m</div>
+            </div>
+        </div>
+
+        <!-- Combo -->
+        <div id="combo-container">
+            <div id="combo-text" class="combo-badge">COMBO x1</div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div id="progress-container">
+            <div id="progress-bar"></div>
+            <div id="progress-marker">0%</div>
+        </div>
+
+        <!-- Canvas -->
+        <canvas id="game-canvas"></canvas>
+
+        <!-- Tap Instruction -->
+        <div id="tap-instruction">タイミングよく画面をタップ！</div>
+
+        <!-- Audio Toggle -->
+        <button id="audio-toggle">🔊 Sound On</button>
+
+        <!-- Start Screen -->
+        <div id="start-screen" class="screen-overlay">
+            <h1 style="font-size: 36px; margin-bottom: 15px;">月までタッチ！</h1>
+            <p class="subtitle" style="max-width: 280px;">
+                タイミングよくトランポリンを跳ねて、大気圏を突破し、月を目指そう！<br><br>
+                タイミングが良いほど、より高くジャンプできるぞ！
+            </p>
+            <button id="start-button" class="btn">ゲームスタート</button>
+        </div>
+
+        <!-- Game Over / Victory Screen -->
+        <div id="result-screen" class="screen-overlay hidden">
+            <h1 id="result-title">GAME OVER</h1>
+            <p id="result-subtitle" class="subtitle">月まであと一歩でした！</p>
+            
+            <div style="margin-bottom: 30px;">
+                <div style="font-size: 14px; color: #8a8ab0; margin-bottom: 5px;">到達高度</div>
+                <div id="final-score" style="font-size: 48px; font-weight: 900; color: var(--accent-color); text-shadow: 0 0 15px rgba(255,235,59,0.4);">0m</div>
+            </div>
+
+            <button id="restart-button" class="btn">もう一度挑戦</button>
+        </div>
+    </div>
 
     <script>
-        const vertexShaderSource = `
-            attribute vec2 position;
-            varying vec2 v_uv;
-            void main() {
-                v_uv = position * 0.5 + 0.5;
-                gl_Position = vec4(position, 0.0, 1.0);
-            }
-        `;
-
-        const fragmentShaderSource = `
-            precision highp float;
-            varying vec2 v_uv;
-            
-            uniform vec2 u_resolution;
-            uniform float u_time;
-            uniform float u_breath;
-            uniform vec3 u_color_base;
-            uniform vec3 u_color_glow;
-            
-            uniform vec2 u_touch_pos;
-            uniform float u_touch_time;
-            uniform float u_touch_intensity;
-
-            // Pseudo-random noise for etheric texture
-            float noise(vec2 uv) {
-                return fract(sin(dot(uv, vec2(12.9898, 78.233))) * 43758.5453);
-            }
-
-            void main() {
-                // Normalize coordinates with aspect ratio correction
-                vec2 uv = (gl_FragCoord.xy - 0.5 * u_resolution) / min(u_resolution.x, u_resolution.y);
-                float dist = length(uv);
-
-                // Base background: Pure black (#000000) to deep night air (#05050A)
-                vec3 bg = mix(vec3(0.0, 0.0, 0.0), vec3(0.02, 0.02, 0.04), uv.y + 0.5);
-
-                // 1/f breathing ring parameters
-                float ringRadius = 0.32;
-                float ringWidth = 0.15 + u_breath * 0.08;
-                
-                // Soft etheric ring generation
-                float ringGlow = exp(-pow((dist - ringRadius) / ringWidth, 2.0));
-                
-                // Modulate ring intensity with breathing cycle
-                float breathIntensity = mix(0.15, 0.65, u_breath);
-                vec3 ringColor = mix(u_color_base, u_color_glow, u_breath);
-                vec3 finalRing = ringColor * ringGlow * breathIntensity;
-
-                // Tactile Ripple (Water droplet propagation)
-                vec3 rippleEffect = vec3(0.0);
-                if (u_touch_intensity > 0.01) {
-                    vec2 touchUV = (u_touch_pos - 0.5 * u_resolution) / min(u_resolution.x, u_resolution.y);
-                    float d = length(uv - touchUV);
-                    
-                    // Wave equation
-                    float waveSpeed = 1.2;
-                    float waveFreq = 28.0;
-                    float wave = sin(d * waveFreq - u_touch_time * waveSpeed * waveFreq);
-                    
-                    // Attenuation over space and time
-                    float envelope = smoothstep(0.0, 0.15, u_touch_time) * exp(-u_touch_time * 1.4) * exp(-d * 2.5);
-                    float rippleGlow = max(wave, 0.0) * envelope * u_touch_intensity;
-                    
-                    // Ripple color matches the current temporal glow state but is more etheric/white
-                    rippleEffect = mix(u_color_glow, vec3(0.9, 0.95, 1.0), 0.3) * rippleGlow * 0.45;
-                }
-
-                // Combine elements
-                vec3 color = bg + finalRing + rippleEffect;
-
-                // Add subtle organic etheric noise (fog/grain)
-                float grain = noise(uv * 150.0 + u_time * 0.005) * 0.012;
-                color += vec3(grain) * (0.1 + u_breath * 0.9);
-
-                // The Absolute Void (Null) - Force absolute black in the center
-                float centerVoid = smoothstep(0.0, 0.18, dist);
-                color *= centerVoid;
-
-                gl_FragColor = vec4(color, 1.0);
-            }
-        `;
-
-        // Temporal Light-Cycle Algorithm
-        function getTemporalColors() {
-            const now = new Date();
-            const hour = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
-            
-            let base = [0.01, 0.01, 0.03]; // Deep Indigo
-            let glow = [0.05, 0.08, 0.18]; // Soft Etheric Blue
-
-            if (hour >= 17 && hour < 20) { 
-                // Dusk: Deep violet to warm amber
-                const t = (hour - 17) / 3;
-                base = mixColors([0.05, 0.02, 0.08], [0.02, 0.01, 0.05], t);
-                glow = mixColors([0.25, 0.08, 0.04], [0.12, 0.05, 0.15], t);
-            } else if (hour >= 20 || hour < 4) { 
-                // Midnight: Deepest indigo to absolute void blue
-                let t = 0;
-                if (hour >= 20) t = (hour - 20) / 8;
-                else t = (hour + 4) / 8;
-                base = mixColors([0.01, 0.01, 0.03], [0.0, 0.0, 0.01], t);
-                glow = mixColors([0.04, 0.06, 0.15], [0.02, 0.03, 0.08], t);
-            } else if (hour >= 4 && hour < 7) { 
-                // Dawn: Pale slate blue to soft gold
-                const t = (hour - 4) / 3;
-                base = mixColors([0.0, 0.0, 0.02], [0.02, 0.03, 0.05], t);
-                glow = mixColors([0.03, 0.05, 0.12], [0.22, 0.18, 0.12], t);
-            } else {
-                // Day (Dormant state): Extremely dim, quiet grey-blue
-                const t = (hour - 7) / 10;
-                base = [0.01, 0.01, 0.015];
-                glow = [0.03, 0.04, 0.06];
-            }
-            return { base, glow };
-        }
-
-        function mixColors(c1, c2, t) {
-            return [
-                c1[0] * (1 - t) + c2[0] * t,
-                c1[1] * (1 - t) + c2[1] * t,
-                c1[2] * (1 - t) * c2[2] * t
-            ];
-        }
-
-        // Web Audio Synthesis Engine
-        class AudioEngine {
+        // --- Sound Synthesizer (Web Audio API) ---
+        class SoundSynth {
             constructor() {
                 this.ctx = null;
-                this.initialized = false;
+                this.muted = false;
             }
 
             init() {
-                if (this.initialized) return;
-                
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                this.ctx = new AudioContext();
-                
-                // Master Limiter/Gain
-                this.masterGain = this.ctx.createGain();
-                this.masterGain.gain.setValueAtTime(0.15, this.ctx.currentTime);
-                
-                // Lowpass Filter for the entire atmosphere
-                this.filter = this.ctx.createBiquadFilter();
-                this.filter.type = 'lowpass';
-                this.filter.frequency.setValueAtTime(80, this.ctx.currentTime);
-                this.filter.Q.setValueAtTime(1.0, this.ctx.currentTime);
-
-                this.masterGain.connect(this.filter);
-                this.filter.connect(this.ctx.destination);
-
-                this.setupDrone();
-                this.initialized = true;
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
             }
 
-            setupDrone() {
-                // Deep breathing fundamental drone
-                this.osc1 = this.ctx.createOscillator();
-                this.osc1.type = 'sine';
-                this.osc1.frequency.setValueAtTime(55.0, this.ctx.currentTime); // A1
-
-                this.osc2 = this.ctx.createOscillator();
-                this.osc2.type = 'triangle';
-                this.osc2.frequency.setValueAtTime(55.2, this.ctx.currentTime); // Subtle beating
-
-                this.droneGain1 = this.ctx.createGain();
-                this.droneGain2 = this.ctx.createGain();
-                
-                this.droneGain1.gain.setValueAtTime(0.6, this.ctx.currentTime);
-                this.droneGain2.gain.setValueAtTime(0.3, this.ctx.currentTime);
-
-                this.osc1.connect(this.droneGain1);
-                this.osc2.connect(this.droneGain2);
-
-                this.droneGain1.connect(this.masterGain);
-                this.droneGain2.connect(this.masterGain);
-
-                this.osc1.start();
-                this.osc2.start();
-            }
-
-            updateBreath(breath) {
-                if (!this.initialized) return;
-                // Modulate filter cutoff and volume with 1/f breathing cycle
-                const cutoff = mix(60, 140, breath);
-                const volume = mix(0.1, 0.22, breath);
-                
-                this.filter.frequency.setTargetAtTime(cutoff, this.ctx.currentTime, 0.1);
-                this.masterGain.gain.setTargetAtTime(volume, this.ctx.currentTime, 0.2);
-            }
-
-            triggerRipple(panValue) {
-                if (!this.initialized) return;
+            playBounce(quality) {
+                if (this.muted) return;
+                this.init();
+                if (!this.ctx) return;
 
                 const now = this.ctx.currentTime;
                 
-                // Spatial Panning
-                const panner = this.ctx.createStereoPanner ? this.ctx.createStereoPanner() : null;
-                const targetNode = panner ? panner : this.filter;
-                if (panner) {
-                    panner.pan.setValueAtTime(panValue, now);
-                    panner.connect(this.filter);
-                }
-
-                // Deep water droplet impact
+                // Base low-frequency bounce sound
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
-                
-                osc.type = 'sine';
-                // Pitch sweep down
-                osc.frequency.setValueAtTime(120, now);
-                osc.frequency.exponentialRampToValueAtTime(45, now + 1.8);
-
-                gain.gain.setValueAtTime(0.0, now);
-                gain.gain.linearRampToValueAtTime(0.4, now + 0.05);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 2.0);
-
                 osc.connect(gain);
-                gain.connect(targetNode);
+                gain.connect(this.ctx.destination);
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(120, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.3);
+                
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
                 
                 osc.start(now);
-                osc.stop(now + 2.1);
+                osc.stop(now + 0.3);
 
-                // High-frequency soft "ping" (the droplet impact)
-                const pingOsc = this.ctx.createOscillator();
-                const pingGain = this.ctx.createGain();
+                // High-frequency chime based on quality
+                if (quality === 'perfect') {
+                    this.playChime(880, 1320, 0.4, 0.15);
+                    this.playChime(1760, 2200, 0.2, 0.08);
+                } else if (quality === 'great') {
+                    this.playChime(587.33, 880, 0.3, 0.12); // D5 to A5
+                } else if (quality === 'good') {
+                    this.playChime(440, 554.37, 0.2, 0.1); // A4 to C#5
+                }
+            }
 
-                pingOsc.type = 'sine';
-                pingOsc.frequency.setValueAtTime(850, now);
-                pingOsc.frequency.exponentialRampToValueAtTime(300, now + 0.15);
+            playChime(freqStart, freqEnd, duration, volume) {
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
 
-                pingGain.gain.setValueAtTime(0.0, now);
-                pingGain.gain.linearRampToValueAtTime(0.03, now + 0.01);
-                pingGain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freqStart, now);
+                osc.frequency.exponentialRampToValueAtTime(freqEnd, now + duration);
 
-                pingOsc.connect(pingGain);
-                pingGain.connect(targetNode);
+                gain.gain.setValueAtTime(volume, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
-                pingOsc.start(now);
-                pingOsc.stop(now + 0.4);
+                osc.start(now);
+                osc.stop(now + duration);
+            }
+
+            playVictory() {
+                if (this.muted) return;
+                this.init();
+                if (!this.ctx) return;
+
+                const now = this.ctx.currentTime;
+                const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51, 1567.98, 2093.00]; // C Arpeggio
+                notes.forEach((freq, index) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + index * 0.08);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    
+                    gain.gain.setValueAtTime(0.15, now + index * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + index * 0.08 + 0.5);
+                    
+                    osc.start(now + index * 0.08);
+                    osc.stop(now + index * 0.08 + 0.5);
+                });
+            }
+
+            playCrash() {
+                if (this.muted) return;
+                this.init();
+                if (!this.ctx) return;
+
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(100, now);
+                osc.frequency.linearRampToValueAtTime(30, now + 0.4);
+
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+
+                osc.start(now);
+                osc.stop(now + 0.4);
             }
         }
 
-        function mix(a, b, t) {
-            return a * (1 - t) + b * t;
-        }
+        const sound = new SoundSynth();
 
-        // Application Setup
-        const canvas = document.getElementById('glCanvas');
-        const gl = canvas.getContext('webgl');
-        const promptEl = document.getElementById('interaction-prompt');
-        const uiEl = document.getElementById('ui');
-        const audio = new AudioEngine();
+        // --- Game Setup ---
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
 
-        if (!gl) {
-            console.error('WebGL not supported');
-        }
+        // Set logical resolution
+        const GAME_WIDTH = 400;
+        const GAME_HEIGHT = 600;
+        canvas.width = GAME_WIDTH;
+        canvas.height = GAME_HEIGHT;
 
-        // Shader Compilation Helper
-        function createShader(gl, type, source) {
-            const shader = gl.createShader(type);
-            gl.shaderSource(shader, source);
-            gl.compileShader(shader);
-            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-                console.error(gl.getShaderInfoLog(shader));
-                gl.deleteShader(shader);
-                return null;
-            }
-            return shader;
-        }
+        // Game Constants
+        const TARGET_MOON_HEIGHT = 10000; // Height to reach the moon
+        const GRAVITY = 0.22;
+        const BASE_BOUNCE = 11;
+        const TRAMPOLINE_Y = GAME_HEIGHT - 100;
 
-        const vs = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
-        const fs = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
-
-        const program = gl.createProgram();
-        gl.attachShader(program, vs);
-        gl.attachShader(program, fs);
-        gl.linkProgram(program);
-
-        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-            console.error(gl.getProgramInfoLog(program));
-        }
-
-        const positionAttributeLocation = gl.getAttribLocation(program, 'position');
-        const positionBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-            -1, -1,
-             1, -1,
-            -1,  1,
-            -1,  1,
-             1, -1,
-             1,  1,
-        ]), gl.STATIC_DRAW);
-
-        // Uniform Locations
-        const uniforms = {
-            resolution: gl.getUniformLocation(program, 'u_resolution'),
-            time: gl.getUniformLocation(program, 'u_time'),
-            breath: gl.getUniformLocation(program, 'u_breath'),
-            colorBase: gl.getUniformLocation(program, 'u_color_base'),
-            colorGlow: gl.getUniformLocation(program, 'u_color_glow'),
-            touchPos: gl.getUniformLocation(program, 'u_touch_pos'),
-            touchTime: gl.getUniformLocation(program, 'u_touch_time'),
-            touchIntensity: gl.getUniformLocation(program, 'u_touch_intensity')
+        // Game State Variables
+        let gameState = 'START'; // START, PLAYING, CONTACT, MOON_REACHED, GAME_OVER
+        let player = {
+            x: GAME_WIDTH / 2,
+            y: 0, // Altitude above trampoline
+            vy: 0,
+            radius: 16,
+            squashX: 1,
+            squashY: 1,
+            color: '#00f0ff'
         };
 
-        // State Variables
-        let startTime = performance.now();
-        let lastTime = startTime;
-        let breathPhase = 0;
-        
-        let touchX = 0;
-        let touchY = 0;
-        let touchTime = 99.0; 
-        let touchIntensity = 0.0;
+        let cameraY = 0; // Smooth scrolling camera
+        let score = 0;
+        let highScore = parseInt(localStorage.getItem('trampoline_high_score')) || 0;
+        let combo = 0;
+        let maxCombo = 0;
+        let screenShake = 0;
+        let particles = [];
+        let stars = [];
+        let clouds = [];
+        let floatingTexts = [];
 
-        function resize() {
-            canvas.width = window.innerWidth * window.devicePixelRatio;
-            canvas.height = window.innerHeight * window.devicePixelRatio;
-            gl.viewport(0, 0, canvas.width, canvas.height);
+        // Trampoline state
+        let trampoline = {
+            leftX: GAME_WIDTH / 2 - 70,
+            rightX: GAME_WIDTH / 2 + 70,
+            y: TRAMPOLINE_Y,
+            targetDepression: 0,
+            currentDepression: 0,
+            springForce: 0.15,
+            friction: 0.85
+        };
+
+        // Timing Window Config
+        const TIMING_WINDOWS = {
+            PERFECT: { range: 18, mult: 2.5, label: 'PERFECT!!!', color: '#ffeb3b', sound: 'perfect' },
+            GREAT: { range: 42, mult: 1.8, label: 'GREAT!', color: '#00f0ff', sound: 'great' },
+            GOOD: { range: 75, mult: 1.3, label: 'GOOD', color: '#ff007f', sound: 'good' },
+            EARLY: { range: 150, mult: 0.6, label: 'EARLY...', color: '#a0a0c0', sound: 'weak' }
+        };
+
+        // Initialize High Score Display
+        document.getElementById('high-score-display').textContent = highScore + 'm';
+
+        // --- Generate Background Elements ---
+        function initBackground() {
+            stars = [];
+            clouds = [];
+            // Generate stars for space layers
+            for (let i = 0; i < 120; i++) {
+                stars.push({
+                    x: Math.random() * GAME_WIDTH,
+                    y: Math.random() * TARGET_MOON_HEIGHT * 1.2, // Distribute all the way up to moon
+                    size: Math.random() * 2 + 0.5,
+                    brightness: Math.random() * 0.5 + 0.5,
+                    pulseSpeed: Math.random() * 0.05 + 0.01
+                });
+            }
+            // Generate clouds for lower atmosphere
+            for (let i = 0; i < 25; i++) {
+                clouds.push({
+                    x: Math.random() * GAME_WIDTH,
+                    y: Math.random() * 3500 + 200, // Clouds up to 3500m
+                    speed: Math.random() * 0.2 - 0.1,
+                    scale: Math.random() * 0.6 + 0.4,
+                    opacity: Math.random() * 0.3 + 0.1
+                });
+            }
         }
-        window.addEventListener('resize', resize);
-        resize();
 
-        // 1/f Fluctuation Generator (Multi-octave slow noise)
-        function getBreathValue(time) {
-            let n = Math.sin(time * 0.15) * 0.5;
-            n += Math.sin(time * 0.37) * 0.25;
-            n += Math.sin(time * 0.08) * 0.15;
-            n += Math.sin(time * 0.73) * 0.05;
-            n = n / 0.95; // Normalize
-            return n * 0.5 + 0.5; // Map to [0, 1]
-        }
-
-        // Interaction Handlers
-        function handleInteraction(clientX, clientY) {
-            // Initialize Audio on first gesture
-            if (!audio.initialized) {
-                audio.init();
-                promptEl.style.opacity = '0';
-                uiEl.classList.add('active');
+        // --- Particle System ---
+        class Particle {
+            constructor(x, y, color, type = 'spark') {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.type = type;
+                this.vx = (Math.random() - 0.5) * (type === 'burst' ? 8 : 3);
+                this.vy = type === 'burst' ? (Math.random() * -6 - 2) : (Math.random() * 2 - 1);
+                this.size = Math.random() * (type === 'burst' ? 5 : 3) + 1;
+                this.alpha = 1;
+                this.decay = Math.random() * 0.02 + 0.015;
             }
 
-            const rect = canvas.getBoundingClientRect();
-            const x = (clientX - rect.left) * window.devicePixelRatio;
-            // Flip Y for WebGL coordinates
-            const y = (rect.height - (clientY - rect.top)) * window.devicePixelRatio;
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if (this.type === 'burst') {
+                    this.vy += 0.1; // Gravity on burst particles
+                }
+                this.alpha -= this.decay;
+            }
 
-            touchX = x;
-            touchY = y;
-            touchTime = 0.0;
-            touchIntensity = 1.0;
-
-            // Calculate panning based on screen position (-1.0 to 1.0)
-            const pan = (clientX / window.innerWidth) * 2.0 - 1.0;
-            audio.triggerRipple(pan);
+            draw(ctx, camY) {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, GAME_HEIGHT - 100 - (this.y - camY), this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
         }
 
-        window.addEventListener('pointerdown', (e) => {
-            handleInteraction(e.clientX, e.clientY);
+        function spawnBounceParticles(quality) {
+            let count = 15;
+            let color = '#fff';
+            if (quality === 'perfect') {
+                count = 35;
+                color = '#ffeb3b';
+            } else if (quality === 'great') {
+                count = 25;
+                color = '#00f0ff';
+            } else if (quality === 'good') {
+                count = 15;
+                color = '#ff007f';
+            }
+
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle(player.x, player.y, color, 'burst'));
+            }
+
+            // Add some rainbow sparkles for perfect
+            if (quality === 'perfect') {
+                const colors = ['#ff007f', '#00f0ff', '#ffeb3b', '#00ff66'];
+                for (let i = 0; i < 15; i++) {
+                    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+                    particles.push(new Particle(player.x, player.y, randomColor, 'burst'));
+                }
+            }
+        }
+
+        // --- Floating Text System ---
+        class FloatingText {
+            constructor(text, color, isPerfect = false) {
+                this.text = text;
+                this.color = color;
+                this.x = GAME_WIDTH / 2;
+                this.y = player.y + 40;
+                this.alpha = 1;
+                this.scale = isPerfect ? 1.5 : 1.0;
+                this.vy = 1.5;
+            }
+
+            update() {
+                this.y += this.vy;
+                this.alpha -= 0.02;
+            }
+
+            draw(ctx, camY) {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                ctx.font = `900 ${Math.floor(20 * this.scale)}px 'Segoe UI', sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.fillText(this.text, this.x, GAME_HEIGHT - 100 - (this.y - camY));
+                ctx.restore();
+            }
+        }
+
+        // --- Game Logic Functions ---
+
+        function triggerBounce(qualityInfo) {
+            const mult = qualityInfo.mult;
+            
+            // Calculate new velocity: retain some previous downward momentum and multiply
+            const incomingSpeed = Math.abs(player.vy);
+            let launchVelocity = BASE_BOUNCE * mult;
+            
+            // Compound velocity if timing is good
+            if (qualityInfo.label === 'PERFECT!!!' || qualityInfo.label === 'GREAT!') {
+                launchVelocity += incomingSpeed * 0.35;
+                combo++;
+                maxCombo = Math.max(maxCombo, combo);
+                document.getElementById('combo-container').style.display = 'block';
+                document.getElementById('combo-text').textContent = `COMBO x${combo}`;
+                document.getElementById('combo-text').style.background = combo > 5 ? 'linear-gradient(45deg, #ff007f, #ffeb3b)' : 'linear-gradient(45deg, #ff9800, #ff5722)';
+            } else {
+                combo = 0;
+                document.getElementById('combo-container').style.display = 'none';
+            }
+
+            // Cap maximum velocity to keep game playable but extremely fast
+            launchVelocity = Math.min(launchVelocity, 55);
+
+            // Set player state to CONTACT (trampoline stretching)
+            gameState = 'CONTACT';
+            player.vy = 0;
+            
+            // Set trampoline depression based on launch velocity
+            trampoline.targetDepression = Math.min(launchVelocity * 2.2, 80);
+            
+            // Play sound
+            sound.playBounce(qualityInfo.sound);
+
+            // Screen shake
+            if (qualityInfo.label === 'PERFECT!!!') screenShake = 18;
+            else if (qualityInfo.label === 'GREAT!') screenShake = 10;
+            else screenShake = 4;
+
+            // Spawn floating text
+            floatingTexts.push(new FloatingText(
+                qualityInfo.label, 
+                qualityInfo.color, 
+                qualityInfo.label === 'PERFECT!!!'
+            ));
+
+            // Store launch velocity to apply after trampoline animation
+            player.pendingLaunchVy = launchVelocity;
+            player.bounceQuality = qualityInfo.sound;
+        }
+
+        function handleTap() {
+            if (gameState !== 'PLAYING') return;
+
+            // Only allow tap when falling down
+            if (player.vy >= 0) return;
+
+            // Check timing based on player's current altitude
+            const alt = player.y;
+
+            if (alt <= TIMING_WINDOWS.EARLY.range && alt >= 0) {
+                let hit = null;
+                if (alt <= TIMING_WINDOWS.PERFECT.range) {
+                    hit = TIMING_WINDOWS.PERFECT;
+                } else if (alt <= TIMING_WINDOWS.GREAT.range) {
+                    hit = TIMING_WINDOWS.GREAT;
+                } else if (alt <= TIMING_WINDOWS.GOOD.range) {
+                    hit = TIMING_WINDOWS.GOOD;
+                } else {
+                    hit = TIMING_WINDOWS.EARLY;
+                }
+                triggerBounce(hit);
+            }
+        }
+
+        function resetGame() {
+            player.y = 300;
+            player.vy = 0;
+            player.squashX = 1;
+            player.squashY = 1;
+            cameraY = 0;
+            score = 0;
+            combo = 0;
+            maxCombo = 0;
+            particles = [];
+            floatingTexts = [];
+            trampoline.currentDepression = 0;
+            trampoline.targetDepression = 0;
+            document.getElementById('combo-container').style.display = 'none';
+            document.getElementById('height-display').textContent = '0m';
+            document.getElementById('progress-bar').style.height = '0%';
+            document.getElementById('progress-marker').textContent = '0%';
+            initBackground();
+            gameState = 'PLAYING';
+        }
+
+        // --- Main Game Loop ---
+        function update() {
+            // Screen shake decay
+            if (screenShake > 0) screenShake *= 0.9;
+
+            // Update trampoline physics
+            if (gameState === 'CONTACT') {
+                // Trampoline goes down
+                trampoline.currentDepression += (trampoline.targetDepression - trampoline.currentDepression) * 0.4;
+                player.y = -trampoline.currentDepression;
+                
+                // Squash player
+                player.squashX = 1.4;
+                player.squashY = 0.6;
+
+                if (Math.abs(trampoline.currentDepression - trampoline.targetDepression) < 2) {
+                    // Launch player!
+                    gameState = 'PLAYING';
+                    player.vy = player.pendingLaunchVy;
+                    player.y = 0;
+                    trampoline.targetDepression = 0;
+                    
+                    // Stretch player on launch
+                    player.squashX = 0.7;
+                    player.squashY = 1.5;
+
+                    spawnBounceParticles(player.bounceQuality);
+                }
+            } else {
+                // Trampoline returns to rest
+                const force = -trampoline.currentDepression * trampoline.springForce;
+                trampoline.springForce += (force - trampoline.springForce) * trampoline.friction;
+                trampoline.currentDepression += trampoline.springForce;
+                trampoline.currentDepression *= trampoline.friction;
+            }
+
+            if (gameState === 'PLAYING') {
+                // Apply gravity
+                player.vy -= GRAVITY;
+                player.y += player.vy;
+
+                // Squash & Stretch recovery
+                player.squashX += (1 - player.squashX) * 0.1;
+                player.squashY += (1 - player.squashY) * 0.1;
+
+                // Dynamic squash based on velocity
+                if (player.vy > 2) {
+                    player.squashX = 0.85;
+                    player.squashY = 1.15;
+                } else if (player.vy < -2) {
+                    player.squashX = 0.9;
+                    player.squashY = 1.1;
+                }
+
+                // Check for automatic landing (LATE / MISS)
+                if (player.y <= 0) {
+                    player.y = 0;
+                    if (player.vy < 0) {
+                        // Automatic weak bounce if player missed tapping
+                        triggerBounce({
+                            mult: 0.7,
+                            label: 'LATE...',
+                            color: '#ff0055',
+                            sound: 'weak'
+                        });
+                    }
+                }
+
+                // Update Score (Max altitude reached)
+                if (Math.floor(player.y) > score) {
+                    score = Math.floor(player.y);
+                    document.getElementById('height-display').textContent = score + 'm';
+                    
+                    // Update Progress Bar
+                    const progressPercent = Math.min((score / TARGET_MOON_HEIGHT) * 100, 100);
+                    document.getElementById('progress-bar').style.height = progressPercent + '%';
+                    document.getElementById('progress-marker').textContent = Math.floor(progressPercent) + '%';
+                    document.getElementById('progress-marker').style.bottom = `calc(${progressPercent}% - 10px)`;
+
+                    if (score > highScore) {
+                        highScore = score;
+                        localStorage.setItem('trampoline_high_score', highScore);
+                        document.getElementById('high-score-display').textContent = highScore + 'm';
+                    }
+                }
+
+                // Check Victory Condition
+                if (score >= TARGET_MOON_HEIGHT && gameState !== 'MOON_REACHED') {
+                    gameState = 'MOON_REACHED';
+                    sound.playVictory();
+                    showResultScreen(true);
+                }
+
+                // Check Game Over (if player loses all momentum and stops bouncing high)
+                // If player bounces 3 times consecutively with very low height, game over.
+                if (player.y === 0 && Math.abs(player.vy) < 1.5 && score > 50) {
+                    gameState = 'GAME_OVER';
+                    sound.playCrash();
+                    showResultScreen(false);
+                }
+            }
+
+            // Camera follows player smoothly
+            let targetCamY = player.y - GAME_HEIGHT * 0.4;
+            if (targetCamY < 0) targetCamY = 0;
+            // Camera moves slower when falling to let player prepare for timing
+            const camSpeed = player.vy < 0 ? 0.08 : 0.15;
+            cameraY += (targetCamY - cameraY) * camSpeed;
+
+            // Update particles
+            particles.forEach(p => p.update());
+            particles = particles.filter(p => p.alpha > 0);
+
+            // Spawn wind particles when flying fast
+            if (player.vy > 15 && Math.random() < 0.4) {
+                particles.push(new Particle(
+                    player.x + (Math.random() - 0.5) * 30,
+                    player.y - 20,
+                    'rgba(255,255,255,0.4)',
+                    'spark'
+                ));
+            }
+
+            // Update floating texts
+            floatingTexts.forEach(t => t.update());
+            floatingTexts = floatingTexts.filter(t => t.alpha > 0);
+
+            // Update clouds horizontal drift
+            clouds.forEach(c => {
+                c.x += c.speed;
+                if (c.x > GAME_WIDTH + 100) c.x = -100;
+                if (c.x < -100) c.x = GAME_WIDTH + 100;
+            });
+        }
+
+        // --- Render Functions ---
+
+        function drawBackground() {
+            // Draw dynamic sky gradient based on camera height
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, GAME_HEIGHT);
+            
+            if (cameraY < 2000) {
+                // Lower Atmosphere: Light blue to deep blue
+                const ratio = cameraY / 2000;
+                const colorTop = interpolateColor('#0d1b2a', '#1b4965', 1 - ratio);
+                const colorBottom = interpolateColor('#62b6cb', '#bee9e8', 1 - ratio);
+                skyGrad.addColorStop(0, colorTop);
+                skyGrad.addColorStop(1, colorBottom);
+            } else if (cameraY < 5000) {
+                // Stratosphere: Deep blue to purple/dark indigo
+                const ratio = (cameraY - 2000) / 3000;
+                const colorTop = interpolateColor('#0b090a', '#161a1d', ratio);
+                const colorBottom = interpolateColor('#1b4965', '#0d1b2a', ratio);
+                skyGrad.addColorStop(0, colorTop);
+                skyGrad.addColorStop(1, colorBottom);
+            } else {
+                // Space: Pure black
+                skyGrad.addColorStop(0, '#020205');
+                skyGrad.addColorStop(1, '#080710');
+            }
+            
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+            // Draw Stars (only visible as we go higher)
+            stars.forEach(star => {
+                // Stars start appearing above 1000m
+                const starAlpha = Math.min(Math.max((cameraY - 500) / 1500, 0), 1) * star.brightness;
+                if (starAlpha <= 0) return;
+
+                // Pulsing effect
+                const pulse = Math.sin(Date.now() * star.pulseSpeed) * 0.2 + 0.8;
+
+                ctx.save();
+                ctx.globalAlpha = starAlpha * pulse;
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(star.x, GAME_HEIGHT - 100 - (star.y - cameraY), star.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            // Draw Clouds (only in lower atmosphere)
+            clouds.forEach(cloud => {
+                const screenY = GAME_HEIGHT - 100 - (cloud.y - cameraY);
+                if (screenY < -100 || screenY > GAME_HEIGHT + 100) return;
+
+                ctx.save();
+                ctx.globalAlpha = cloud.opacity;
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                // Simple cloud shape
+                ctx.arc(cloud.x, screenY, 30 * cloud.scale, 0, Math.PI * 2);
+                ctx.arc(cloud.x + 25 * cloud.scale, screenY - 10 * cloud.scale, 25 * cloud.scale, 0, Math.PI * 2);
+                ctx.arc(cloud.x - 25 * cloud.scale, screenY - 5 * cloud.scale, 20 * cloud.scale, 0, Math.PI * 2);
+                ctx.arc(cloud.x + 45 * cloud.scale, screenY, 20 * cloud.scale, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            // Draw Ground (only visible near bottom)
+            const groundY = GAME_HEIGHT - 100 + cameraY;
+            if (groundY < GAME_HEIGHT + 100) {
+                ctx.fillStyle = '#1e2530';
+                ctx.fillRect(0, GAME_HEIGHT - 100 + cameraY, GAME_WIDTH, 100);
+                
+                // Ground details / grass line
+                ctx.fillStyle = '#131820';
+                ctx.fillRect(0, GAME_HEIGHT - 90 + cameraY, GAME_WIDTH, 90);
+            }
+
+            // Draw the Moon at the very top!
+            const moonY = TARGET_MOON_HEIGHT;
+            const moonScreenY = GAME_HEIGHT - 100 - (moonY - cameraY);
+            
+            // Draw moon glow and body if near
+            if (cameraY > 7000) {
+                ctx.save();
+                // Glow
+                const glowGrad = ctx.createRadialGradient(
+                    GAME_WIDTH / 2, moonScreenY, 20, 
+                    GAME_WIDTH / 2, moonScreenY, 180
+                );
+                glowGrad.addColorStop(0, 'rgba(255, 255, 240, 0.8)');
+                glowGrad.addColorStop(0.2, 'rgba(255, 255, 220, 0.3)');
+                glowGrad.addColorStop(1, 'rgba(255, 255, 220, 0)');
+                ctx.fillStyle = glowGrad;
+                ctx.beginPath();
+                ctx.arc(GAME_WIDTH / 2, moonScreenY, 180, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Moon Body
+                ctx.fillStyle = '#fcfcf0';
+                ctx.beginPath();
+                ctx.arc(GAME_WIDTH / 2, moonScreenY, 80, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Craters
+                ctx.fillStyle = '#e3e3d3';
+                drawCrater(GAME_WIDTH / 2 - 30, moonScreenY - 20, 15);
+                drawCrater(GAME_WIDTH / 2 + 25, moonScreenY + 30, 12);
+                drawCrater(GAME_WIDTH / 2 - 10, moonScreenY + 40, 8);
+                drawCrater(GAME_WIDTH / 2 + 40, moonScreenY - 30, 10);
+                ctx.restore();
+            }
+        }
+
+        function drawCrater(x, y, r) {
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+            // Crater shadow
+            ctx.strokeStyle = '#d0d0c0';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(x, y, r - 1, 0.2 * Math.PI, 1.2 * Math.PI);
+            ctx.stroke();
+        }
+
+        function drawTrampoline() {
+            const screenY = TRAMPOLINE_Y + cameraY;
+            if (screenY < -50 || screenY > GAME_HEIGHT + 150) return;
+
+            // Draw Pillars
+            ctx.save();
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = '#3a4454';
+            ctx.lineCap = 'round';
+            
+            // Left Pillar
+            ctx.beginPath();
+            ctx.moveTo(trampoline.leftX - 10, screenY + 40);
+            ctx.lineTo(trampoline.leftX, screenY);
+            ctx.lineTo(trampoline.leftX - 15, screenY + 40);
+            ctx.stroke();
+
+            // Right Pillar
+            ctx.beginPath();
+            ctx.moveTo(trampoline.rightX + 10, screenY + 40);
+            ctx.lineTo(trampoline.rightX, screenY);
+            ctx.lineTo(trampoline.rightX + 15, screenY + 40);
+            ctx.stroke();
+
+            // Draw Elastic Band (Trampoline Bed)
+            const midX = (trampoline.leftX + trampoline.rightX) / 2;
+            const controlY = screenY + trampoline.currentDepression * 1.8;
+
+            // Outer glow for trampoline
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#ff007f';
+            ctx.strokeStyle = '#ff007f';
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.moveTo(trampoline.leftX, screenY);
+            ctx.quadraticCurveTo(midX, controlY, trampoline.rightX, screenY);
+            ctx.stroke();
+
+            // Inner neon line
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#00f0ff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(trampoline.leftX, screenY);
+            ctx.quadraticCurveTo(midX, controlY, trampoline.rightX, screenY);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        function drawPlayer() {
+            const screenY = GAME_HEIGHT - 100 - (player.y - cameraY);
+            
+            ctx.save();
+            ctx.translate(player.x, screenY);
+            ctx.scale(player.squashX, player.squashY);
+
+            // Draw Wind Trail when moving fast upwards
+            if (player.vy > 8) {
+                const trailGrad = ctx.createLinearGradient(0, 0, 0, 80);
+                trailGrad.addColorStop(0, 'rgba(0, 240, 255, 0.6)');
+                trailGrad.addColorStop(1, 'rgba(255, 0, 127, 0)');
+                ctx.fillStyle = trailGrad;
+                ctx.beginPath();
+                ctx.moveTo(-player.radius * 0.8, 0);
+                ctx.lineTo(0, player.vy * 3);
+                ctx.lineTo(player.radius * 0.8, 0);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            // Draw Astronaut Body
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = player.color;
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Visor (Face shield)
+            ctx.fillStyle = '#1a1a2e';
+            ctx.beginPath();
+            // Visor shifts slightly based on movement direction
+            const visorY = player.vy > 0 ? -3 : 1;
+            ctx.arc(0, visorY, player.radius * 0.6, 0, Math.PI, true);
+            ctx.fill();
+
+            // Visor Glow Highlight
+            ctx.fillStyle = player.color;
+            ctx.beginPath();
+            ctx.arc(0, visorY, player.radius * 0.5, 0.1 * Math.PI, 0.9 * Math.PI);
+            ctx.globalAlpha = 0.4;
+            ctx.fill();
+            ctx.restore();
+
+            // --- Draw Timing Ring Helper ---
+            // Only show when falling and close to trampoline
+            if (player.vy < 0 && player.y < 280 && player.y > 0) {
+                const ringRadius = player.radius + player.y * 0.6;
+                ctx.save();
+                ctx.strokeStyle = player.y <= TIMING_WINDOWS.PERFECT.range ? '#ffeb3b' : 
+                                  player.y <= TIMING_WINDOWS.GREAT.range ? '#00f0ff' : 
+                                  player.y <= TIMING_WINDOWS.GOOD.range ? '#ff007f' : 'rgba(255,255,255,0.3)';
+                ctx.lineWidth = player.y <= TIMING_WINDOWS.PERFECT.range ? 3 : 1.5;
+                if (player.y <= TIMING_WINDOWS.PERFECT.range) {
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = '#ffeb3b';
+                }
+                ctx.beginPath();
+                ctx.arc(player.x, screenY, ringRadius, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        // --- Helper: Color Interpolation ---
+        function interpolateColor(color1, color2, factor) {
+            if (factor < 0) factor = 0;
+            if (factor > 1) factor = 1;
+            
+            const r1 = parseInt(color1.substring(1, 3), 16);
+            const g1 = parseInt(color1.substring(3, 5), 16);
+            const b1 = parseInt(color1.substring(5, 7), 16);
+
+            const r2 = parseInt(color2.substring(1, 3), 16);
+            const g2 = parseInt(color2.substring(3, 5), 16);
+            const b2 = parseInt(color2.substring(5, 7), 16);
+
+            const r = Math.round(r1 + factor * (r2 - r1));
+            const g = Math.round(g1 + factor * (g2 - g1));
+            const b = Math.round(b1 + factor * (b2 - b1));
+
+            return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+        }
+
+        // --- Screen Overlay Controllers ---
+
+        function showResultScreen(isVictory) {
+            const screen = document.getElementById('result-screen');
+            const title = document.getElementById('result-title');
+            const subtitle = document.getElementById('result-subtitle');
+            const finalScore = document.getElementById('final-score');
+
+            if (isVictory) {
+                title.textContent = '🎉 MISSION COMPLETE! 🎉';
+                title.style.background = 'linear-gradient(45deg, #ffeb3b, #00ff66)';
+                title.style.webkitBackgroundClip = 'text';
+                subtitle.textContent = 'おめでとうございます！月面着陸に成功しました！';
+            } else {
+                title.textContent = 'GAME OVER';
+                title.style.background = 'linear-gradient(45deg, #ff007f, #ff5722)';
+                title.style.webkitBackgroundClip = 'text';
+                subtitle.textContent = '月まであと一歩でした！タイミングを極めよう！';
+            }
+
+            finalScore.textContent = score + 'm';
+            screen.classList.remove('hidden');
+        }
+
+        // --- Main Loop Trigger ---
+        function loop() {
+            update();
+
+            ctx.save();
+            // Apply screen shake
+            if (screenShake > 0) {
+                const dx = (Math.random() - 0.5) * screenShake;
+                const dy = (Math.random() - 0.5) * screenShake;
+                ctx.translate(dx, dy);
+            }
+
+            // Draw everything
+            drawBackground();
+            drawTrampoline();
+            drawPlayer();
+
+            // Draw particles
+            particles.forEach(p => p.draw(ctx, cameraY));
+
+            // Draw floating texts
+            floatingTexts.forEach(t => t.draw(ctx, cameraY));
+
+            ctx.restore();
+
+            requestAnimationFrame(loop);
+        }
+
+        // --- Event Listeners ---
+
+        // Start Game
+        document.getElementById('start-button').addEventListener('click', () => {
+            sound.init();
+            document.getElementById('start-screen').classList.add('hidden');
+            resetGame();
         });
 
-        // Main Render Loop
-        function render(now) {
-            const dt = (now - lastTime) * 0.001;
-            lastTime = now;
-            const elapsed = (now - startTime) * 0.001;
+        // Restart Game
+        document.getElementById('restart-button').addEventListener('click', () => {
+            document.getElementById('result-screen').classList.add('hidden');
+            resetGame();
+        });
 
-            // Update breathing cycle
-            const breath = getBreathValue(elapsed);
-            audio.updateBreath(breath);
+        // Tap / Click to Jump
+        const triggerArea = document.getElementById('game-container');
+        
+        triggerArea.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Prevent double tap zoom
+            handleTap();
+        }, { passive: false });
 
-            // Update touch ripple state
-            touchTime += dt;
-            if (touchIntensity > 0.0) {
-                touchIntensity -= dt * 0.45; // Slow decay
-                if (touchIntensity < 0.0) touchIntensity = 0.0;
+        triggerArea.addEventListener('mousedown', (e) => {
+            // Only trigger if not clicking UI buttons
+            if (e.target.tagName !== 'BUTTON') {
+                handleTap();
             }
+        });
 
-            // Get real-time temporal colors
-            const colors = getTemporalColors();
+        // Audio Toggle
+        const audioBtn = document.getElementById('audio-toggle');
+        audioBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            sound.muted = !sound.muted;
+            audioBtn.textContent = sound.muted ? '🔇 Sound Off' : '🔊 Sound On';
+            audioBtn.style.borderColor = sound.muted ? 'rgba(255,0,0,0.3)' : 'rgba(255,255,255,0.1)';
+        });
 
-            // WebGL Draw
-            gl.clearColor(0.0, 0.0, 0.0, 1.0);
-            gl.clear(gl.COLOR_BUFFER_BIT);
-
-            gl.useProgram(program);
-
-            gl.enableVertexAttribArray(positionAttributeLocation);
-            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-            gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
-
-            // Set Uniforms
-            gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
-            gl.uniform1f(uniforms.time, elapsed);
-            gl.uniform1f(uniforms.breath, breath);
-            gl.uniform3fv(uniforms.colorBase, colors.base);
-            gl.uniform3fv(uniforms.colorGlow, colors.glow);
-            gl.uniform2f(uniforms.touchPos, touchX, touchY);
-            gl.uniform1f(uniforms.touchTime, touchTime);
-            gl.uniform1f(uniforms.touchIntensity, touchIntensity);
-
-            gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-            requestAnimationFrame(render);
-        }
-
-        requestAnimationFrame(render);
+        // Start loop immediately
+        initBackground();
+        loop();
     </script>
 </body>
 </html>
