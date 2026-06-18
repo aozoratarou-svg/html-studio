@@ -99,6 +99,7 @@
 
     .interactive {
       pointer-events: auto;
+      cursor: pointer;
     }
 
     /* Header HUD */
@@ -363,6 +364,8 @@
       display: flex;
       flex-direction: column;
       gap: 15px;
+      z-index: 30;
+      position: relative;
     }
 
     .menu-label {
@@ -390,6 +393,12 @@
       color: #aaa;
       cursor: pointer;
       transition: all 0.3s;
+      pointer-events: auto; /* Ensure clickable inside menu-card */
+    }
+
+    .diff-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
     }
 
     .diff-btn.selected[data-diff="easy"] {
@@ -886,6 +895,9 @@
     let particles = [];
     let magicCircles = [];
 
+    // Keyboard controls for PC compatibility
+    const keys = {};
+
     // Difficulty Settings
     const diffConfig = {
       easy: { bulletSpeedMult: 0.6, spawnRate: 45, bossHp: 800 },
@@ -901,7 +913,7 @@
       player.targetY = player.y;
     }
 
-    // --- Input Handling (Mobile & Mouse) ---
+    // --- Input Handling ---
     function getTouchPos(e) {
       const rect = canvas.getBoundingClientRect();
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -912,18 +924,17 @@
       };
     }
 
-    function onPointerStart(e) {
+    function onPointerMove(e) {
       if (!gameActive) return;
       const pos = getTouchPos(e);
-      // Check if close to player to prevent sudden jumps, or just snap smoothly
-      player.isDragging = true;
       player.targetX = pos.x;
       player.targetY = pos.y;
     }
 
-    function onPointerMove(e) {
-      if (!gameActive || !player.isDragging) return;
+    function onPointerStart(e) {
+      if (!gameActive) return;
       const pos = getTouchPos(e);
+      player.isDragging = true;
       player.targetX = pos.x;
       player.targetY = pos.y;
     }
@@ -932,19 +943,36 @@
       player.isDragging = false;
     }
 
-    canvas.addEventListener('mousedown', onPointerStart);
+    // Bind both mouse pointer tracking and classic touch gestures
     canvas.addEventListener('mousemove', onPointerMove);
+    canvas.addEventListener('mousedown', onPointerStart);
     window.addEventListener('mouseup', onPointerEnd);
 
     canvas.addEventListener('touchstart', (e) => {
-      e.preventDefault();
+      // Prevent default context or scroll only if clicking directly on game area, and not menu options
+      if (e.target === canvas) {
+        e.preventDefault();
+      }
       onPointerStart(e);
     }, { passive: false });
     canvas.addEventListener('touchmove', (e) => {
-      e.preventDefault();
+      if (e.target === canvas) {
+        e.preventDefault();
+      }
       onPointerMove(e);
     }, { passive: false });
     window.addEventListener('touchend', onPointerEnd);
+
+    // Keyboard Listeners (WASD / Arrows)
+    window.addEventListener('keydown', (e) => {
+      keys[e.key] = true;
+      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " ", "Shift"].includes(e.key)) {
+        if (gameActive) e.preventDefault();
+      }
+    });
+    window.addEventListener('keyup', (e) => {
+      keys[e.key] = false;
+    });
 
     // --- Particle System ---
     function spawnExplosion(x, y, color, count = 15) {
@@ -1003,11 +1031,36 @@
 
       frameCount++;
 
-      // Smooth Player Movement (Lerp)
-      player.x += (player.targetX - player.x) * 0.3;
-      player.y += (player.targetY - player.y) * 0.3;
+      // PC Keyboard Movement Handling
+      let moveSpeed = 4.5;
+      if (keys['Shift']) {
+        moveSpeed = 2.0; 
+      }
+      
+      let keyboardInputActive = false;
+      let dx = 0;
+      let dy = 0;
 
-      // Keep player in bounds
+      if (keys['ArrowUp'] || keys['w'] || keys['W']) { dy -= 1; keyboardInputActive = true; }
+      if (keys['ArrowDown'] || keys['s'] || keys['S']) { dy += 1; keyboardInputActive = true; }
+      if (keys['ArrowLeft'] || keys['a'] || keys['A']) { dx -= 1; keyboardInputActive = true; }
+      if (keys['ArrowRight'] || keys['d'] || keys['D']) { dx += 1; keyboardInputActive = true; }
+
+      if (keyboardInputActive) {
+        const length = Math.sqrt(dx * dx + dy * dy);
+        if (length > 0) {
+          player.x += (dx / length) * moveSpeed;
+          player.y += (dy / length) * moveSpeed;
+          player.targetX = player.x;
+          player.targetY = player.y;
+        }
+      } else {
+        // Smooth Mouse Pointer Lerping
+        player.x += (player.targetX - player.x) * 0.3;
+        player.y += (player.targetY - player.y) * 0.3;
+      }
+
+      // Keep player strictly in bounds
       player.x = Math.max(player.drawRadius, Math.min(canvas.width - player.drawRadius, player.x));
       player.y = Math.max(player.drawRadius, Math.min(canvas.height - player.drawRadius, player.y));
 
@@ -1029,9 +1082,9 @@
 
         // Hit Boss
         if (boss.active) {
-          let dx = b.x - boss.x;
-          let dy = b.y - boss.y;
-          let dist = Math.sqrt(dx * dx + dy * dy);
+          let bdx = b.x - boss.x;
+          let bdy = b.y - boss.y;
+          let dist = Math.sqrt(bdx * bdx + bdy * bdy);
           if (dist < boss.radius) {
             boss.hp -= 4;
             score += 10;
@@ -1043,10 +1096,9 @@
             document.getElementById('boss-hp-bar').style.width = `${hpPercent}%`;
 
             if (boss.hp <= 0) {
-              // Boss Defeated / Next Phase
               spawnExplosion(boss.x, boss.y, 'var(--neon-pink)', 40);
               score += 10000;
-              boss.hp = boss.maxHp; // Reset for next phase / loop
+              boss.hp = boss.maxHp; 
               triggerSpellCard();
             }
           }
@@ -1067,7 +1119,6 @@
       }
 
       if (boss.active) {
-        // Move Boss smoothly
         boss.x += (boss.targetX - boss.x) * 0.03;
         boss.y += (boss.targetY - boss.y) * 0.03;
 
@@ -1137,18 +1188,16 @@
         b.x += b.vx;
         b.y += b.vy;
 
-        // Out of bounds check
         if (b.x < -20 || b.x > canvas.width + 20 || b.y < -20 || b.y > canvas.height + 20) {
           enemyBullets.splice(i, 1);
           continue;
         }
 
-        // Collision Check (Hitbox is tiny for fair gameplay)
-        let dx = b.x - player.x;
-        let dy = b.y - player.y;
-        let dist = Math.sqrt(dx * dx + dy * dy);
+        let bdx = b.x - player.x;
+        let bdy = b.y - player.y;
+        let dist = Math.sqrt(bdx * bdx + bdy * bdy);
 
-        // Graze Check (Slightly larger radius than hitbox)
+        // Graze Check
         if (dist < player.drawRadius + b.radius && !b.grazed) {
           b.grazed = true;
           graze++;
@@ -1200,7 +1249,6 @@
       spawnExplosion(player.x, player.y, '#ffffff', 30);
       spawnExplosion(player.x, player.y, 'var(--neon-pink)', 20);
 
-      // Update Lives UI
       const livesContainer = document.getElementById('lives-container');
       if (livesContainer.children.length > 0) {
         livesContainer.removeChild(livesContainer.lastElementChild);
@@ -1209,12 +1257,10 @@
       if (lives <= 0) {
         endGame(false);
       } else {
-        // Temporary invincibility / reset position
         player.x = canvas.width / 2;
         player.y = canvas.height * 0.8;
         player.targetX = player.x;
         player.targetY = player.y;
-        // Clear screen of bullets for fairness
         enemyBullets = [];
       }
     }
@@ -1223,7 +1269,7 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Draw Rotating Magic Circles (Background Decorator)
+      // Draw Rotating Magic Circles
       magicCircles.forEach(mc => {
         ctx.save();
         ctx.translate(mc.x, mc.y);
@@ -1233,12 +1279,10 @@
         ctx.shadowBlur = 15;
         ctx.shadowColor = mc.color;
         
-        // Outer Ring
         ctx.beginPath();
         ctx.arc(0, 0, mc.radius + mc.pulse, 0, Math.PI * 2);
         ctx.stroke();
 
-        // Inner Star Pattern
         ctx.beginPath();
         for (let i = 0; i < 8; i++) {
           const angle = (i * Math.PI * 2) / 8;
@@ -1258,7 +1302,6 @@
         ctx.shadowBlur = 20;
         ctx.shadowColor = 'var(--neon-pink)';
         
-        // Glowing Aura
         let gradient = ctx.createRadialGradient(boss.x, boss.y, 5, boss.x, boss.y, boss.radius + 15);
         gradient.addColorStop(0, 'rgba(255, 42, 133, 1)');
         gradient.addColorStop(0.5, 'rgba(155, 93, 229, 0.5)');
@@ -1268,7 +1311,6 @@
         ctx.arc(boss.x, boss.y, boss.radius + 15, 0, Math.PI * 2);
         ctx.fill();
 
-        // Boss Core Emoji (Cute but powerful)
         ctx.font = "42px Arial";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
@@ -1278,27 +1320,23 @@
 
       // Draw Player
       ctx.save();
-      // Yin-Yang rotating shield/aura
       ctx.translate(player.x, player.y);
       ctx.rotate(frameCount * 0.04);
       ctx.shadowBlur = 15;
       ctx.shadowColor = 'var(--neon-blue)';
       
-      // Outer Magic Ring
       ctx.strokeStyle = 'rgba(5, 217, 232, 0.6)';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.arc(0, 0, player.drawRadius, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Yin-Yang Symbol (Emoji)
       ctx.font = "24px Arial";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText("☯️", 0, 0);
       ctx.restore();
 
-      // Draw Hitbox Dot (Crucial for Danmaku)
       ctx.save();
       ctx.fillStyle = '#fff';
       ctx.shadowBlur = 8;
@@ -1308,7 +1346,7 @@
       ctx.fill();
       ctx.restore();
 
-      // Draw Player Bullets (Glowing Cards/Amulets)
+      // Draw Player Bullets
       playerBullets.forEach(b => {
         ctx.save();
         ctx.fillStyle = '#fff';
@@ -1328,7 +1366,6 @@
         ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
         ctx.fill();
         
-        // Inner core for high-contrast look
         ctx.fillStyle = '#fff';
         ctx.beginPath();
         ctx.arc(b.x, b.y, b.radius * 0.4, 0, Math.PI * 2);
@@ -1365,7 +1402,6 @@
       document.getElementById('start-screen').classList.add('hidden');
       document.getElementById('end-screen').classList.add('hidden');
       
-      // Reset Stats
       score = 0;
       graze = 0;
       lives = 3;
@@ -1377,7 +1413,6 @@
       boss.spellIndex = 0;
       frameCount = 0;
 
-      // Reset Lives UI
       const livesContainer = document.getElementById('lives-container');
       livesContainer.innerHTML = ' <span class="life-heart">🌸</span>'.repeat(3);
       document.getElementById('graze-display').innerText = '0';
@@ -1391,7 +1426,6 @@
       gameActive = false;
       document.getElementById('boss-hud').classList.remove('active');
       
-      // Show End Screen
       const endScreen = document.getElementById('end-screen');
       document.getElementById('end-title').innerText = victory ? "夢幻大勝利" : "満身創痍";
       document.getElementById('end-subtitle').innerText = victory ? "Gensokyo is Saved!" : "You have been defeated...";
@@ -1407,17 +1441,23 @@
     // Difficulty Selection
     const diffButtons = document.querySelectorAll('.diff-btn');
     diffButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
+      // Use both click and touchend to ensure responsive difficulty toggling across devices
+      const selectDiff = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         diffButtons.forEach(b => b.classList.remove('selected'));
         btn.classList.add('selected');
-        difficulty = btn.dataset.diff;
-      });
+        difficulty = btn.getAttribute('data-diff');
+      };
+      btn.addEventListener('click', selectDiff);
+      btn.addEventListener('touchend', selectDiff);
     });
 
     // Sound Toggle
     const soundBtn = document.getElementById('sound-btn');
-    soundBtn.addEventListener('click', () => {
-      sound.init(); // Ensure initialized on user interaction
+    soundBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      sound.init();
       const isMuted = sound.toggleMute();
       if (isMuted) {
         soundBtn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
@@ -1429,8 +1469,14 @@
     });
 
     // Start & Retry Buttons
-    document.getElementById('start-btn').addEventListener('click', startGame);
-    document.getElementById('retry-btn').addEventListener('click', startGame);
+    document.getElementById('start-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      startGame();
+    });
+    document.getElementById('retry-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      startGame();
+    });
   </script>
 </body>
 </html>
