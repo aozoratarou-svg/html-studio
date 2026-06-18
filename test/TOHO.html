@@ -1,0 +1,1436 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>東方幻夢抄 〜 Mystic Sakura Danmaku</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Yuji+Syuku&display=swap');
+
+    :root {
+      --neon-pink: #ff2a85;
+      --neon-blue: #05d9e8;
+      --neon-gold: #f5b041;
+      --neon-purple: #9b5de5;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #05020c;
+      font-family: 'Yuji Syuku', serif;
+      color: #fff;
+    }
+
+    /* Background & Canvas Area */
+    #game-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      max-width: 500px;
+      margin: 0 auto;
+      background: radial-gradient(circle at center, #1a0933 0%, #05020c 100%);
+      overflow: hidden;
+      box-shadow: 0 0 30px rgba(255, 42, 133, 0.3);
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* Sakura Petals Overlay (CSS Animation) */
+    .sakura-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 2;
+      overflow: hidden;
+    }
+
+    .petal {
+      position: absolute;
+      background: linear-gradient(135deg, #ffb7c5, #ff8da1);
+      border-radius: 150% 0 150% 150%/150% 0 150% 150%;
+      opacity: 0.8;
+      animation: fall linear infinite;
+      filter: drop-shadow(0 0 4px rgba(255, 141, 161, 0.6));
+    }
+
+    @keyframes fall {
+      0% {
+        transform: translate(0, -10px) rotate(0deg);
+      }
+      100% {
+        transform: translate(100px, 100vh) rotate(360deg);
+      }
+    }
+
+    /* UI Overlays */
+    .ui-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 15px;
+    }
+
+    .interactive {
+      pointer-events: auto;
+    }
+
+    /* Header HUD */
+    .hud-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+    }
+
+    .score-container {
+      background: rgba(15, 5, 30, 0.75);
+      border: 1px solid var(--neon-blue);
+      border-radius: 10px;
+      padding: 6px 12px;
+      box-shadow: 0 0 10px rgba(5, 217, 232, 0.3);
+      font-family: 'Cinzel', serif;
+    }
+
+    .score-label {
+      font-size: 10px;
+      color: var(--neon-blue);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .score-val {
+      font-size: 18px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 0 0 5px var(--neon-blue);
+    }
+
+    .sound-toggle {
+      background: rgba(15, 5, 30, 0.75);
+      border: 1px solid var(--neon-pink);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(255, 42, 133, 0.3);
+      transition: all 0.2s;
+    }
+
+    .sound-toggle:active {
+      transform: scale(0.9);
+    }
+
+    .sound-toggle svg {
+      width: 20px;
+      height: 20px;
+      fill: var(--neon-pink);
+      filter: drop-shadow(0 0 3px var(--neon-pink));
+    }
+
+    /* Boss Health Bar */
+    .boss-hud {
+      position: absolute;
+      top: 75px;
+      left: 15px;
+      right: 15px;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .boss-hud.active {
+      opacity: 1;
+    }
+
+    .boss-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      text-shadow: 0 0 5px var(--neon-pink);
+    }
+
+    .boss-name {
+      color: var(--neon-pink);
+      font-weight: bold;
+    }
+
+    .spell-card-name {
+      color: var(--neon-gold);
+      font-style: italic;
+    }
+
+    .boss-hp-outer {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 42, 133, 0.5);
+      box-shadow: 0 0 8px rgba(255, 42, 133, 0.2);
+    }
+
+    .boss-hp-inner {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--neon-pink), var(--neon-gold));
+      box-shadow: 0 0 10px var(--neon-pink);
+      transition: width 0.1s ease-out;
+    }
+
+    /* Player Lives & Graze */
+    .hud-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      width: 100%;
+    }
+
+    .lives-container {
+      display: flex;
+      gap: 5px;
+    }
+
+    .life-heart {
+      font-size: 20px;
+      filter: drop-shadow(0 0 5px var(--neon-pink));
+      animation: pulse 1s infinite alternate;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.15); }
+    }
+
+    .graze-container {
+      background: rgba(15, 5, 30, 0.75);
+      border: 1px solid var(--neon-gold);
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-family: 'Cinzel', serif;
+      text-align: right;
+      box-shadow: 0 0 8px rgba(245, 176, 65, 0.3);
+    }
+
+    .graze-label {
+      font-size: 9px;
+      color: var(--neon-gold);
+    }
+
+    .graze-val {
+      font-size: 14px;
+      font-weight: bold;
+      text-shadow: 0 0 4px var(--neon-gold);
+    }
+
+    /* Screen Shake Class */
+    .shake {
+      animation: shake-anim 0.4s cubic-bezier(.36,.07,.19,.97) both;
+    }
+
+    @keyframes shake-anim {
+      10%, 90% { transform: translate3d(-2px, 0, 0); }
+      20%, 80% { transform: translate3d(4px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+      40%, 60% { transform: translate3d(6px, 0, 0); }
+    }
+
+    /* Spell Card Cut-in Overlay */
+    .spell-cutin {
+      position: absolute;
+      top: 30%;
+      left: -100%;
+      width: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 42, 133, 0.8), transparent);
+      padding: 15px 0;
+      text-align: center;
+      transform: skewY(-6deg);
+      z-index: 15;
+      pointer-events: none;
+      box-shadow: 0 0 20px var(--neon-pink);
+      transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .spell-cutin.active {
+      left: 0;
+      animation: slide-out 2.5s forwards;
+    }
+
+    @keyframes slide-out {
+      0% { left: -100%; }
+      15% { left: 0; }
+      85% { left: 0; opacity: 1; }
+      100% { left: 100%; opacity: 0; }
+    }
+
+    .spell-cutin-title {
+      font-size: 14px;
+      color: var(--neon-gold);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      text-shadow: 0 0 5px #000;
+    }
+
+    .spell-cutin-name {
+      font-size: 24px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 0 0 10px var(--neon-pink), 0 0 20px #000;
+    }
+
+    /* Screens (Start / Game Over) */
+    .screen-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(10, 3, 22, 0.9);
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 30px;
+      text-align: center;
+      transition: opacity 0.4s ease;
+    }
+
+    .screen-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .title-logo {
+      font-size: 32px;
+      font-weight: bold;
+      background: linear-gradient(to bottom, #fff 20%, var(--neon-pink) 60%, var(--neon-purple) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 0 15px rgba(255, 42, 133, 0.6));
+      margin-bottom: 5px;
+      text-align: center;
+      line-height: 1.2;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: var(--neon-blue);
+      letter-spacing: 3px;
+      margin-bottom: 30px;
+      text-shadow: 0 0 8px var(--neon-blue);
+    }
+
+    .menu-card {
+      background: rgba(25, 10, 45, 0.8);
+      border: 2px solid var(--neon-purple);
+      border-radius: 16px;
+      padding: 20px;
+      width: 100%;
+      max-width: 340px;
+      box-shadow: 0 0 25px rgba(155, 93, 229, 0.4);
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .menu-label {
+      font-size: 12px;
+      color: var(--neon-gold);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    /* Difficulty Selector */
+    .difficulty-selector {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .diff-btn {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 10px 0;
+      font-size: 12px;
+      font-weight: bold;
+      color: #aaa;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .diff-btn.selected[data-diff="easy"] {
+      background: rgba(5, 217, 232, 0.2);
+      border-color: var(--neon-blue);
+      color: var(--neon-blue);
+      box-shadow: 0 0 12px var(--neon-blue);
+    }
+
+    .diff-btn.selected[data-diff="normal"] {
+      background: rgba(245, 176, 65, 0.2);
+      border-color: var(--neon-gold);
+      color: var(--neon-gold);
+      box-shadow: 0 0 12px var(--neon-gold);
+    }
+
+    .diff-btn.selected[data-diff="hard"] {
+      background: rgba(255, 42, 133, 0.2);
+      border-color: var(--neon-pink);
+      color: var(--neon-pink);
+      box-shadow: 0 0 12px var(--neon-pink);
+    }
+
+    /* Action Buttons */
+    .action-btn {
+      width: 100%;
+      background: linear-gradient(135deg, var(--neon-pink), var(--neon-purple));
+      border: none;
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #fff;
+      cursor: pointer;
+      box-shadow: 0 0 15px var(--neon-pink);
+      transition: all 0.2s;
+      font-family: 'Yuji Syuku', serif;
+    }
+
+    .action-btn:active {
+      transform: scale(0.97);
+      box-shadow: 0 0 5px var(--neon-pink);
+    }
+
+    .game-over-title {
+      font-size: 36px;
+      color: var(--neon-pink);
+      text-shadow: 0 0 15px var(--neon-pink);
+      margin-bottom: 10px;
+    }
+
+    .stats-row {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 8px 0;
+      font-size: 14px;
+    }
+
+    .stats-label {
+      color: #aaa;
+    }
+
+    .stats-val {
+      font-weight: bold;
+      color: var(--neon-blue);
+    }
+
+    /* Character Selection Preview */
+    .char-preview {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .char-avatar {
+      font-size: 32px;
+      animation: float-char 2s ease-in-out infinite alternate;
+    }
+
+    @keyframes float-char {
+      0% { transform: translateY(-4px) rotate(-5deg); }
+      100% { transform: translateY(4px) rotate(5deg); }
+    }
+
+    .char-desc {
+      text-align: left;
+    }
+
+    .char-name {
+      font-size: 14px;
+      font-weight: bold;
+      color: var(--neon-pink);
+    }
+
+    .char-sub {
+      font-size: 10px;
+      color: #aaa;
+    }
+
+    /* Magic Circle Background Decorator */
+    .magic-circle-bg {
+      position: absolute;
+      width: 250px;
+      height: 250px;
+      border: 2px dashed rgba(155, 93, 229, 0.25);
+      border-radius: 50%;
+      pointer-events: none;
+      animation: rotate-circle 20s linear infinite;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 0;
+    }
+
+    .magic-circle-bg::before {
+      content: '';
+      position: absolute;
+      width: 200px;
+      height: 200px;
+      border: 1px solid rgba(5, 217, 232, 0.15);
+      border-radius: 50%;
+      transform: rotate(45deg);
+    }
+
+    @keyframes rotate-circle {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="game-container">
+    <!-- Sakura Petals Layer -->
+    <div class="sakura-container" id="sakura-container"></div>
+
+    <!-- Game Canvas -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- UI Layer -->
+    <div class="ui-layer">
+      <!-- Header HUD -->
+      <div class="hud-header">
+        <div class="score-container">
+          <div class="score-label">Score</div>
+          <div class="score-val" id="score-display">000,000,000</div>
+        </div>
+        <button class="sound-toggle interactive" id="sound-btn" aria-label="Toggle Sound">
+          <!-- Speaker Icon -->
+          <svg id="sound-icon" viewBox="0 0 24 24">
+            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Boss HUD -->
+      <div class="boss-hud" id="boss-hud">
+        <div class="boss-info">
+          <span class="boss-name">🌸 八雲 紫 (Yukari)</span>
+          <span class="spell-card-name" id="spell-card-display">結界「客観結界」</span>
+        </div>
+        <div class="boss-hp-outer">
+          <div class="boss-hp-inner" id="boss-hp-bar"></div>
+        </div>
+      </div>
+
+      <!-- Spell Card Cut-in -->
+      <div class="spell-cutin" id="spell-cutin">
+        <div class="spell-cutin-title">Spell Card Active!</div>
+        <div class="spell-cutin-name" id="spell-cutin-name">結界「客観結界」</div>
+      </div>
+
+      <!-- Footer HUD -->
+      <div class="hud-footer">
+        <div class="lives-container" id="lives-container">
+          <span class="life-heart">🌸</span>
+          <span class="life-heart">🌸</span>
+          <span class="life-heart">🌸</span>
+        </div>
+        <div class="graze-container">
+          <div class="graze-label">Graze</div>
+          <div class="graze-val" id="graze-display">0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div class="screen-overlay" id="start-screen">
+      <div class="magic-circle-bg"></div>
+      <h1 class="title-logo">東方幻夢抄</h1>
+      <p class="subtitle">MYSTIC SAKURA DANMAKU</p>
+
+      <div class="menu-card interactive">
+        <div class="char-preview">
+          <div class="char-avatar">⛩️</div>
+          <div class="char-desc">
+            <div class="char-name">博麗 霊夢 (Reimu)</div>
+            <div class="char-sub">Shrine Maiden of Hakurei</div>
+          </div>
+        </div>
+
+        <div>
+          <div class="menu-label" style="margin-bottom: 8px;">Select Difficulty</div>
+          <div class="difficulty-selector">
+            <button class="diff-btn" data-diff="easy">Easy</button>
+            <button class="diff-btn selected" data-diff="normal">Normal</button>
+            <button class="diff-btn" data-diff="hard">Hard</button>
+          </div>
+        </div>
+
+        <button class="action-btn" id="start-btn">Game Start</button>
+      </div>
+    </div>
+
+    <!-- Game Over / Victory Screen -->
+    <div class="screen-overlay hidden" id="end-screen">
+      <div class="magic-circle-bg"></div>
+      <h1 class="game-over-title" id="end-title">Game Over</h1>
+      <p class="subtitle" id="end-subtitle">幻想郷の彼方へ</p>
+
+      <div class="menu-card interactive" style="max-width: 300px;">
+        <div class="stats-row">
+          <span class="stats-label">Final Score</span>
+          <span class="stats-val" id="end-score">0</span>
+        </div>
+        <div class="stats-row">
+          <span class="stats-label">Max Graze</span>
+          <span class="stats-val" id="end-graze" style="color: var(--neon-gold);">0</span>
+        </div>
+        <div class="stats-row">
+          <span class="stats-label">Difficulty</span>
+          <span class="stats-val" id="end-diff" style="text-transform: capitalize;">Normal</span>
+        </div>
+
+        <button class="action-btn" id="retry-btn" style="margin-top: 10px;">Play Again</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- Sound Synthesizer (Web Audio API) ---
+    class SoundManager {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+        this.bgmInterval = null;
+        this.bgmStep = 0;
+      }
+
+      init() {
+        if (this.ctx) return;
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        this.startBGM();
+      }
+
+      toggleMute() {
+        this.muted = !this.muted;
+        if (this.ctx) {
+          if (this.muted) {
+            this.ctx.suspend();
+          } else {
+            this.ctx.resume();
+          }
+        }
+        return this.muted;
+      }
+
+      playShoot() {
+        if (this.muted || !this.ctx) return;
+        let osc = this.ctx.createOscillator();
+        let gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(150, this.ctx.currentTime + 0.1);
+
+        gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.1);
+      }
+
+      playHit() {
+        if (this.muted || !this.ctx) return;
+        let osc = this.ctx.createOscillator();
+        let gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(120, this.ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(40, this.ctx.currentTime + 0.2);
+
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.2);
+      }
+
+      playGraze() {
+        if (this.muted || !this.ctx) return;
+        let osc = this.ctx.createOscillator();
+        let gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(900, this.ctx.currentTime);
+        osc.frequency.setValueAtTime(1200, this.ctx.currentTime + 0.05);
+
+        gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.1);
+      }
+
+      playSpellActive() {
+        if (this.muted || !this.ctx) return;
+        // Dramatic sweep
+        for (let i = 0; i < 3; i++) {
+          let osc = this.ctx.createOscillator();
+          let gain = this.ctx.createGain();
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(100 + i * 50, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(800 + i * 100, this.ctx.currentTime + 0.6);
+
+          gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.6);
+
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.6);
+        }
+      }
+
+      playPichuun() {
+        if (this.muted || !this.ctx) return;
+        // Nostalgic classic Touhou fail sound
+        let osc = this.ctx.createOscillator();
+        let gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(110, this.ctx.currentTime + 0.4);
+
+        gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
+
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.4);
+      }
+
+      startBGM() {
+        // Nostalgic 8-bit synth loop
+        const notes = [
+          261.63, 293.66, 311.13, 349.23, 392.00, 349.23, 311.13, 293.66,
+          329.63, 392.00, 440.00, 493.88, 523.25, 493.88, 440.00, 392.00
+        ];
+        
+        this.bgmInterval = setInterval(() => {
+          if (this.muted || !this.ctx) return;
+          let osc = this.ctx.createOscillator();
+          let gain = this.ctx.createGain();
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.type = 'triangle';
+          let note = notes[this.bgmStep % notes.length];
+          // Add harmony/melody variation
+          if (this.bgmStep % 4 === 0) note *= 1.5; 
+          
+          osc.frequency.setValueAtTime(note, this.ctx.currentTime);
+          gain.gain.setValueAtTime(0.06, this.ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + 0.25);
+
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.25);
+
+          // Simple bassline
+          if (this.bgmStep % 2 === 0) {
+            let bass = this.ctx.createOscillator();
+            let bassGain = this.ctx.createGain();
+            bass.connect(bassGain);
+            bassGain.connect(this.ctx.destination);
+            bass.type = 'sawtooth';
+            bass.frequency.setValueAtTime(note / 4, this.ctx.currentTime);
+            bassGain.gain.setValueAtTime(0.04, this.ctx.currentTime);
+            bassGain.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + 0.4);
+            bass.start();
+            bass.stop(this.ctx.currentTime + 0.4);
+          }
+
+          this.bgmStep++;
+        }, 200);
+      }
+    }
+
+    const sound = new SoundManager();
+
+    // --- Sakura Petals Generator ---
+    function createSakura() {
+      const container = document.getElementById('sakura-container');
+      const petalCount = 15;
+      for (let i = 0; i < petalCount; i++) {
+        let petal = document.createElement('div');
+        petal.className = 'petal';
+        resetPetal(petal);
+        container.appendChild(petal);
+      }
+    }
+
+    function resetPetal(petal) {
+      const size = Math.random() * 8 + 6;
+      petal.style.width = `${size}px`;
+      petal.style.height = `${size * 1.4}px`;
+      petal.style.left = `${Math.random() * 100}%`;
+      petal.style.top = `-${Math.random() * 20}px`;
+      petal.style.animationDuration = `${Math.random() * 4 + 4}s`;
+      petal.style.animationDelay = `${Math.random() * 5}s`;
+    }
+
+    createSakura();
+
+    // --- Game Logic ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Setup High-DPI Canvas
+    function resizeCanvas() {
+      const container = document.getElementById('game-container');
+      const rect = container.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    // Game Variables
+    let gameActive = false;
+    let difficulty = 'normal';
+    let score = 0;
+    let graze = 0;
+    let lives = 3;
+    let frameCount = 0;
+
+    // Entities
+    let player = {
+      x: 0,
+      y: 0,
+      radius: 4,      // Hitbox
+      drawRadius: 18,  // Visual
+      targetX: 0,
+      targetY: 0,
+      isDragging: false
+    };
+
+    let boss = {
+      x: 0,
+      y: 0,
+      targetX: 0,
+      targetY: 0,
+      radius: 35,
+      hp: 1000,
+      maxHp: 1000,
+      active: false,
+      spellActive: false,
+      spellTimer: 0,
+      spellIndex: 0
+    };
+
+    const spellCards = [
+      { name: "結界「客観結界」", color: "#ff2a85" },
+      { name: "幻巣「飛光虫のネスト」", color: "#05d9e8" },
+      { name: "「深弾幕結界 -夢幻泡影-」", color: "#f5b041" }
+    ];
+
+    let playerBullets = [];
+    let enemyBullets = [];
+    let particles = [];
+    let magicCircles = [];
+
+    // Difficulty Settings
+    const diffConfig = {
+      easy: { bulletSpeedMult: 0.6, spawnRate: 45, bossHp: 800 },
+      normal: { bulletSpeedMult: 1.0, spawnRate: 30, bossHp: 1200 },
+      hard: { bulletSpeedMult: 1.5, spawnRate: 15, bossHp: 1800 }
+    };
+
+    // Initialize Player Position
+    function initPlayer() {
+      player.x = canvas.width / 2;
+      player.y = canvas.height * 0.8;
+      player.targetX = player.x;
+      player.targetY = player.y;
+    }
+
+    // --- Input Handling (Mobile & Mouse) ---
+    function getTouchPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      };
+    }
+
+    function onPointerStart(e) {
+      if (!gameActive) return;
+      const pos = getTouchPos(e);
+      // Check if close to player to prevent sudden jumps, or just snap smoothly
+      player.isDragging = true;
+      player.targetX = pos.x;
+      player.targetY = pos.y;
+    }
+
+    function onPointerMove(e) {
+      if (!gameActive || !player.isDragging) return;
+      const pos = getTouchPos(e);
+      player.targetX = pos.x;
+      player.targetY = pos.y;
+    }
+
+    function onPointerEnd() {
+      player.isDragging = false;
+    }
+
+    canvas.addEventListener('mousedown', onPointerStart);
+    canvas.addEventListener('mousemove', onPointerMove);
+    window.addEventListener('mouseup', onPointerEnd);
+
+    canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      onPointerStart(e);
+    }, { passive: false });
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      onPointerMove(e);
+    }, { passive: false });
+    window.addEventListener('touchend', onPointerEnd);
+
+    // --- Particle System ---
+    function spawnExplosion(x, y, color, count = 15) {
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 4 + 2;
+        particles.push({
+          x: x,
+          y: y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          radius: Math.random() * 4 + 2,
+          color: color,
+          alpha: 1,
+          decay: Math.random() * 0.03 + 0.02
+        });
+      }
+    }
+
+    // --- Boss Spell Card Trigger ---
+    function triggerSpellCard() {
+      boss.spellActive = true;
+      boss.spellIndex = (boss.spellIndex + 1) % spellCards.length;
+      const spell = spellCards[boss.spellIndex];
+
+      // Update UI
+      document.getElementById('spell-card-display').innerText = spell.name;
+      const cutin = document.getElementById('spell-cutin');
+      const cutinName = document.getElementById('spell-cutin-name');
+      cutinName.innerText = spell.name;
+      cutin.classList.remove('active');
+      void cutin.offsetWidth; // Trigger reflow
+      cutin.classList.add('active');
+
+      // Screen Shake
+      const container = document.getElementById('game-container');
+      container.classList.add('shake');
+      setTimeout(() => container.classList.remove('shake'), 500);
+
+      sound.playSpellActive();
+
+      // Spawn background magic circle
+      magicCircles.push({
+        x: boss.x,
+        y: boss.y,
+        radius: 120,
+        angle: 0,
+        color: spell.color,
+        pulse: 0
+      });
+    }
+
+    // --- Game Loop Update ---
+    function update() {
+      if (!gameActive) return;
+
+      frameCount++;
+
+      // Smooth Player Movement (Lerp)
+      player.x += (player.targetX - player.x) * 0.3;
+      player.y += (player.targetY - player.y) * 0.3;
+
+      // Keep player in bounds
+      player.x = Math.max(player.drawRadius, Math.min(canvas.width - player.drawRadius, player.x));
+      player.y = Math.max(player.drawRadius, Math.min(canvas.height - player.drawRadius, player.y));
+
+      // Player Fire
+      if (frameCount % 6 === 0) {
+        playerBullets.push({ x: player.x - 8, y: player.y - 15, vy: -12 });
+        playerBullets.push({ x: player.x + 8, y: player.y - 15, vy: -12 });
+        sound.playShoot();
+      }
+
+      // Update Player Bullets
+      for (let i = playerBullets.length - 1; i >= 0; i--) {
+        let b = playerBullets[i];
+        b.y += b.vy;
+        if (b.y < -10) {
+          playerBullets.splice(i, 1);
+          continue;
+        }
+
+        // Hit Boss
+        if (boss.active) {
+          let dx = b.x - boss.x;
+          let dy = b.y - boss.y;
+          let dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < boss.radius) {
+            boss.hp -= 4;
+            score += 10;
+            spawnExplosion(b.x, b.y, 'var(--neon-blue)', 2);
+            playerBullets.splice(i, 1);
+
+            // Update Boss HP Bar
+            const hpPercent = Math.max(0, (boss.hp / boss.maxHp) * 100);
+            document.getElementById('boss-hp-bar').style.width = `${hpPercent}%`;
+
+            if (boss.hp <= 0) {
+              // Boss Defeated / Next Phase
+              spawnExplosion(boss.x, boss.y, 'var(--neon-pink)', 40);
+              score += 10000;
+              boss.hp = boss.maxHp; // Reset for next phase / loop
+              triggerSpellCard();
+            }
+          }
+        }
+      }
+
+      // Boss AI & Movement
+      if (!boss.active && frameCount > 100) {
+        boss.active = true;
+        boss.x = canvas.width / 2;
+        boss.y = -50;
+        boss.targetX = canvas.width / 2;
+        boss.targetY = 120;
+        boss.hp = diffConfig[difficulty].bossHp;
+        boss.maxHp = boss.hp;
+        document.getElementById('boss-hud').classList.add('active');
+        triggerSpellCard();
+      }
+
+      if (boss.active) {
+        // Move Boss smoothly
+        boss.x += (boss.targetX - boss.x) * 0.03;
+        boss.y += (boss.targetY - boss.y) * 0.03;
+
+        if (frameCount % 120 === 0) {
+          boss.targetX = Math.random() * (canvas.width - 100) + 50;
+          boss.targetY = Math.random() * 80 + 80;
+        }
+
+        // Boss Shoot Patterns based on difficulty
+        const config = diffConfig[difficulty];
+        if (frameCount % config.spawnRate === 0) {
+          const pattern = boss.spellIndex;
+          if (pattern === 0) {
+            // Spiral Pattern
+            const count = 16;
+            const baseAngle = (frameCount * 0.05);
+            for (let i = 0; i < count; i++) {
+              const angle = baseAngle + (i * (Math.PI * 2 / count));
+              enemyBullets.push({
+                x: boss.x,
+                y: boss.y,
+                vx: Math.cos(angle) * 3 * config.bulletSpeedMult,
+                vy: Math.sin(angle) * 3 * config.bulletSpeedMult,
+                radius: 6,
+                color: 'var(--neon-pink)',
+                type: 'circle'
+              });
+            }
+          } else if (pattern === 1) {
+            // Starburst / Flower Pattern
+            const count = 12;
+            for (let i = 0; i < count; i++) {
+              const angle = (i * (Math.PI * 2 / count)) + Math.sin(frameCount * 0.01);
+              enemyBullets.push({
+                x: boss.x,
+                y: boss.y,
+                vx: Math.cos(angle) * 2.5 * config.bulletSpeedMult,
+                vy: Math.sin(angle) * 2.5 * config.bulletSpeedMult,
+                radius: 8,
+                color: 'var(--neon-blue)',
+                type: 'star'
+              });
+            }
+          } else {
+            // Geometric Ring Pattern
+            const count = 20;
+            const speed = (Math.sin(frameCount * 0.05) + 1.5) * 2;
+            for (let i = 0; i < count; i++) {
+              const angle = (i * (Math.PI * 2 / count));
+              enemyBullets.push({
+                x: boss.x,
+                y: boss.y,
+                vx: Math.cos(angle) * speed * config.bulletSpeedMult,
+                vy: Math.sin(angle) * speed * config.bulletSpeedMult,
+                radius: 5,
+                color: 'var(--neon-gold)',
+                type: 'ring'
+              });
+            }
+          }
+        }
+      }
+
+      // Update Enemy Bullets & Collision
+      for (let i = enemyBullets.length - 1; i >= 0; i--) {
+        let b = enemyBullets[i];
+        b.x += b.vx;
+        b.y += b.vy;
+
+        // Out of bounds check
+        if (b.x < -20 || b.x > canvas.width + 20 || b.y < -20 || b.y > canvas.height + 20) {
+          enemyBullets.splice(i, 1);
+          continue;
+        }
+
+        // Collision Check (Hitbox is tiny for fair gameplay)
+        let dx = b.x - player.x;
+        let dy = b.y - player.y;
+        let dist = Math.sqrt(dx * dx + dy * dy);
+
+        // Graze Check (Slightly larger radius than hitbox)
+        if (dist < player.drawRadius + b.radius && !b.grazed) {
+          b.grazed = true;
+          graze++;
+          score += 100;
+          sound.playGraze();
+          document.getElementById('graze-display').innerText = graze;
+        }
+
+        // Real Hit Check
+        if (dist < player.radius + b.radius) {
+          enemyBullets.splice(i, 1);
+          playerHit();
+          break;
+        }
+      }
+
+      // Update Particles
+      for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.alpha -= p.decay;
+        if (p.alpha <= 0) {
+          particles.splice(i, 1);
+        }
+      }
+
+      // Update Magic Circles
+      for (let i = magicCircles.length - 1; i >= 0; i--) {
+        let mc = magicCircles[i];
+        mc.angle += 0.01;
+        mc.pulse = Math.sin(frameCount * 0.05) * 10;
+        if (boss.active) {
+          mc.x = boss.x;
+          mc.y = boss.y;
+        } else {
+          magicCircles.splice(i, 1);
+        }
+      }
+
+      // Update HUD
+      document.getElementById('score-display').innerText = String(score).padStart(9, '0');
+    }
+
+    // --- Player Hit / Death ---
+    function playerHit() {
+      lives--;
+      sound.playPichuun();
+      spawnExplosion(player.x, player.y, '#ffffff', 30);
+      spawnExplosion(player.x, player.y, 'var(--neon-pink)', 20);
+
+      // Update Lives UI
+      const livesContainer = document.getElementById('lives-container');
+      if (livesContainer.children.length > 0) {
+        livesContainer.removeChild(livesContainer.lastElementChild);
+      }
+
+      if (lives <= 0) {
+        endGame(false);
+      } else {
+        // Temporary invincibility / reset position
+        player.x = canvas.width / 2;
+        player.y = canvas.height * 0.8;
+        player.targetX = player.x;
+        player.targetY = player.y;
+        // Clear screen of bullets for fairness
+        enemyBullets = [];
+      }
+    }
+
+    // --- Render Game ---
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw Rotating Magic Circles (Background Decorator)
+      magicCircles.forEach(mc => {
+        ctx.save();
+        ctx.translate(mc.x, mc.y);
+        ctx.rotate(mc.angle);
+        ctx.strokeStyle = mc.color;
+        ctx.lineWidth = 2;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = mc.color;
+        
+        // Outer Ring
+        ctx.beginPath();
+        ctx.arc(0, 0, mc.radius + mc.pulse, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Inner Star Pattern
+        ctx.beginPath();
+        for (let i = 0; i < 8; i++) {
+          const angle = (i * Math.PI * 2) / 8;
+          const rx = Math.cos(angle) * (mc.radius - 20);
+          const ry = Math.sin(angle) * (mc.radius - 20);
+          if (i === 0) ctx.moveTo(rx, ry);
+          else ctx.lineTo(rx, ry);
+        }
+        ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      // Draw Boss
+      if (boss.active) {
+        ctx.save();
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = 'var(--neon-pink)';
+        
+        // Glowing Aura
+        let gradient = ctx.createRadialGradient(boss.x, boss.y, 5, boss.x, boss.y, boss.radius + 15);
+        gradient.addColorStop(0, 'rgba(255, 42, 133, 1)');
+        gradient.addColorStop(0.5, 'rgba(155, 93, 229, 0.5)');
+        gradient.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(boss.x, boss.y, boss.radius + 15, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Boss Core Emoji (Cute but powerful)
+        ctx.font = "42px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("🦊", boss.x, boss.y);
+        ctx.restore();
+      }
+
+      // Draw Player
+      ctx.save();
+      // Yin-Yang rotating shield/aura
+      ctx.translate(player.x, player.y);
+      ctx.rotate(frameCount * 0.04);
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = 'var(--neon-blue)';
+      
+      // Outer Magic Ring
+      ctx.strokeStyle = 'rgba(5, 217, 232, 0.6)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, player.drawRadius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Yin-Yang Symbol (Emoji)
+      ctx.font = "24px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("☯️", 0, 0);
+      ctx.restore();
+
+      // Draw Hitbox Dot (Crucial for Danmaku)
+      ctx.save();
+      ctx.fillStyle = '#fff';
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = '#fff';
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Draw Player Bullets (Glowing Cards/Amulets)
+      playerBullets.forEach(b => {
+        ctx.save();
+        ctx.fillStyle = '#fff';
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = 'var(--neon-blue)';
+        ctx.fillRect(b.x - 2, b.y - 8, 4, 16);
+        ctx.restore();
+      });
+
+      // Draw Enemy Bullets
+      enemyBullets.forEach(b => {
+        ctx.save();
+        ctx.fillStyle = b.color;
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = b.color;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Inner core for high-contrast look
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.radius * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+
+      // Draw Particles
+      particles.forEach(p => {
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = p.color;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+    }
+
+    // --- Main Game Loop ---
+    function loop() {
+      update();
+      draw();
+      if (gameActive) {
+        requestAnimationFrame(loop);
+      }
+    }
+
+    // --- Game Control Actions ---
+    function startGame() {
+      sound.init();
+      document.getElementById('start-screen').classList.add('hidden');
+      document.getElementById('end-screen').classList.add('hidden');
+      
+      // Reset Stats
+      score = 0;
+      graze = 0;
+      lives = 3;
+      playerBullets = [];
+      enemyBullets = [];
+      particles = [];
+      magicCircles = [];
+      boss.active = false;
+      boss.spellIndex = 0;
+      frameCount = 0;
+
+      // Reset Lives UI
+      const livesContainer = document.getElementById('lives-container');
+      livesContainer.innerHTML = ' <span class="life-heart">🌸</span>'.repeat(3);
+      document.getElementById('graze-display').innerText = '0';
+
+      initPlayer();
+      gameActive = true;
+      requestAnimationFrame(loop);
+    }
+
+    function endGame(victory = false) {
+      gameActive = false;
+      document.getElementById('boss-hud').classList.remove('active');
+      
+      // Show End Screen
+      const endScreen = document.getElementById('end-screen');
+      document.getElementById('end-title').innerText = victory ? "夢幻大勝利" : "満身創痍";
+      document.getElementById('end-subtitle').innerText = victory ? "Gensokyo is Saved!" : "You have been defeated...";
+      document.getElementById('end-score').innerText = String(score).padStart(9, '0');
+      document.getElementById('end-graze').innerText = graze;
+      document.getElementById('end-diff').innerText = difficulty;
+      
+      endScreen.classList.remove('hidden');
+    }
+
+    // --- UI Event Listeners ---
+
+    // Difficulty Selection
+    const diffButtons = document.querySelectorAll('.diff-btn');
+    diffButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        diffButtons.forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        difficulty = btn.dataset.diff;
+      });
+    });
+
+    // Sound Toggle
+    const soundBtn = document.getElementById('sound-btn');
+    soundBtn.addEventListener('click', () => {
+      sound.init(); // Ensure initialized on user interaction
+      const isMuted = sound.toggleMute();
+      if (isMuted) {
+        soundBtn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+        document.getElementById('sound-icon').style.fill = '#666';
+      } else {
+        soundBtn.style.borderColor = 'var(--neon-pink)';
+        document.getElementById('sound-icon').style.fill = 'var(--neon-pink)';
+      }
+    });
+
+    // Start & Retry Buttons
+    document.getElementById('start-btn').addEventListener('click', startGame);
+    document.getElementById('retry-btn').addEventListener('click', startGame);
+  </script>
+</body>
+</html>
