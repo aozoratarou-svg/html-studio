@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>プログラミング体験！HTML・CSS・JSってなあに？</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Hiragino Maru Gothic ProN', 'Rounded M+ 1c', 'Meiryo', sans-serif;
+            background-color: #f0fdf4;
+        }
+        .code-input {
+            font-family: 'Courier New', Courier, monospace;
+            tab-size: 4;
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <header class="bg-green-500 text-white text-center py-6 shadow-md">
+        <h1 class="text-2xl md:text-4xl font-bold"><i class="fa-solid fa-laptop-code"></i> ウェブプログラミング体験ルーム</h1>
+        <p class="mt-2 text-sm md:text-base">AIが作ってくれたコードをここに貼って、動かしてみよう！</p>
+    </header>
+
+    <main class="max-w-6xl mx-auto p-4 md:p-6">
+
+        <section class="mb-10">
+            <h2 class="text-2xl font-bold text-center mb-6 text-green-700">ウェブページを作る「3つの魔法」</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-blue-50 border-l-8 border-blue-500 p-4 rounded-r-xl shadow-sm">
+                    <h3 class="text-xl font-bold text-blue-600 mb-2"><i class="fa-brands fa-html5 text-2xl"></i> HTML (骨組み)</h3>
+                    <p class="font-bold text-gray-700">ページの「骨組み」！</p>
+                    <p class="text-sm mt-2">文字を書いたり、画像を置いたり、ボタンを作ったりするよ。「ここにボタンがあるよ！」とお知らせする係です。</p>
+                </div>
+                <div class="bg-pink-50 border-l-8 border-pink-500 p-4 rounded-r-xl shadow-sm">
+                    <h3 class="text-xl font-bold text-pink-600 mb-2"><i class="fa-brands fa-css3-alt text-2xl"></i> CSS (デザイン)</h3>
+                    <p class="font-bold text-gray-700">ページの「デザイン・服」！</p>
+                    <p class="text-sm mt-2">文字の色を変えたり、ボタンを丸くしたり、ページをかわいくするよ。「ボタンは赤色で！」と命令する係です。</p>
+                </div>
+                <div class="bg-yellow-50 border-l-8 border-yellow-500 p-4 rounded-r-xl shadow-sm">
+                    <h3 class="text-xl font-bold text-yellow-600 mb-2"><i class="fa-brands fa-js text-2xl"></i> JavaScript (動き)</h3>
+                    <p class="font-bold text-gray-700">ページの「動き・魔法」！</p>
+                    <p class="text-sm mt-2">ボタンを押したらガチャが回ったり、計算をしたりするよ。「ボタンが押されたらコレをして！」と動かす係です。</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-10">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-gray-800"><i class="fa-solid fa-flask text-purple-500"></i> じっけんじょう</h2>
+                <button onclick="insertSampleCode()" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-full shadow transition text-sm">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> ガチャのサンプルを入力！
+                </button>
+            </div>
+            
+            <p class="text-sm text-gray-600 mb-6">下の枠にコードを貼り付けて、「実行（じっこう）する！」ボタンをおしてね。</p>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="flex flex-col gap-4">
+                    <div>
+                        <label class="block font-bold text-blue-600 mb-1"><i class="fa-brands fa-html5"></i> HTML（骨組み）</label>
+                        <textarea id="code-html" class="code-input w-full h-32 p-3 border-2 border-blue-200 rounded-lg focus:outline-none focus:border-blue-500 bg-gray-50" placeholder="ここにHTMLのコードをはってね！"></textarea>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-pink-600 mb-1"><i class="fa-brands fa-css3-alt"></i> CSS（デザイン）</label>
+                        <textarea id="code-css" class="code-input w-full h-32 p-3 border-2 border-pink-200 rounded-lg focus:outline-none focus:border-pink-500 bg-gray-50" placeholder="ここにCSSのコードをはってね！"></textarea>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-yellow-600 mb-1"><i class="fa-brands fa-js"></i> JavaScript（動き）</label>
+                        <textarea id="code-js" class="code-input w-full h-32 p-3 border-2 border-yellow-200 rounded-lg focus:outline-none focus:border-yellow-500 bg-gray-50" placeholder="ここにJavaScriptのコードをはってね！"></textarea>
+                    </div>
+
+                    <button onclick="runCode()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-xl shadow-lg transition text-xl mt-2 animate-bounce">
+                        <i class="fa-solid fa-play"></i> 実行（じっこう）する！
+                    </button>
+                </div>
+
+                <div class="flex flex-col">
+                    <label class="block font-bold text-gray-700 mb-1"><i class="fa-solid fa-desktop"></i> できあがり画面（プレビュー）</label>
+                    <div class="flex-grow border-4 border-gray-700 rounded-xl overflow-hidden bg-white shadow-inner relative min-h-[400px]">
+                        <!-- sandbox属性を追加して、JSが動くようにしつつ安全性を高めています -->
+                        <iframe id="preview-frame" class="w-full h-full absolute top-0 left-0 bg-white" title="プレビュー" sandbox="allow-scripts allow-popups"></iframe>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- プログラムの処理部分 -->
+    <script>
+        function runCode() {
+            const htmlCode = document.getElementById('code-html').value;
+            const cssCode = document.getElementById('code-css').value;
+            const jsCode = document.getElementById('code-js').value;
+
+            const previewFrame = document.getElementById('preview-frame');
+
+            // HTML, CSS, JSを1つのページとして合体させます
+            const combinedCode = `
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        ${cssCode}
+    </style>
+</head>
+<body>
+    ${htmlCode}
+    <script>
+        try {
+            ${jsCode}
+        } catch(e) {
+            document.body.innerHTML += '<div style="color:red; padding:10px; border:1px solid red; background:#fee; margin-top:10px;">JavaScriptでエラーが起きたみたい！<br>' + e.message + '</div>';
+        }
+    <\/script>
+</body>
+</html>`;
+
+            // srcdoc を使って、iframeの中に直接HTMLを書き込みます（これでより確実に動きます）
+            previewFrame.srcdoc = combinedCode;
+        }
+
+        function insertSampleCode() {
+            document.getElementById('code-html').value = `<div class="gacha-container">
+    <h2>アイテムガチャ！</h2>
+    <div id="result-box" class="box">
+        なにがでるかな？
+    </div>
+    <button onclick="pullGacha()">ガチャを引く！</button>
+</div>`;
+
+            document.getElementById('code-css').value = `body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #ffe4e1;
+    font-family: sans-serif;
+}
+.gacha-container {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    text-align: center;
+}
+.box {
+    width: 200px;
+    height: 100px;
+    background: #f0f8ff;
+    border: 3px dashed #87cefa;
+    border-radius: 10px;
+    margin: 20px auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 20px;
+    font-weight: bold;
+}
+button {
+    background: #ff69b4;
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    font-size: 18px;
+    font-weight: bold;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+button:hover {
+    transform: scale(0.95);
+    background: #ff1493;
+}`;
+
+            document.getElementById('code-js').value = `const items = [
+    "🌟ウルトラレア(剣)🌟", 
+    "✨スーパーレア(盾)✨", 
+    "レア(薬草)", 
+    "ノーマル(石ころ)",
+    "ノーマル(木の枝)"
+];
+
+function pullGacha() {
+    const randomNumber = Math.floor(Math.random() * items.length);
+    const getItems = items[randomNumber];
+    const resultBox = document.getElementById("result-box");
+    
+    resultBox.innerText = getItems;
+    
+    if (getItems.includes("ウルトラレア")) {
+        resultBox.style.color = "red";
+    } else if (getItems.includes("スーパーレア")) {
+        resultBox.style.color = "orange";
+    } else {
+        resultBox.style.color = "black";
+    }
+}`;
+            runCode();
+        }
+
+        window.onload = function() {
+            runCode();
+        }
+    </script>
+</body>
+</html>
