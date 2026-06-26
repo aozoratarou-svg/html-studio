@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>プログラミング体験！HTML・CSS・JSってなあに？</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body {
@@ -15,73 +17,124 @@
             font-family: 'Courier New', Courier, monospace;
             tab-size: 4;
         }
+        /* タブの切り替え用アニメーション */
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        .tab-content.active {
+            display: flex;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
-<body class="text-gray-800">
+<body class="text-gray-800 flex flex-col min-h-screen">
 
-    <header class="bg-green-500 text-white text-center py-6 shadow-md">
+    <header class="bg-green-500 text-white text-center py-6 shadow-md z-10">
         <h1 class="text-2xl md:text-4xl font-bold"><i class="fa-solid fa-laptop-code"></i> ウェブプログラミング体験ルーム</h1>
-        <p class="mt-2 text-sm md:text-base">AIが作ってくれたコードをここに貼って、動かしてみよう！</p>
+        <p class="mt-2 text-sm md:text-base">AIが作ってくれたコードを貼って、動かしてみよう！</p>
     </header>
 
-    <main class="max-w-6xl mx-auto p-4 md:p-6">
+    <main class="max-w-7xl mx-auto p-4 md:p-6 flex-grow w-full">
 
-        <section class="mb-10">
-            <h2 class="text-2xl font-bold text-center mb-6 text-green-700">ウェブページを作る「3つの魔法」</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="bg-blue-50 border-l-8 border-blue-500 p-4 rounded-r-xl shadow-sm">
-                    <h3 class="text-xl font-bold text-blue-600 mb-2"><i class="fa-brands fa-html5 text-2xl"></i> HTML (骨組み)</h3>
-                    <p class="font-bold text-gray-700">ページの「骨組み」！</p>
-                    <p class="text-sm mt-2">文字を書いたり、画像を置いたり、ボタンを作ったりするよ。「ここにボタンがあるよ！」とお知らせする係です。</p>
+        <!-- 説明コーナー -->
+        <section class="mb-8">
+            <h2 class="text-2xl font-bold text-center mb-4 text-green-700">ウェブページを作る「3つの魔法」</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div class="bg-blue-50 border-l-8 border-blue-500 p-3 rounded-r-xl shadow-sm">
+                    <h3 class="text-lg font-bold text-blue-600 mb-1"><i class="fa-brands fa-html5"></i> HTML (骨組み)</h3>
+                    <p class="text-xs">ボタンや文字などの「部品」を置く係。</p>
                 </div>
-                <div class="bg-pink-50 border-l-8 border-pink-500 p-4 rounded-r-xl shadow-sm">
-                    <h3 class="text-xl font-bold text-pink-600 mb-2"><i class="fa-brands fa-css3-alt text-2xl"></i> CSS (デザイン)</h3>
-                    <p class="font-bold text-gray-700">ページの「デザイン・服」！</p>
-                    <p class="text-sm mt-2">文字の色を変えたり、ボタンを丸くしたり、ページをかわいくするよ。「ボタンは赤色で！」と命令する係です。</p>
+                <div class="bg-pink-50 border-l-8 border-pink-500 p-3 rounded-r-xl shadow-sm">
+                    <h3 class="text-lg font-bold text-pink-600 mb-1"><i class="fa-brands fa-css3-alt"></i> CSS (デザイン)</h3>
+                    <p class="text-xs">色を変えたり、形を整えたりする係。</p>
                 </div>
-                <div class="bg-yellow-50 border-l-8 border-yellow-500 p-4 rounded-r-xl shadow-sm">
-                    <h3 class="text-xl font-bold text-yellow-600 mb-2"><i class="fa-brands fa-js text-2xl"></i> JavaScript (動き)</h3>
-                    <p class="font-bold text-gray-700">ページの「動き・魔法」！</p>
-                    <p class="text-sm mt-2">ボタンを押したらガチャが回ったり、計算をしたりするよ。「ボタンが押されたらコレをして！」と動かす係です。</p>
+                <div class="bg-yellow-50 border-l-8 border-yellow-500 p-3 rounded-r-xl shadow-sm">
+                    <h3 class="text-lg font-bold text-yellow-600 mb-1"><i class="fa-brands fa-js"></i> JavaScript (動き)</h3>
+                    <p class="text-xs">ガチャを回すなどの「動き」を作る係。</p>
                 </div>
             </div>
         </section>
 
-        <section class="bg-white rounded-2xl shadow-lg p-4 md:p-6 mb-10">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-bold text-gray-800"><i class="fa-solid fa-flask text-purple-500"></i> じっけんじょう</h2>
-                <button onclick="insertSampleCode()" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-full shadow transition text-sm">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i> ガチャのサンプルを入力！
-                </button>
-            </div>
+        <!-- アプリ本体部分 -->
+        <section class="bg-white rounded-2xl shadow-xl p-4 md:p-6 mb-10 border-2 border-green-100">
             
-            <p class="text-sm text-gray-600 mb-6">下の枠にコードを貼り付けて、「実行（じっこう）する！」ボタンをおしてね。</p>
+            <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                <h2 class="text-2xl font-bold text-gray-800"><i class="fa-solid fa-flask text-purple-500"></i> じっけんじょう</h2>
+                
+                <!-- タブ切り替えボタン -->
+                <div class="flex bg-gray-100 p-1 rounded-xl shadow-inner">
+                    <button id="btn-split" onclick="switchMode('split')" class="px-4 py-2 rounded-lg font-bold text-sm transition-all duration-200 bg-white shadow text-blue-600">
+                        <i class="fa-solid fa-puzzle-piece"></i> 3つに分けるモード
+                    </button>
+                    <button id="btn-combined" onclick="switchMode('combined')" class="px-4 py-2 rounded-lg font-bold text-sm transition-all duration-200 text-gray-500 hover:text-gray-700">
+                        <i class="fa-solid fa-file-lines"></i> 1つにまとめるモード
+                    </button>
+                </div>
+            </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                <!-- 左側：コード入力エリア -->
                 <div class="flex flex-col gap-4">
-                    <div>
-                        <label class="block font-bold text-blue-600 mb-1"><i class="fa-brands fa-html5"></i> HTML（骨組み）</label>
-                        <textarea id="code-html" class="code-input w-full h-32 p-3 border-2 border-blue-200 rounded-lg focus:outline-none focus:border-blue-500 bg-gray-50" placeholder="ここにHTMLのコードをはってね！"></textarea>
-                    </div>
-                    <div>
-                        <label class="block font-bold text-pink-600 mb-1"><i class="fa-brands fa-css3-alt"></i> CSS（デザイン）</label>
-                        <textarea id="code-css" class="code-input w-full h-32 p-3 border-2 border-pink-200 rounded-lg focus:outline-none focus:border-pink-500 bg-gray-50" placeholder="ここにCSSのコードをはってね！"></textarea>
-                    </div>
-                    <div>
-                        <label class="block font-bold text-yellow-600 mb-1"><i class="fa-brands fa-js"></i> JavaScript（動き）</label>
-                        <textarea id="code-js" class="code-input w-full h-32 p-3 border-2 border-yellow-200 rounded-lg focus:outline-none focus:border-yellow-500 bg-gray-50" placeholder="ここにJavaScriptのコードをはってね！"></textarea>
+                    
+                    <div class="flex justify-between items-center bg-purple-50 p-3 rounded-lg border border-purple-100">
+                        <span class="text-sm text-purple-800 font-bold">わからなくなったら↓</span>
+                        <button onclick="insertSampleCode()" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-1.5 px-4 rounded-full shadow transition text-sm">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> ガチャのサンプルを入れる
+                        </button>
                     </div>
 
-                    <button onclick="runCode()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-xl shadow-lg transition text-xl mt-2 animate-bounce">
+                    <!-- 【モード1】3つに分ける入力エリア -->
+                    <div id="mode-split" class="tab-content active flex-col gap-3">
+                        <p class="text-xs text-gray-600 mb-1">HTML, CSS, JSをそれぞれの枠に分けて貼ってね。</p>
+                        <div>
+                            <label class="block font-bold text-blue-600 text-sm mb-1"><i class="fa-brands fa-html5"></i> HTML（骨組み）</label>
+                            <textarea id="code-html" class="code-input w-full h-24 p-2 border-2 border-blue-200 rounded-lg focus:outline-none focus:border-blue-500 bg-gray-50 text-sm" placeholder="<button>ガチャ</button>"></textarea>
+                        </div>
+                        <div>
+                            <label class="block font-bold text-pink-600 text-sm mb-1"><i class="fa-brands fa-css3-alt"></i> CSS（デザイン）</label>
+                            <textarea id="code-css" class="code-input w-full h-24 p-2 border-2 border-pink-200 rounded-lg focus:outline-none focus:border-pink-500 bg-gray-50 text-sm" placeholder="button { color: red; }"></textarea>
+                        </div>
+                        <div>
+                            <label class="block font-bold text-yellow-600 text-sm mb-1"><i class="fa-brands fa-js"></i> JavaScript（動き）</label>
+                            <textarea id="code-js" class="code-input w-full h-24 p-2 border-2 border-yellow-200 rounded-lg focus:outline-none focus:border-yellow-500 bg-gray-50 text-sm" placeholder="alert('当たり！');"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- 【モード2】1つにまとめる入力エリア -->
+                    <div id="mode-combined" class="tab-content flex-col gap-3">
+                        <p class="text-xs text-gray-600 mb-1">AIが作ってくれた「ぜんぶ入りのHTML」をそのまま貼ってね。</p>
+                        <div class="flex-grow flex flex-col h-full">
+                            <label class="block font-bold text-indigo-600 text-sm mb-1"><i class="fa-solid fa-file-code"></i> まるごとHTMLコード</label>
+                            <textarea id="code-all" class="code-input w-full h-[320px] p-3 border-2 border-indigo-200 rounded-lg focus:outline-none focus:border-indigo-500 bg-gray-50 text-sm" placeholder="<!DOCTYPE html>..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- 実行ボタン（共通） -->
+                    <button onclick="runCode()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-xl shadow-lg transition text-xl mt-2 animate-pulse hover:animate-none border-b-4 border-green-700 active:border-b-0 active:translate-y-1">
                         <i class="fa-solid fa-play"></i> 実行（じっこう）する！
                     </button>
                 </div>
 
-                <div class="flex flex-col">
-                    <label class="block font-bold text-gray-700 mb-1"><i class="fa-solid fa-desktop"></i> できあがり画面（プレビュー）</label>
-                    <div class="flex-grow border-4 border-gray-700 rounded-xl overflow-hidden bg-white shadow-inner relative min-h-[400px]">
-                        <!-- sandbox属性を追加して、JSが動くようにしつつ安全性を高めています -->
-                        <iframe id="preview-frame" class="w-full h-full absolute top-0 left-0 bg-white" title="プレビュー" sandbox="allow-scripts allow-popups"></iframe>
+                <!-- 右側：プレビューエリア -->
+                <div class="flex flex-col h-full min-h-[400px]">
+                    <div class="flex justify-between items-end mb-1">
+                        <label class="block font-bold text-gray-700"><i class="fa-solid fa-desktop"></i> できあがり画面（プレビュー）</label>
+                        <span id="error-message" class="text-xs text-red-500 font-bold hidden"><i class="fa-solid fa-triangle-exclamation"></i> エラーがあるかも！</span>
+                    </div>
+                    <div class="flex-grow border-4 border-gray-700 rounded-xl overflow-hidden bg-white shadow-inner relative flex flex-col">
+                        <!-- ブラウザのバー風デザイン -->
+                        <div class="bg-gray-200 h-6 w-full flex items-center px-2 gap-1 border-b border-gray-300">
+                            <div class="w-3 h-3 rounded-full bg-red-400"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-400"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-400"></div>
+                            <div class="ml-2 bg-white rounded text-[10px] px-2 text-gray-500 w-3/4 truncate">localhost:8080/my-gacha-app</div>
+                        </div>
+                        <iframe id="preview-frame" class="w-full flex-grow bg-white" title="プレビュー" sandbox="allow-scripts allow-popups"></iframe>
                     </div>
                 </div>
             </div>
@@ -89,17 +142,51 @@
 
     </main>
 
-    <!-- プログラムの処理部分 -->
+    <footer class="bg-gray-800 text-white text-center py-4 mt-auto">
+        <p class="text-sm">プログラミングは魔法の言葉！たくさん失敗して、たくさん遊ぼう！</p>
+    </footer>
+
+    <!-- プログラム処理 -->
     <script>
+        // 現在のモードを記憶する変数 ('split' または 'combined')
+        let currentMode = 'split';
+
+        // タブを切り替える関数
+        function switchMode(mode) {
+            currentMode = mode;
+            
+            // ボタンの見た目を変える
+            const btnSplit = document.getElementById('btn-split');
+            const btnCombined = document.getElementById('btn-combined');
+            const contentSplit = document.getElementById('mode-split');
+            const contentCombined = document.getElementById('mode-combined');
+
+            if (mode === 'split') {
+                btnSplit.className = "px-4 py-2 rounded-lg font-bold text-sm transition-all duration-200 bg-white shadow text-blue-600";
+                btnCombined.className = "px-4 py-2 rounded-lg font-bold text-sm transition-all duration-200 text-gray-500 hover:text-gray-700";
+                contentSplit.classList.add('active');
+                contentCombined.classList.remove('active');
+            } else {
+                btnCombined.className = "px-4 py-2 rounded-lg font-bold text-sm transition-all duration-200 bg-white shadow text-indigo-600";
+                btnSplit.className = "px-4 py-2 rounded-lg font-bold text-sm transition-all duration-200 text-gray-500 hover:text-gray-700";
+                contentCombined.classList.add('active');
+                contentSplit.classList.remove('active');
+            }
+        }
+
+        // コードを実行する関数
         function runCode() {
-            const htmlCode = document.getElementById('code-html').value;
-            const cssCode = document.getElementById('code-css').value;
-            const jsCode = document.getElementById('code-js').value;
-
             const previewFrame = document.getElementById('preview-frame');
+            document.getElementById('error-message').classList.add('hidden');
+            let finalCode = "";
 
-            // HTML, CSS, JSを1つのページとして合体させます
-            const combinedCode = `
+            if (currentMode === 'split') {
+                // 3つに分かれている場合：合体させる
+                const htmlCode = document.getElementById('code-html').value;
+                const cssCode = document.getElementById('code-css').value;
+                const jsCode = document.getElementById('code-js').value;
+
+                finalCode = `
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -112,100 +199,95 @@
 <body>
     ${htmlCode}
     <script>
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            window.parent.postMessage('error', '*');
+            return false;
+        };
         try {
             ${jsCode}
         } catch(e) {
-            document.body.innerHTML += '<div style="color:red; padding:10px; border:1px solid red; background:#fee; margin-top:10px;">JavaScriptでエラーが起きたみたい！<br>' + e.message + '</div>';
+            window.parent.postMessage('error', '*');
+            document.body.innerHTML += '<div style="color:red; padding:10px; border:1px solid red; background:#fee; margin-top:10px;">JavaScriptエラー: ' + e.message + '</div>';
         }
     <\/script>
 </body>
 </html>`;
+            } else {
+                // 1つにまとまっている場合：そのまま使う
+                finalCode = document.getElementById('code-all').value;
+                
+                // エラー検知用のコードを少しだけこっそり混ぜる
+                if(finalCode.includes('</body>')) {
+                    finalCode = finalCode.replace('</body>', `<script>window.onerror = function(){ window.parent.postMessage('error', '*'); };<\/script></body>`);
+                }
+            }
 
-            // srcdoc を使って、iframeの中に直接HTMLを書き込みます（これでより確実に動きます）
-            previewFrame.srcdoc = combinedCode;
+            // iframeに流し込む
+            previewFrame.srcdoc = finalCode;
         }
 
+        // iframe内からのエラーメッセージを受け取る
+        window.addEventListener('message', function(event) {
+            if (event.data === 'error') {
+                document.getElementById('error-message').classList.remove('hidden');
+            }
+        });
+
+        // サンプルコードを入力する関数
         function insertSampleCode() {
-            document.getElementById('code-html').value = `<div class="gacha-container">
+            // モードに応じたサンプルを入力する
+            if (currentMode === 'split') {
+                document.getElementById('code-html').value = `<div class="gacha-container">
     <h2>アイテムガチャ！</h2>
-    <div id="result-box" class="box">
-        なにがでるかな？
-    </div>
+    <div id="result-box" class="box">なにがでるかな？</div>
     <button onclick="pullGacha()">ガチャを引く！</button>
 </div>`;
 
-            document.getElementById('code-css').value = `body {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    margin: 0;
-    background-color: #ffe4e1;
-    font-family: sans-serif;
-}
-.gacha-container {
-    background: white;
-    padding: 30px;
-    border-radius: 15px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    text-align: center;
-}
-.box {
-    width: 200px;
-    height: 100px;
-    background: #f0f8ff;
-    border: 3px dashed #87cefa;
-    border-radius: 10px;
-    margin: 20px auto;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 20px;
-    font-weight: bold;
-}
-button {
-    background: #ff69b4;
-    color: white;
-    border: none;
-    padding: 15px 30px;
-    font-size: 18px;
-    font-weight: bold;
-    border-radius: 30px;
-    cursor: pointer;
-    transition: 0.2s;
-}
-button:hover {
-    transform: scale(0.95);
-    background: #ff1493;
-}`;
+                document.getElementById('code-css').value = `body { display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #e0ffff; font-family: sans-serif; }
+.gacha-container { background: white; padding: 20px; border-radius: 10px; text-align: center; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+.box { width: 200px; height: 80px; background: #f0f8ff; border: 3px dashed #87cefa; border-radius: 10px; margin: 15px auto; display: flex; justify-content: center; align-items: center; font-size: 18px; font-weight: bold; }
+button { background: #ffaa00; color: white; border: none; padding: 10px 20px; font-size: 16px; font-weight: bold; border-radius: 20px; cursor: pointer; transition: 0.2s; }
+button:hover { transform: scale(0.95); background: #ff8800; }`;
 
-            document.getElementById('code-js').value = `const items = [
-    "🌟ウルトラレア(剣)🌟", 
-    "✨スーパーレア(盾)✨", 
-    "レア(薬草)", 
-    "ノーマル(石ころ)",
-    "ノーマル(木の枝)"
-];
-
+                document.getElementById('code-js').value = `const items = ["🔥ウルトラレア🔥", "✨スーパーレア✨", "ノーマル"];
 function pullGacha() {
-    const randomNumber = Math.floor(Math.random() * items.length);
-    const getItems = items[randomNumber];
-    const resultBox = document.getElementById("result-box");
-    
-    resultBox.innerText = getItems;
-    
-    if (getItems.includes("ウルトラレア")) {
-        resultBox.style.color = "red";
-    } else if (getItems.includes("スーパーレア")) {
-        resultBox.style.color = "orange";
-    } else {
-        resultBox.style.color = "black";
-    }
+    const r = Math.floor(Math.random() * items.length);
+    document.getElementById("result-box").innerText = items[r];
 }`;
+            } else {
+                document.getElementById('code-all').value = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #fff0f5; font-family: sans-serif; }
+        .gacha-container { background: white; padding: 20px; border-radius: 10px; text-align: center; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        .box { width: 200px; height: 80px; background: #fffacd; border: 3px dashed #gold; border-radius: 10px; margin: 15px auto; display: flex; justify-content: center; align-items: center; font-size: 18px; font-weight: bold; }
+        button { background: #ff69b4; color: white; border: none; padding: 10px 20px; font-size: 16px; font-weight: bold; border-radius: 20px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="gacha-container">
+        <h2>★ぜんぶ入りガチャ★</h2>
+        <div id="result-box" class="box">おしてみよう！</div>
+        <button onclick="pullGacha()">ガチャを引く！</button>
+    </div>
+    <script>
+        const items = ["💎ダイヤ💎", "💰コイン💰", "🌿くさ"];
+        function pullGacha() {
+            const r = Math.floor(Math.random() * items.length);
+            document.getElementById("result-box").innerText = items[r];
+        }
+    <\/script>
+</body>
+</html>`;
+            }
             runCode();
         }
 
+        // ページを開いたときに1回実行しておく
         window.onload = function() {
+            switchMode('split'); // 初期は「3つに分ける」モード
             runCode();
         }
     </script>
