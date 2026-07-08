@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuantumChem - SF Molecular Modeling Simulator</title>
+    <style>
+        /* CSS Variables for Dark Theme & Sci-Fi aesthetics */
+        :root {
+            --bg-deep: #0a0c10;
+            --bg-panel: #11151d;
+            --bg-element: #1b222f;
+            --primary: #00ffcc;
+            --primary-glow: rgba(0, 255, 204, 0.4);
+            --secondary: #00bfff;
+            --accent: #ff0055;
+            --accent-glow: rgba(255, 0, 85, 0.4);
+            --text-main: #f0f4f8;
+            --text-muted: #8b9bb4;
+            --border: #222e42;
+            
+            /* CPK Colors */
+            --cpk-c: #2c2c2c; /* Carbon - Dark Grey/Black */
+            --cpk-h: #ffffff; /* Hydrogen - White */
+            --cpk-o: #ff3333; /* Oxygen - Red */
+            --cpk-n: #3366ff; /* Nitrogen - Blue */
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header Area */
+        header {
+            background-color: var(--bg-panel);
+            border-bottom: 2px solid var(--border);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid var(--primary);
+            box-shadow: 0 0 10px var(--primary-glow);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: var(--primary);
+            font-size: 14px;
+        }
+
+        .logo-icon::after {
+            content: '';
+            position: absolute;
+            width: 42px;
+            height: 42px;
+            border: 1px dashed var(--secondary);
+            border-radius: 50%;
+            animation: spin 8s linear infinite;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
+        .logo-text h1 {
+            font-size: 1.2rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-text span {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Navigation Tabs */
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            background: var(--bg-deep);
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .tab-btn.active {
+            color: var(--bg-deep);
+            background: var(--primary);
+            box-shadow: 0 0 10px var(--primary-glow);
+            font-weight: 700;
+        }
+
+        /* Main Workspace Layout */
+        .workspace {
+            flex: 1;
+            display: flex;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Sidebar Panel (Left) */
+        .sidebar {
+            width: 320px;
+            background-color: var(--bg-panel);
+            border-right: 2px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            z-index: 5;
+            transition: transform 0.3s ease;
+        }
+
+        .panel-section {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .panel-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--secondary);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* Atom Palette */
+        .atom-palette {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .atom-btn {
+            background: var(--bg-element);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .atom-btn:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 8px rgba(0, 255, 204, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .atom-btn.active {
+            border-color: var(--primary);
+            background: rgba(0, 255, 204, 0.08);
+            box-shadow: 0 0 12px rgba(0, 255, 204, 0.3);
+        }
+
+        .atom-dot {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .dot-C { background-color: var(--cpk-c); box-shadow: 0 0 5px rgba(255,255,255,0.1); }
+        .dot-H { background-color: var(--cpk-h); box-shadow: 0 0 5px rgba(255,255,255,0.5); }
+        .dot-O { background-color: var(--cpk-o); box-shadow: 0 0 5px rgba(255,51,51,0.5); }
+        .dot-N { background-color: var(--cpk-n); box-shadow: 0 0 5px rgba(51,102,255,0.5); }
+
+        .atom-info {
+            text-align: left;
+        }
+
+        .atom-symbol {
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: var(--text-main);
+        }
+
+        .atom-name {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            display: block;
+        }
+
+        /* Bond Selector */
+        .bond-selector {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .bond-btn {
+            flex: 1;
+            background: var(--bg-element);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .bond-btn:hover {
+            border-color: var(--secondary);
+            color: var(--text-main);
+        }
+
+        .bond-btn.active {
+            background: rgba(0, 191, 255, 0.15);
+            border-color: var(--secondary);
+            color: var(--secondary);
+            box-shadow: 0 0 10px rgba(0, 191, 255, 0.2);
+        }
+
+        /* Challenge Mode Display */
+        .challenge-box {
+            background: rgba(0, 255, 204, 0.03);
+            border: 1px dashed rgba(0, 255, 204, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .challenge-target {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .target-formula {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            background: var(--bg-element);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .challenge-desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        /* Success Card overlay / modal style inside sidebar or canvas */
+        .success-overlay {
+            background: linear-gradient(135deg, rgba(0, 255, 204, 0.15), rgba(0, 191, 255, 0.15));
+            border: 2px solid var(--primary);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 0 20px var(--primary-glow);
+            margin-top: 15px;
+            animation: pulseGlow 2s infinite alternate;
+        }
+
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 15px rgba(0, 255, 204, 0.2); }
+            100% { box-shadow: 0 0 25px rgba(0, 255, 204, 0.5); }
+        }
+
+        .success-overlay h3 {
+            color: var(--primary);
+            font-size: 1.3rem;
+            margin-bottom: 8px;
+        }
+
+        .success-overlay p {
+            font-size: 0.85rem;
+            color: var(--text-main);
+            margin-bottom: 12px;
+        }
+
+        /* Control Panel */
+        .canvas-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: auto;
+            padding: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .ctrl-btn {
+            flex: 1;
+            background: var(--bg-element);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .ctrl-btn:hover {
+            background: var(--border);
+            border-color: var(--text-muted);
+        }
+
+        .ctrl-btn.danger {
+            color: #ff5555;
+            border-color: rgba(255, 85, 85, 0.3);
+        }
+
+        .ctrl-btn.danger:hover {
+            background: rgba(255, 85, 85, 0.1);
+            border-color: #ff5555;
+        }
+
+        /* Center Canvas Area */
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            background-color: #0d1117;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* HUD Overlay on Canvas */
+        .hud-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            pointer-events: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            z-index: 3;
+        }
+
+        .hud-panel {
+            background: rgba(17, 21, 29, 0.85);
+            border: 1px solid var(--border);
+            backdrop-filter: blur(8px);
+            border-radius: 10px;
+            padding: 12px 20px;
+            pointer-events: auto;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .hud-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 2px;
+        }
+
+        .hud-value {
+            font-size: 1.6rem;
+            font-weight: bold;
+            color: var(--primary);
+            font-family: 'Courier New', Courier, monospace;
+            text-shadow: 0 0 8px var(--primary-glow);
+        }
+
+        .canvas-instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(17, 21, 29, 0.9);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            pointer-events: none;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+            z-index: 3;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        /* Library Panel (Right / Hidden initially or toggled) */
+        .library-panel {
+            width: 350px;
+            background-color: var(--bg-panel);
+            border-left: 2px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            z-index: 5;
+            overflow-y: auto;
+        }
+
+        .library-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding: 20px;
+        }
+
+        .lib-card {
+            background: var(--bg-element);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .lib-card:hover {
+            border-color: var(--secondary);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 191, 255, 0.1);
+        }
+
+        .lib-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .lib-name {
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: var(--text-main);
+        }
+
+        .lib-formula {
+            font-size: 0.85rem;
+            color: var(--secondary);
+            font-weight: bold;
+            background: rgba(0, 191, 255, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .lib-desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+            margin-bottom: 12px;
+        }
+
+        .lib-action-btn {
+            width: 100%;
+            background: rgba(0, 255, 204, 0.08);
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            color: var(--primary);
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .lib-action-btn:hover {
+            background: var(--primary);
+            color: var(--bg-deep);
+            box-shadow: 0 0 10px var(--primary-glow);
+        }
+
+        /* Mode dependent visibility rules */
+        .mode-challenge-only,
+        .mode-free-only,
+        .mode-library-only {
+            display: none;
+        }
+
+        body[data-mode="challenge"] .mode-challenge-only { display: block; }
+        body[data-mode="free"] .mode-free-only { display: block; }
+        body[data-mode="library"] .mode-library-only { display: block; }
+
+        /* Custom Scrollbar for Sci-Fi vibe */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-deep);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* Toast Alert Overlay */
+        .toast-container {
+            position: absolute;
+            bottom: 80px;
+            right: 20px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: rgba(255, 0, 85, 0.95);
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+            font-size: 0.85rem;
+            font-weight: 600;
+            animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            pointer-events: auto;
+            border-left: 4px solid #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Star indicators for challenge success */
+        .stars {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin: 10px 0;
+            font-size: 1.5rem;
+            color: #ffd700;
+            text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+        }
+
+        /* Responsive adaptation */
+        @media (max-width: 1024px) {
+            .workspace {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                border-right: none;
+                border-bottom: 2px solid var(--border);
+            }
+            .library-panel {
+                width: 100%;
+                border-left: none;
+                border-top: 2px solid var(--border);
+                max-height: 250px;
+            }
+            canvas {
+                min-height: 350px;
+            }
+        }
+    </style>
+</head>
+<body data-mode="challenge">
+
+    <!-- Header Section -->
+    <header>
+        <div class="logo-area">
+            <div class="logo-icon">Q</div>
+            <div class="logo-text">
+                <h1>QuantumChem</h1>
+                <span>Interactive Molecular Builder</span>
+            </div>
+        </div>
+
+        <!-- Mode Selectors -->
+        <div class="nav-tabs">
+            <button class="tab-btn active" data-tab="challenge">お題チャレンジ</button>
+            <button class="tab-btn" data-tab="free">フリービルド</button>
+            <button class="tab-btn" data-tab="library">分子図鑑</button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="workspace">
+        
+        <!-- Sidebar Panel (Left) -->
+        <div class="sidebar">
+            
+            <!-- Atom Palette Section (Always visible for editing) -->
+            <div class="panel-section">
+                <div class="panel-title">
+                    <span>原子パレット (元素選択)</span>
+                    <span style="font-size: 0.7rem; color: var(--text-muted);">クリックして追加</span>
+                </div>
+                <div class="atom-palette">
+                    <button class="atom-btn active" data-element="C">
+                        <div class="atom-dot dot-C"></div>
+                        <div class="atom-info">
+                            <span class="atom-symbol">C</span>
+                            <span class="atom-name">炭素 (4価)</span>
+                        </div>
+                    </button>
+                    <button class="atom-btn" data-element="H">
+                        <div class="atom-dot dot-H"></div>
+                        <div class="atom-info">
+                            <span class="atom-symbol">H</span>
+                            <span class="atom-name">水素 (1価)</span>
+                        </div>
+                    </button>
+                    <button class="atom-btn" data-element="O">
+                        <div class="atom-dot dot-O"></div>
+                        <div class="atom-info">
+                            <span class="atom-symbol">O</span>
+                            <span class="atom-name">酸素 (2価)</span>
+                        </div>
+                    </button>
+                    <button class="atom-btn" data-element="N">
+                        <div class="atom-dot dot-N"></div>
+                        <div class="atom-info">
+                            <span class="atom-symbol">N</span>
+                            <span class="atom-name">窒素 (3価)</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Bond Settings Section -->
+            <div class="panel-section">
+                <div class="panel-title">結合モード選択</div>
+                <div class="bond-selector">
+                    <button class="bond-btn active" data-bond="1">単結合 (ー)</button>
+                    <button class="bond-btn" data-bond="2">二重 (＝)</button>
+                    <button class="bond-btn" data-bond="3">三重 (≡)</button>
+                </div>
+            </div>
+
+            <!-- Challenge Panel Content -->
+            <div class="panel-section mode-challenge-only" style="flex: 1; display: flex; flex-direction: column; overflow-y: auto;">
+                <div class="panel-title">現在のお題</div>
+                <div class="challenge-box">
+                    <div class="challenge-target">
+                        <span id="challenge-name">エタノール</span>
+                        <span class="target-formula" id="challenge-formula">C2H6O</span>
+                    </div>
+                    <p class="challenge-desc" id="challenge-desc">お酒の主成分。炭素2つ、酸素1つ、水素6つを正しく単結合で繋いでみましょう。</p>
+                </div>
+
+                <!-- Next / Prev Challenge buttons -->
+                <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+                    <button class="ctrl-btn" id="prev-challenge-btn" style="padding: 6px;">◀ 前のお題</button>
+                    <button class="ctrl-btn" id="next-challenge-btn" style="padding: 6px;">次のお題 ▶</button>
+                </div>
+
+                <!-- Success Box Overlay (Shown when user matches challenge) -->
+                <div class="success-overlay" id="success-panel" style="display: none;">
+                    <div class="stars">★★★</div>
+                    <h3>ミッション完了!</h3>
+                    <p>分子構造が完全に一致しました！美しいモデリングです。</p>
+                    <button class="ctrl-btn" id="challenge-next-action-btn" style="background: var(--primary); color: var(--bg-deep); font-weight: bold; border: none; width: 100%;">次のお題に進む</button>
+                </div>
+            </div>
+
+            <!-- Free Build Info Section -->
+            <div class="panel-section mode-free-only" style="flex: 1; overflow-y: auto;">
+                <div class="panel-title">フリービルド</div>
+                <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 15px;">
+                    制限なしの自由設計キャンバスです。有機化学のルールに従って、好きな分子を組み立てましょう。
+                </p>
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); padding: 12px; border-radius: 8px;">
+                    <h4 style="font-size: 0.8rem; color: var(--secondary); margin-bottom: 8px;">💡 有機化学の基本ルール</h4>
+                    <ul style="font-size: 0.75rem; color: var(--text-muted); padding-left: 15px; display: flex; flex-direction: column; gap: 6px;">
+                        <li>炭素(C)は4つの結合の手を持ちます。</li>
+                        <li>水素(H)は1つの結合の手を持ちます。</li>
+                        <li>酸素(O)は2つの結合の手を持ちます。</li>
+                        <li>窒素(N)は3つの結合の手を持ちます。</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Library General Guide in Sidebar -->
+            <div class="panel-section mode-library-only" style="flex: 1; overflow-y: auto;">
+                <div class="panel-title">分子図鑑</div>
+                <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
+                    右側の図鑑リストから分子を選び、「キャンバスへ読込」をクリックすると、その分子構造を編集・分析することができます。
+                </p>
+            </div>
+
+            <!-- Clear & Action Controls at Bottom -->
+            <div class="canvas-controls">
+                <button class="ctrl-btn danger" id="clear-btn">
+                    🗑️ 全消去
+                </button>
+                <button class="ctrl-btn" id="reset-btn">
+                    🔄 リセット
+                </button>
+            </div>
+        </div>
+
+        <!-- Center Canvas Container -->
+        <div class="canvas-container">
+            
+            <!-- Real-time HUD overlay -->
+            <div class="hud-overlay">
+                <div class="hud-panel">
+                    <div class="hud-label">検出された化学式</div>
+                    <div class="hud-value" id="hud-formula">H₂O</div>
+                </div>
+                <div class="hud-panel" style="text-align: right;">
+                    <div class="hud-label">ステータス</div>
+                    <div class="hud-value" id="hud-status" style="font-size: 1.1rem; color: var(--secondary); margin-top: 4px;">待機中</div>
+                </div>
+            </div>
+
+            <!-- Canvas instructions text -->
+            <div class="canvas-instructions" id="canvas-hint">
+                キャンバスをクリックして原子を配置 / ドラッグで結合を作成 / 原子をドラッグして移動 / ダブルクリックで原子を削除
+            </div>
+
+            <!-- Interactive Canvas -->
+            <canvas id="chem-canvas"></canvas>
+
+            <!-- Toast alert popup inside container -->
+            <div class="toast-container" id="toast-container"></div>
+        </div>
+
+        <!-- Library Panel (Right side - visible when Library tab is active) -->
+        <div class="library-panel mode-library-only">
+            <div class="panel-section" style="border-bottom: 2px solid var(--border); background: var(--bg-deep);">
+                <div class="panel-title" style="margin: 0;">📚 登録分子ライブラリ</div>
+            </div>
+            <div class="library-grid" id="library-grid">
+                <!-- Dynamically generated library cards -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Application Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // --- CONSTANTS & DATABASE ---
+            const ATOMS_CONFIG = {
+                'C': { valency: 4, color: '#2c2c2c', border: '#555', radius: 24, name: '炭素', textColor: '#fff' },
+                'H': { valency: 1, color: '#ffffff', border: '#ccc', radius: 18, name: '水素', textColor: '#111' },
+                'O': { valency: 2, color: '#ff3333', border: '#ff8888', radius: 22, name: '酸素', textColor: '#fff' },
+                'N': { valency: 3, color: '#3366ff', border: '#88aaff', radius: 23, name: '窒素', textColor: '#fff' }
+            };
+
+            // Challenge and Library database
+            const MOLECULE_DATABASE = [
+                {
+                    id: 'water',
+                    name: '水',
+                    formula: 'H2O',
+                    desc: '最も身近な化合物。酸素1つに対して水素が2つ結合しています。',
+                    // Preset structure to load or match
+                    nodes: [
+                        { id: 0, element: 'O', x: 250, y: 200 },
+                        { id: 1, element: 'H', x: 170, y: 250 },
+                        { id: 2, element: 'H', x: 330, y: 250 }
+                    ],
+                    bonds: [
+                        { from: 0, to: 1, type: 1 },
+                        { from: 0, to: 2, type: 1 }
+                    ]
+                },
+                {
+                    id: 'co2',
+                    name: '二酸化炭素',
+                    formula: 'CO2',
+                    desc: '炭素の左右に酸素がそれぞれ二重結合で結びついた直線型の分子です。',
+                    nodes: [
+                        { id: 0, element: 'C', x: 250, y: 200 },
+                        { id: 1, element: 'O', x: 150, y: 200 },
+                        { id: 2, element: 'O', x: 350, y: 200 }
+                    ],
+                    bonds: [
+                        { from: 0, to: 1, type: 2 },
+                        { from: 0, to: 2, type: 2 }
+                    ]
+                },
+                {
+                    id: 'methane',
+                    name: 'メタン',
+                    formula: 'CH4',
+                    desc: '最も単純な有機化合物。炭素を中心に、4つの水素が正四面体状に結合しています。',
+                    nodes: [
+                        { id: 0, element: 'C', x: 250, y: 220 },
+                        { id: 1, element: 'H', x: 250, y: 140 },
+                        { id: 2, element: 'H', x: 170, y: 250 },
+                        { id: 3, element: 'H', x: 330, y: 250 },
+                        { id: 4, element: 'H', x: 250, y: 300 }
+                    ],
+                    bonds: [
+                        { from: 0, to: 1, type: 1 },
+                        { from: 0, to: 2, type: 1 },
+                        { from: 0, to: 3, type: 1 },
+                        { from: 0, to: 4, type: 1 }
+                    ]
+                },
+                {
+                    id: 'ethanol',
+                    name: 'エタノール',
+                    formula: 'C2H6O',
+                    desc: 'アルコール飲料に含まれる有機化合物。炭素同士が繋がり、片方に酸素（OH基）が付きます。',
+                    nodes: [
+                        { id: 0, element: 'C', x: 200, y: 200 },
+                        { id: 1, element: 'C', x: 300, y: 200 },
+                        { id: 2, element: 'O', x: 400, y: 200 },
+                        { id: 3, element: 'H', x: 470, y: 200 },
+                        { id: 4, element: 'H', x: 200, y: 120 },
+                        { id: 5, element: 'H', x: 200, y: 280 },
+                        { id: 6, element: 'H', x: 120, y: 200 },
+                        { id: 7, element: 'H', x: 300, y: 120 },
+                        { id: 8, element: 'H', x: 300, y: 280 }
+                    ],
+                    bonds: [
+                        { from: 0, to: 1, type: 1 },
+                        { from: 1, to: 2, type: 1 },
+                        { from: 2, to: 3, type: 1 },
+                        { from: 0, to: 4, type: 1 },
+                        { from: 0, to: 5, type: 1 },
+                        { from: 0, to: 6, type: 1 },
+                        { from: 1, to: 7, type: 1 },
+                        { from: 1, to: 8, type: 1 }
+                    ]
+                },
+                {
+                    id: 'acetic_acid',
+                    name: '酢酸',
+                    formula: 'C2H4O2',
+                    desc: 'お酢の酸味成分。炭素の一方に二重結合の酸素と、単結合のOH基が結びついています（カルボキシ基）。',
+                    nodes: [
+                        { id: 0, element: 'C', x: 200, y: 200 },
+                        { id: 1, element: 'C', x: 300, y: 200 },
+                        { id: 2, element: 'O', x: 360, y: 120 },
+                        { id: 3, element: 'O', x: 360, y: 280 },
+                        { id: 4, element: 'H', x: 440, y: 280 },
+                        { id: 5, element: 'H', x: 200, y: 120 },
+                        { id: 6, element: 'H', x: 200, y: 280 },
+                        { id: 7, element: 'H', x: 120, y: 200 }
+                    ],
+                    bonds: [
+                        { from: 0, to: 1, type: 1 },
+                        { from: 1, to: 2, type: 2 },
+                        { from: 1, to: 3, type: 1 },
+                        { from: 3, to: 4, type: 1 },
+                        { from: 0, to: 5, type: 1 },
+                        { from: 0, to: 6, type: 1 },
+                        { from: 0, to: 7, type: 1 }
+                    ]
+                },
+                {
+                    id: 'formaldehyde',
+                    name: 'ホルムアルデヒド',
+                    formula: 'CH2O',
+                    desc: '非常に単純なアルデヒド。炭素が酸素と二重結合し、2つの水素と結びついています。',
+                    nodes: [
+                        { id: 0, element: 'C', x: 250, y: 200 },
+                        { id: 1, element: 'O', x: 250, y: 100 },
+                        { id: 2, element: 'H', x: 170, y: 270 },
+                        { id: 3, element: 'H', x: 330, y: 270 }
+                    ],
+                    bonds: [
+                        { from: 0, to: 1, type: 2 },
+                        { from: 0, to: 2, type: 1 },
+                        { from: 0, to: 3, type: 1 }
+                    ]
+                }
+            ];
+
+            // --- APP STATE ---
+            let currentMode = 'challenge'; // 'challenge' | 'free' | 'library'
+            let activeElement = 'C';
+            let activeBondType = 1; // 1 = Single, 2 = Double, 3 = Triple
+            let currentChallengeIndex = 0;
+
+            // Graph state
+            let nodes = [];
+            let bonds = [];
+            let nextNodeId = 0;
+
+            // Interactive Drawing State
+            let selectedNode = null;
+            let draggedNode = null;
+            let connectionSourceNode = null;
+            let currentMousePos = { x: 0, y: 0 };
+            let isDrawingConnection = false;
+
+            // --- DOM ELEMENTS ---
+            const canvas = document.getElementById('chem-canvas');
+            const ctx = canvas.getContext('2d');
+            const hudFormula = document.getElementById('hud-formula');
+            const hudStatus = document.getElementById('hud-status');
+            const successPanel = document.getElementById('success-panel');
+            const toastContainer = document.getElementById('toast-container');
+            
+            // Mode Tabs
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            
+            // Atom & Bond Selector Buttons
+            const atomButtons = document.querySelectorAll('.atom-btn');
+            const bondButtons = document.querySelectorAll('.bond-btn');
+
+            // Challenge Elements
+            const challengeName = document.getElementById('challenge-name');
+            const challengeFormula = document.getElementById('challenge-formula');
+            const challengeDesc = document.getElementById('challenge-desc');
+            const prevChallengeBtn = document.getElementById('prev-challenge-btn');
+            const nextChallengeBtn = document.getElementById('next-challenge-btn');
+            const challengeNextActionBtn = document.getElementById('challenge-next-action-btn');
+
+            // Canvas Actions
+            const clearBtn = document.getElementById('clear-btn');
+            const resetBtn = document.getElementById('reset-btn');
+
+            // Library
+            const libraryGrid = document.getElementById('library-grid');
+
+            // --- INITIALIZATION ---
+            function init() {
+                resizeCanvas();
+                setupEventListeners();
+                renderLibrary();
+                loadChallenge(0);
+                animate();
+            }
+
+            function resizeCanvas() {
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width;
+                canvas.height = rect.height || 500;
+            }
+
+            // --- TOAST NOTIFICATIONS ---
+            function showToast(message, type = 'error') {
+                const toast = document.createElement('div');
+                toast.className = 'toast';
+                if (type === 'error') {
+                    toast.style.background = 'rgba(255, 0, 85, 0.95)';
+                } else if (type === 'success') {
+                    toast.style.background = 'rgba(0, 200, 120, 0.95)';
+                } else {
+                    toast.style.background = 'rgba(0, 191, 255, 0.95)';
+                }
+                toast.innerHTML = `<span>⚠️</span> <span>${message}</span>`;
+                toastContainer.appendChild(toast);
+                setTimeout(() => {
+                    toast.style.animation = 'slideIn 0.3s reverse forwards';
+                    setTimeout(() => {
+                        toast.remove();
+                    }, 300);
+                }, 3000);
+            }
+
+            // --- PHYSICS & RULE ENGINE (Valency Checks) ---
+            
+            // Calculate current used valency for a specific node
+            function getNodeUsedValency(nodeId, excludeTempBond = null) {
+                let count = 0;
+                bonds.forEach(b => {
+                    if (excludeTempBond && b === excludeTempBond) return;
+                    if (b.from === nodeId || b.to === nodeId) {
+                        count += b.type;
+                    }
+                });
+                return count;
+            }
+
+            // Determine if adding a bond between nodeA and nodeB of type would exceed either valency limit
+            function checkValencyLimit(nodeAId, nodeBId, requestedBondType) {
+                const nodeA = nodes.find(n => n.id === nodeAId);
+                const nodeB = nodes.find(n => n.id === nodeBId);
+                if (!nodeA || !nodeB) return false;
+
+                const maxValencyA = ATOMS_CONFIG[nodeA.element].valency;
+                const maxValencyB = ATOMS_CONFIG[nodeB.element].valency;
+
+                // Find existing bond between them if any to calculate net increase
+                const existingBond = bonds.find(b => 
+                    (b.from === nodeAId && b.to === nodeBId) || 
+                    (b.from === nodeBId && b.to === nodeAId)
+                );
+
+                const currentValencyA = getNodeUsedValency(nodeAId);
+                const currentValencyB = getNodeUsedValency(nodeBId);
+
+                let addedA = requestedBondType;
+                let addedB = requestedBondType;
+
+                if (existingBond) {
+                    addedA -= existingBond.type;
+                    addedB -= existingBond.type;
+                }
+
+                if (currentValencyA + addedA > maxValencyA) {
+                    showToast(`${nodeA.element}(${maxValencyA}価)の最大結合数を超えてしまいます！`);
+                    return false;
+                }
+                if (currentValencyB + addedB > maxValencyB) {
+                    showToast(`${nodeB.element}(${maxValencyB}価)の最大結合数を超えてしまいます！`);
+                    return false;
+                }
+
+                return true;
+            }
+
+            // --- REAL-TIME CHEMICAL FORMULA GENERATION ---
+            // Traverses the current graph and groups elements, returning a Hill-system formula (C first, then H, then alphabetical)
+            function calculateFormula() {
+                if (nodes.length === 0) return '空のキャンバス';
+
+                // Count elements
+                const counts = {};
+                nodes.forEach(n => {
+                    counts[n.element] = (counts[n.element] || 0) + 1;
+                });
+
+                // Format following Hill System (C, then H, then others alphabetically)
+                let formulaStr = '';
+                if (counts['C']) {
+                    formulaStr += 'C' + (counts['C'] > 1 ? counts['C'] : '');
+                    delete counts['C'];
+                }
+                if (counts['H']) {
+                    formulaStr += 'H' + (counts['H'] > 1 ? counts['H'] : '');
+                    delete counts['H'];
+                }
+
+                // Sort remaining elements alphabetically
+                const remainingKeys = Object.keys(counts).sort();
+                remainingKeys.forEach(k => {
+                    formulaStr += k + (counts[k] > 1 ? counts[k] : '');
+                });
+
+                return formulaStr;
+            }
+
+            // Converts regular digits in chemistry formula to subscript HTML equivalent (e.g. C2H6O -> C₂H₆O)
+            function convertToSubscript(formula) {
+                const subscriptMap = {
+                    '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
+                    '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉'
+                };
+                return formula.replace(/[0-9]/g, (match) => subscriptMap[match] || match);
+            }
+
+            // Graph matching algorithm for Challenge Mode verification
+            // Compares user drawn molecule graph to the target database molecule
+            function verifyChallenge() {
+                const target = MOLECULE_DATABASE[currentChallengeIndex];
+                if (!target) return;
+
+                // 1. Quick pre-checks: count of atoms, count of bonds, formula match
+                const userFormula = calculateFormula();
+                if (userFormula !== target.formula) {
+                    hudStatus.innerText = '構築中...';
+                    hudStatus.style.color = 'var(--secondary)';
+                    successPanel.style.display = 'none';
+                    return;
+                }
+
+                if (nodes.length !== target.nodes.length || bonds.length !== target.bonds.length) {
+                    hudStatus.innerText = '原子/結合数が異なります';
+                    hudStatus.style.color = 'var(--accent)';
+                    successPanel.style.display = 'none';
+                    return;
+                }
+
+                // 2. Perform graph isomorphism match
+                const match = checkGraphIsomorphism(nodes, bonds, target.nodes, target.bonds);
+                if (match) {
+                    hudStatus.innerText = 'ミッション成功!';
+                    hudStatus.style.color = 'var(--primary)';
+                    successPanel.style.display = 'block';
+                } else {
+                    hudStatus.innerText = '構造が正しくありません';
+                    hudStatus.style.color = 'var(--accent)';
+                    successPanel.style.display = 'none';
+                }
+            }
+
+            // Simple backtracking isomorphism check for small chemical graphs
+            function checkGraphIsomorphism(nodesA, bondsA, nodesB, bondsB) {
+                if (nodesA.length !== nodesB.length) return false;
+                
+                // Build adjacency structures
+                const adjA = buildAdjacency(nodesA, bondsA);
+                const adjB = buildAdjacency(nodesB, bondsB);
+
+                const usedB = new Array(nodesB.length).fill(false);
+                const mapping = {}; // maps A index to B index
+
+                function backtrack(indexA) {
+                    if (indexA === nodesA.length) {
+                        // Double check all bonds mapped correctly
+                        for (let i = 0; i < bondsA.length; i++) {
+                            const bA = bondsA[i];
+                            const mappedFrom = mapping[bA.from];
+                            const mappedTo = mapping[bA.to];
+                            // Check if there is an identical bond in B
+                            const hasMatchingBond = bondsB.some(bB => {
+                                return bB.type === bA.type && (
+                                    (bB.from === mappedFrom && bB.to === mappedTo) ||
+                                    (bB.from === mappedTo && bB.to === mappedFrom)
+                                );
+                            });
+                            if (!hasMatchingBond) return false;
+                        }
+                        return true;
+                    }
+
+                    const nodeA = nodesA[indexA];
+
+                    for (let indexB = 0; indexB < nodesB.length; indexB++) {
+                        if (usedB[indexB]) continue;
+                        const nodeB = nodesB[indexB];
+
+                        // Node compatibility checks (element must match)
+                        if (nodeA.element !== nodeB.element) continue;
+
+                        // Local structural check: matching degree & valency
+                        if (adjA[nodeA.id].degree !== adjB[nodeB.id].degree) continue;
+
+                        // Tentatively map indexA to indexB
+                        mapping[nodeA.id] = nodeB.id;
+                        usedB[indexB] = true;
+
+                        if (backtrack(indexA + 1)) return true;
+
+                        // Backtrack
+                        usedB[indexB] = false;
+                        delete mapping[nodeA.id];
+                    }
+
+                    return false;
+                }
+
+                return backtrack(0);
+            }
+
+            function buildAdjacency(nodesList, bondsList) {
+                const adj = {};
+                nodesList.forEach(n => {
+                    adj[n.id] = { degree: 0, neighbors: [] };
+                });
+                bondsList.forEach(b => {
+                    if (adj[b.from] && adj[b.to]) {
+                        adj[b.from].degree += b.type;
+                        adj[b.from].neighbors.push({ to: b.to, type: b.type });
+                        adj[b.to].degree += b.type;
+                        adj[b.to].neighbors.push({ to: b.from, type: b.type });
+                    }
+                });
+                return adj;
+            }
+
+            // --- EVENT HANDLERS & MOUSE INTERACTION ---
+            function setupEventListeners() {
+                
+                // Canvas Resize
+                window.addEventListener('resize', resizeCanvas);
+
+                // Tab Switcher
+                tabButtons.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        tabButtons.forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        currentMode = btn.dataset.tab;
+                        document.body.setAttribute('data-mode', currentMode);
+
+                        // Reset display alerts & states
+                        successPanel.style.display = 'none';
+                        if (currentMode === 'challenge') {
+                            loadChallenge(currentChallengeIndex);
+                        } else if (currentMode === 'free') {
+                            hudStatus.innerText = 'フリービルド中';
+                            hudStatus.style.color = 'var(--secondary)';
+                        } else {
+                            hudStatus.innerText = '図鑑分析モード';
+                            hudStatus.style.color = 'var(--secondary)';
+                        }
+                    });
+                });
+
+                // Atom Selector
+                atomButtons.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        atomButtons.forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        activeElement = btn.dataset.element;
+                    });
+                });
+
+                // Bond Selector
+                bondButtons.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        bondButtons.forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        activeBondType = parseInt(btn.dataset.bond, 10);
+                    });
+                });
+
+                // Canvas Actions
+                clearBtn.addEventListener('click', () => {
+                    nodes = [];
+                    bonds = [];
+                    updateUI();
+                });
+
+                resetBtn.addEventListener('click', () => {
+                    if (currentMode === 'challenge') {
+                        loadChallenge(currentChallengeIndex);
+                    } else {
+                        nodes = [];
+                        bonds = [];
+                        updateUI();
+                    }
+                });
+
+                // Challenge Navigation
+                prevChallengeBtn.addEventListener('click', () => {
+                    let nextIdx = currentChallengeIndex - 1;
+                    if (nextIdx < 0) nextIdx = MOLECULE_DATABASE.length - 1;
+                    loadChallenge(nextIdx);
+                });
+
+                nextChallengeBtn.addEventListener('click', () => {
+                    let nextIdx = (currentChallengeIndex + 1) % MOLECULE_DATABASE.length;
+                    loadChallenge(nextIdx);
+                });
+
+                challengeNextActionBtn.addEventListener('click', () => {
+                    let nextIdx = (currentChallengeIndex + 1) % MOLECULE_DATABASE.length;
+                    loadChallenge(nextIdx);
+                });
+
+                // Canvas Mouse Interactions
+                canvas.addEventListener('mousedown', handleMouseDown);
+                canvas.addEventListener('mousemove', handleMouseMove);
+                canvas.addEventListener('mouseup', handleMouseUp);
+                canvas.addEventListener('dblclick', handleDoubleClick);
+
+                // Touch support
+                canvas.addEventListener('touchstart', (e) => {
+                    const touch = e.touches[0];
+                    const mouseEvent = new MouseEvent('mousedown', {
+                        clientX: touch.clientX,
+                        clientY: touch.clientY
+                    });
+                    canvas.dispatchEvent(mouseEvent);
+                });
+                canvas.addEventListener('touchmove', (e) => {
+                    const touch = e.touches[0];
+                    const mouseEvent = new MouseEvent('mousemove', {
+                        clientX: touch.clientX,
+                        clientY: touch.clientY
+                    });
+                    canvas.dispatchEvent(mouseEvent);
+                });
+                canvas.addEventListener('touchend', () => {
+                    const mouseEvent = new MouseEvent('mouseup', {});
+                    canvas.dispatchEvent(mouseEvent);
+                });
+            }
+
+            function getMousePos(e) {
+                const rect = canvas.getBoundingClientRect();
+                return {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top
+                };
+            }
+
+            function getNodeAtPos(pos) {
+                for (let i = nodes.length - 1; i >= 0; i--) {
+                    const n = nodes[i];
+                    const config = ATOMS_CONFIG[n.element];
+                    const dist = Math.hypot(n.x - pos.x, n.y - pos.y);
+                    if (dist < config.radius + 10) {
+                        return n;
+                    }
+                }
+                return null;
+            }
+
+            function handleMouseDown(e) {
+                const pos = getMousePos(e);
+                const targetNode = getNodeAtPos(pos);
+
+                if (targetNode) {
+                    // Left click on node:
+                    if (e.shiftKey) {
+                        // Shift + Click sets connection source
+                        connectionSourceNode = targetNode;
+                        isDrawingConnection = true;
+                    } else {
+                        // Regular Click: start drag & select
+                        selectedNode = targetNode;
+                        draggedNode = targetNode;
+                    }
+                } else {
+                    // Click empty space: Add active element
+                    const config = ATOMS_CONFIG[activeElement];
+                    // Quick safety boundary check
+                    const x = Math.max(config.radius + 10, Math.min(canvas.width - config.radius - 10, pos.x));
+                    const y = Math.max(config.radius + 10, Math.min(canvas.height - config.radius - 10, pos.y));
+                    
+                    const newNode = {
+                        id: nextNodeId++,
+                        element: activeElement,
+                        x: x,
+                        y: y
+                    };
+                    nodes.push(newNode);
+                    selectedNode = newNode;
+                    updateUI();
+                }
+            }
+
+            function handleMouseMove(e) {
+                const pos = getMousePos(e);
+                currentMousePos = pos;
+
+                if (draggedNode) {
+                    const config = ATOMS_CONFIG[draggedNode.element];
+                    // Restrict dragging bounds
+                    draggedNode.x = Math.max(config.radius, Math.min(canvas.width - config.radius, pos.x));
+                    draggedNode.y = Math.max(config.radius, Math.min(canvas.height - config.radius, pos.y));
+                }
+            }
+
+            function handleMouseUp(e) {
+                const pos = getMousePos(e);
+
+                if (isDrawingConnection && connectionSourceNode) {
+                    const targetNode = getNodeAtPos(pos);
+                    if (targetNode && targetNode.id !== connectionSourceNode.id) {
+                        createOrModifyBond(connectionSourceNode.id, targetNode.id, activeBondType);
+                    }
+                } else if (draggedNode && !isDrawingConnection) {
+                    // Check if dragged over another node to link them automatically (intuitive mobile UX)
+                    const targetNode = nodes.find(n => n.id !== draggedNode.id && Math.hypot(n.x - draggedNode.x, n.y - draggedNode.y) < 40);
+                    if (targetNode) {
+                        createOrModifyBond(draggedNode.id, targetNode.id, activeBondType);
+                        // Spring back slightly to avoid overlap
+                        draggedNode.x += (draggedNode.x > targetNode.x ? 50 : -50);
+                        draggedNode.y += (draggedNode.y > targetNode.y ? 50 : -50);
+                    }
+                }
+
+                draggedNode = null;
+                connectionSourceNode = null;
+                isDrawingConnection = false;
+                updateUI();
+            }
+
+            function handleDoubleClick(e) {
+                const pos = getMousePos(e);
+                const targetNode = getNodeAtPos(pos);
+                if (targetNode) {
+                    // Delete node and its bonds
+                    nodes = nodes.filter(n => n.id !== targetNode.id);
+                    bonds = bonds.filter(b => b.from !== targetNode.id && b.to !== targetNode.id);
+                    updateUI();
+                }
+            }
+
+            // --- BOND BUILDER / MODIFIER ---
+            function createOrModifyBond(fromId, toId, type) {
+                if (!checkValencyLimit(fromId, toId, type)) {
+                    return; // Aborted due to valency violation
+                }
+
+                // Check if bond already exists
+                const existingIndex = bonds.findIndex(b => 
+                    (b.from === fromId && b.to === toId) || 
+                    (b.from === toId && b.to === fromId)
+                );
+
+                if (existingIndex > -1) {
+                    // If clicked with same bond, delete/toggle it
+                    if (bonds[existingIndex].type === type) {
+                        bonds.splice(existingIndex, 1); // Delete bond
+                    } else {
+                        bonds[existingIndex].type = type; // Update bond type
+                    }
+                } else {
+                    // Add new bond
+                    bonds.push({ from: fromId, to: toId, type: type });
+                }
+            }
+
+            // --- CHALLENGE & LIBRARY MANAGERS ---
+            function loadChallenge(index) {
+                currentChallengeIndex = index;
+                const target = MOLECULE_DATABASE[index];
+                if (!target) return;
+
+                // Update UI Texts
+                challengeName.innerText = target.name;
+                challengeFormula.innerText = target.formula;
+                challengeDesc.innerText = target.desc;
+
+                // Clear workspace
+                nodes = [];
+                bonds = [];
+                successPanel.style.display = 'none';
+
+                // We do NOT auto-place nodes for the challenge to let user build it, 
+                // but we can provide the atoms as a template or start blank. Let's start blank with instructions.
+                updateUI();
+            }
+
+            function loadMoleculeToSandbox(molId) {
+                const mol = MOLECULE_DATABASE.find(m => m.id === molId);
+                if (!mol) return;
+
+                // Clone nodes & bonds
+                nodes = JSON.parse(JSON.stringify(mol.nodes));
+                bonds = JSON.parse(JSON.stringify(mol.bonds));
+
+                // Recalculate IDs to avoid collision
+                let maxId = 0;
+                nodes.forEach(n => {
+                    if (n.id > maxId) maxId = n.id;
+                });
+                nextNodeId = maxId + 1;
+
+                // Switch tab to free build
+                tabButtons.forEach(btn => {
+                    if (btn.dataset.tab === 'free') {
+                        btn.click();
+                    }
+                });
+
+                showToast(`${mol.name}をキャンバスにロードしました。`, 'success');
+                updateUI();
+            }
+
+            function renderLibrary() {
+                libraryGrid.innerHTML = '';
+                MOLECULE_DATABASE.forEach(mol => {
+                    const card = document.createElement('div');
+                    card.className = 'lib-card';
+                    card.innerHTML = `
+                        <div class="lib-card-header">
+                            <span class="lib-name">${mol.name}</span>
+                            <span class="lib-formula">${convertToSubscript(mol.formula)}</span>
+                        </div>
+                        <p class="lib-desc">${mol.desc}</p>
+                        <button class="lib-action-btn" data-id="${mol.id}">キャンバスへ読込</button>
+                    `;
+                    
+                    // Event binding
+                    card.querySelector('.lib-action-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        loadMoleculeToSandbox(mol.id);
+                    });
+
+                    card.addEventListener('click', () => {
+                        loadMoleculeToSandbox(mol.id);
+                    });
+
+                    libraryGrid.appendChild(card);
+                });
+            }
+
+            function updateUI() {
+                const rawFormula = calculateFormula();
+                hudFormula.innerHTML = convertToSubscript(rawFormula);
+
+                if (currentMode === 'challenge') {
+                    verifyChallenge();
+                }
+            }
+
+            // --- CANVAS RENDERING ENGINE ---
+            function animate() {
+                render();
+                requestAnimationFrame(animate);
+            }
+
+            function render() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Draw Grid Background
+                ctx.strokeStyle = '#161d28';
+                ctx.lineWidth = 1;
+                const gridSize = 40;
+                for (let x = 0; x < canvas.width; x += gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, canvas.height);
+                    ctx.stroke();
+                }
+                for (let y = 0; y < canvas.height; y += gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                    ctx.stroke();
+                }
+
+                // Draw Temporary connection line
+                if (isDrawingConnection && connectionSourceNode) {
+                    ctx.beginPath();
+                    ctx.moveTo(connectionSourceNode.x, connectionSourceNode.y);
+                    ctx.lineTo(currentMousePos.x, currentMousePos.y);
+                    ctx.strokeStyle = 'rgba(0, 255, 204, 0.6)';
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([5, 5]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+
+                // Draw Bonds (Edges)
+                bonds.forEach(bond => {
+                    const n1 = nodes.find(n => n.id === bond.from);
+                    const n2 = nodes.find(n => n.id === bond.to);
+                    if (!n1 || !n2) return;
+
+                    drawBondLine(n1.x, n1.y, n2.x, n2.y, bond.type);
+                });
+
+                // Draw Atoms (Nodes)
+                nodes.forEach(node => {
+                    const config = ATOMS_CONFIG[node.element];
+                    const usedValency = getNodeUsedValency(node.id);
+                    const maxValency = config.valency;
+                    const isOverValency = usedValency > maxValency;
+
+                    // Ring indicator for remaining valency
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, config.radius + 6, 0, Math.PI * 2);
+                    ctx.strokeStyle = isOverValency ? 'var(--accent)' : 'rgba(0, 255, 204, 0.2)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // Valency dots indicator
+                    for (let i = 0; i < maxValency; i++) {
+                        const angle = (i * (360 / maxValency) * Math.PI) / 180;
+                        const dotX = node.x + (config.radius + 6) * Math.cos(angle);
+                        const dotY = node.y + (config.radius + 6) * Math.sin(angle);
+                        
+                        ctx.beginPath();
+                        ctx.arc(dotX, dotY, 3, 0, Math.PI * 2);
+                        if (i < usedValency) {
+                            // Active bond filled dot
+                            ctx.fillStyle = isOverValency ? 'var(--accent)' : 'var(--primary)';
+                        } else {
+                            // Unused bond empty dot
+                            ctx.fillStyle = '#445577';
+                        }
+                        ctx.fill();
+                    }
+
+                    // Atom Outer Glow (if selected)
+                    if (selectedNode && selectedNode.id === node.id) {
+                        ctx.beginPath();
+                        ctx.arc(node.x, node.y, config.radius + 12, 0, Math.PI * 2);
+                        ctx.strokeStyle = 'rgba(0, 255, 204, 0.4)';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    }
+
+                    // Main Atom Core
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, config.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = config.color;
+                    ctx.strokeStyle = isOverValency ? 'var(--accent)' : config.border;
+                    ctx.lineWidth = 3;
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Element Text Symbol
+                    ctx.fillStyle = config.textColor;
+                    ctx.font = `bold ${config.radius * 0.9}px 'Segoe UI', sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(node.element, node.x, node.y);
+                });
+            }
+
+            // Custom multi-line bond rendering
+            function drawBondLine(x1, y1, x2, y2, type) {
+                const angle = Math.atan2(y2 - y1, x2 - x1);
+                const dx = Math.sin(angle);
+                const dy = Math.cos(angle);
+                const offset = 6; // distance between double/triple lines
+
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 4;
+                ctx.lineCap = 'round';
+
+                if (type === 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.stroke();
+                } else if (type === 2) {
+                    ctx.beginPath();
+                    ctx.moveTo(x1 - dx * offset, y1 + dy * offset);
+                    ctx.lineTo(x2 - dx * offset, y2 + dy * offset);
+                    ctx.moveTo(x1 + dx * offset, y1 - dy * offset);
+                    ctx.lineTo(x2 + dx * offset, y2 - dy * offset);
+                    ctx.stroke();
+                } else if (type === 3) {
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.moveTo(x1 - dx * offset, y1 + dy * offset);
+                    ctx.lineTo(x2 - dx * offset, y2 + dy * offset);
+                    ctx.moveTo(x1 + dx * offset, y1 - dy * offset);
+                    ctx.lineTo(x2 + dx * offset, y2 - dy * offset);
+                    ctx.stroke();
+                }
+            }
+
+            // Run app
+            init();
+        });
+    </script>
+</body>
+</html>
