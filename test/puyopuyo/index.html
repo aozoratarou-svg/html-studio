@@ -19,7 +19,12 @@
   --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
   --r:18px;
 }
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* touch-action は継承されないので、ぜんぶの要素に くばる。
+   これが ダブルタップ拡大を とめる 本体（user-scalable=no は iOS では無視される） */
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+/* あそんでいる面は ブラウザの ジェスチャーを 完全に切る。
+   左右の おやゆびが 同時に つくので、ピンチ拡大と 誤認されやすい */
+#play,.arena,#board,#boardWrap,#pad,#pad *,.hudbtn{touch-action:none}
 html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none;touch-action:manipulation}
 body{
   font-family:var(--display);color:#fff;background:#1b1730;
@@ -1685,6 +1690,13 @@ addEventListener('keyup', e => {
   e.preventDefault(); Keys.up(m[0]);
 });
 addEventListener('blur', () => Keys.clearAll());
+
+// iOS Safari は touch-action を すりぬけて 独自の gesture イベントで
+// ピンチ拡大してくることがあるので、ここでも とめる。
+// あわせて ダブルタップ由来の dblclick も 打ち消しておく。
+['gesturestart', 'gesturechange', 'gestureend'].forEach(ev =>
+  document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
+document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
 
 // A / B / キープ / ポーズ（押しっぱなしのリピートなし）
 $$('#pad button').forEach(b => {
