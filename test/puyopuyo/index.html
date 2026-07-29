@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1b1730">
-<title>ガラスのテトリス</title>
+<title>いっしょにテトリス</title>
 <style>
 :root{
   --ink:#241f38;
@@ -67,7 +67,7 @@ input::placeholder{color:rgba(255,255,255,.5)}
 /* title */
 .logo{text-align:center;line-height:1;margin-bottom:4px}
 .logo b{
-  display:block;font-size:clamp(38px,12vw,60px);font-weight:800;letter-spacing:.02em;
+  display:block;font-size:clamp(30px,9.5vw,50px);font-weight:800;letter-spacing:.01em;
   background:linear-gradient(180deg,#fff,#ffe6f2 45%,#bfe9ff);
   -webkit-background-clip:text;background-clip:text;color:transparent;
   filter:drop-shadow(0 4px 14px rgba(255,255,255,.35));
@@ -227,7 +227,7 @@ input::placeholder{color:rgba(255,255,255,.5)}
   <!-- TITLE -->
   <section class="screen on" id="scTitle">
     <div class="wrap">
-      <div class="logo"><b>ガラスのテトリス</b><span>G L A S S&nbsp; B L O C K S</span></div>
+      <div class="logo"><b>いっしょにテトリス</b><span>T E T R I S&nbsp; T O G E T H E R</span></div>
       <div class="menu">
         <button class="btn primary" data-go="solo">ひとりで あそぶ</button>
         <button class="btn" data-go="cpu">コンピュータと たいせん</button>
@@ -243,10 +243,17 @@ input::placeholder{color:rgba(255,255,255,.5)}
           </div>
         </div>
         <div>
-          <div class="lbl">おと</div>
+          <div class="lbl">こうかおん</div>
           <div class="seg" id="segSound">
             <button data-sd="1" aria-pressed="true">おん</button>
             <button data-sd="0">おふ</button>
+          </div>
+        </div>
+        <div>
+          <div class="lbl">おんがく</div>
+          <div class="seg" id="segMusic">
+            <button data-mu="1" aria-pressed="true">おん</button>
+            <button data-mu="0">おふ</button>
           </div>
         </div>
       </div>
@@ -323,7 +330,7 @@ input::placeholder{color:rgba(255,255,255,.5)}
 </div>
 <script>
 /* ============================================================
-   ガラスのテトリス — engine core
+   いっしょにテトリス — engine core
    ============================================================ */
 'use strict';
 const $ = (s, r = document) => r.querySelector(s);
@@ -355,14 +362,25 @@ const Snd = {
     g.gain.exponentialRampToValueAtTime(.0001, t + dur);
     o.connect(g).connect(c.destination); o.start(t); o.stop(t + dur + .02);
   },
-  move() { this.blip(520, .035, 'square', .028); },
-  rot() { this.blip(720, .05, 'triangle', .04, 120); },
-  lock() { this.blip(200, .07, 'sine', .05, -60); },
-  hold() { this.blip(880, .07, 'sine', .05, 220); },
-  clear(n) { const base = [0, 620, 700, 800, 960][n] || 620; [0, 1, 2].forEach(i => setTimeout(() => this.blip(base * (1 + i * .26), .11, 'triangle', .055), i * 62)); },
-  garbage() { this.blip(120, .18, 'sawtooth', .05, -50); },
-  over() { [0, 1, 2, 3].forEach(i => setTimeout(() => this.blip(420 - i * 90, .2, 'sine', .06), i * 130)); },
-  win() { [0, 1, 2, 3].forEach(i => setTimeout(() => this.blip(520 + i * 160, .16, 'triangle', .06), i * 110)); }
+  // 効果音の高さは 音楽と おなじ Cメジャーペンタトニックに そろえてある。
+  // 音階から 外れた音（もとは F#5 など）は 伴奏と ぶつかって 濁る。
+  move() { this.blip(523.25, .035, 'square', .026); },                 // C5
+  rot() { this.blip(659.25, .05, 'triangle', .038, 124.7); },          // E5 → G5
+  lock() { this.blip(196.00, .07, 'sine', .05, -60); },                // G3
+  hold() { this.blip(880.00, .07, 'sine', .05, 166); },                // A5 → C6
+  clear(n) {
+    // 消した段数が おおいほど 高いところから のぼる
+    const arps = {
+      1: [523.25, 659.25, 783.99],    // C5 E5 G5
+      2: [659.25, 783.99, 1046.50],   // E5 G5 C6
+      3: [783.99, 1046.50, 1318.51],  // G5 C6 E6
+      4: [1046.50, 1318.51, 1567.98]  // C6 E6 G6
+    };
+    (arps[n] || arps[1]).forEach((f, i) => setTimeout(() => this.blip(f, .11, 'triangle', .052), i * 62));
+  },
+  garbage() { this.blip(110.00, .18, 'sawtooth', .05, -30); },         // A2
+  over() { [440.00, 392.00, 329.63, 261.63].forEach((f, i) => setTimeout(() => this.blip(f, .2, 'sine', .058), i * 130)); },
+  win() { [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => setTimeout(() => this.blip(f, .16, 'triangle', .058), i * 110)); }
 };
 
 /* ---------------- pieces ---------------- */
@@ -1197,6 +1215,209 @@ const Bg = {
 };
 
 /* ============================================================
+   BGM ── ループさせない生成型アンビエント
+
+   ループ音源にすると「またここだ」が必ず来て、数分で耳につく。
+   なので毎回ちがう音列をその場で組み立てる。
+   ・音はぜんぶ C メジャーペンタトニックから選ぶ（外れる音が存在しない）
+   ・和音は 4つを ゆっくり循環、旋律は ランダムウォーク
+   ・レベルと ピンチ具合で 密度と 明るさだけ 動かす
+   外部ファイルなし。オフラインでも鳴る。
+   ============================================================ */
+
+const hz = n => 440 * Math.pow(2, (n - 69) / 12);
+
+// bass / pad は なめらかに つながるように 声部を えらんである
+// パッドは 旋律より 1オクターブ下に置く。同じ音域だと
+// B3 と C5 のような 半音のぶつかりが 出て 濁る。
+const CHORDS = [
+  { bass: 36, pad: [52, 55, 59] },  // Cmaj9   E3 G3 B3
+  { bass: 45, pad: [52, 55, 57] },  // Am7     E3 G3 A3
+  { bass: 41, pad: [53, 57, 60] },  // Fmaj7   F3 A3 C4
+  { bass: 43, pad: [50, 55, 59] }   // G6/9    D3 G3 B3
+];
+// C メジャーペンタトニック。上の 4和音の どれに のせても にごらない
+const POOL = [72, 74, 76, 79, 81, 84, 86, 88];
+
+const Music = {
+  on: true, started: false, ctx: null,
+  master: null, dry: null, send: null, delay: null, fb: null, dlp: null,
+  padOsc: [], padGain: null, padLp: null, lfo: null,
+  noise: null,
+  step: 0, nextTime: 0, timer: null,
+  mel: 3,                       // 旋律の いまの位置（POOL の添字）
+  intensity: 0, danger: false, target: 0.13, cur: 0,
+
+  boot() {
+    if (this.started || !this.on) return;
+    Snd.boot();
+    const c = Snd.ctx; if (!c) return;
+    this.ctx = c; this.started = true;
+
+    this.master = c.createGain(); this.master.gain.value = 0;
+    this.master.connect(c.destination);
+
+    // ひびき（コンボルバーは重いので フィードバックディレイで代用）
+    this.dry = c.createGain(); this.dry.gain.value = 0.85;
+    this.send = c.createGain(); this.send.gain.value = 0.30;
+    this.delay = c.createDelay(1.2); this.delay.delayTime.value = 0.54;
+    this.fb = c.createGain(); this.fb.gain.value = 0.34;
+    this.dlp = c.createBiquadFilter(); this.dlp.type = 'lowpass'; this.dlp.frequency.value = 2200;
+    this.send.connect(this.delay);
+    this.delay.connect(this.dlp); this.dlp.connect(this.fb); this.fb.connect(this.delay);
+    this.dlp.connect(this.master);
+    this.dry.connect(this.master);
+
+    // 持続する パッド。和音がかわるたび 周波数を すべらせる（切り直すと プツッと鳴る）
+    this.padLp = c.createBiquadFilter();
+    this.padLp.type = 'lowpass'; this.padLp.frequency.value = 900; this.padLp.Q.value = 0.7;
+    this.padGain = c.createGain(); this.padGain.gain.value = 0.055;
+    this.padLp.connect(this.padGain);
+    this.padGain.connect(this.dry); this.padGain.connect(this.send);
+    CHORDS[0].pad.forEach((n, i) => {
+      for (const det of [-4, 4]) {
+        const o = c.createOscillator();
+        o.type = 'triangle';
+        o.frequency.value = hz(n) * Math.pow(2, det / 1200);
+        o.connect(this.padLp); o.start();
+        this.padOsc.push({ o, i, det });
+      }
+    });
+    // フィルターを ゆっくり ゆらす（止まっていると 機械的に聞こえる）
+    this.lfo = c.createOscillator(); this.lfo.frequency.value = 0.045;
+    const lg = c.createGain(); lg.gain.value = 240;
+    this.lfo.connect(lg); lg.connect(this.padLp.frequency); this.lfo.start();
+
+    // ノイズ（シェイカー用）
+    const len = c.sampleRate * 0.4;
+    this.noise = c.createBuffer(1, len, c.sampleRate);
+    const d = this.noise.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+
+    this.nextTime = c.currentTime + 0.1;
+    this.step = 0;
+    this.timer = setInterval(() => this.tick(), 90);
+    this.fade(this.target, 2.5);
+  },
+
+  stepDur() { return 60 / (74 + this.intensity * 16) / 4; },
+  density() { return 0.10 + this.intensity * 0.16; },
+
+  fade(v, sec) {
+    if (!this.master) return;
+    const c = this.ctx, t = c.currentTime;
+    this.master.gain.cancelScheduledValues(t);
+    this.master.gain.setValueAtTime(Math.max(0.0001, this.master.gain.value), t);
+    this.master.gain.linearRampToValueAtTime(Math.max(0.0001, v), t + sec);
+  },
+  setOn(v) {
+    this.on = v;
+    if (!v) { this.fade(0, 0.6); }
+    else if (!this.started) this.boot();
+    else this.fade(this.target, 1.2);
+  },
+  duck(on) { if (this.on && this.started) this.fade(on ? this.target * 0.28 : this.target, 0.5); },
+  suspend() { if (this.ctx && this.ctx.state === 'running') this.ctx.suspend(); },
+  resume() { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); },
+
+  // ゲームの ぐあいを 音に うつす
+  feel(level, danger) {
+    this.intensity = clamp((level - 1) / 9, 0, 1);
+    this.danger = !!danger;
+    if (!this.started) return;
+    const t = this.ctx.currentTime;
+    const cut = 700 + this.intensity * 900 + (this.danger ? 700 : 0);
+    this.padLp.frequency.setTargetAtTime(cut, t, 1.4);
+    this.padGain.gain.setTargetAtTime(this.danger ? 0.085 : 0.055, t, 1.2);
+  },
+
+  tick() {
+    const c = this.ctx; if (!c) return;
+    while (this.nextTime < c.currentTime + 0.35) {
+      this.schedule(this.step, this.nextTime);
+      this.nextTime += this.stepDur();
+      this.step++;
+    }
+  },
+
+  schedule(step, t) {
+    const ch = CHORDS[Math.floor(step / 16) % CHORDS.length];
+    const s = step % 16;
+    const dur = this.stepDur();
+
+    if (s === 0) { this.setChord(ch, t); this.bass(hz(ch.bass), t, dur * 13); }
+    if (s === 10 && Math.random() < 0.45) this.bass(hz(ch.bass + 7), t, dur * 5, 0.5);
+
+    // 旋律 ── ランダムウォーク。跳ねすぎないよう ±2 まで
+    if (Math.random() < this.density()) {
+      let mv = (Math.random() * 5 | 0) - 2;
+      if (mv === 0) mv = Math.random() < 0.5 ? 1 : -1;
+      this.mel = clamp(this.mel + mv, 0, POOL.length - 1);
+      const v = 0.055 + Math.random() * 0.035;
+      this.pluck(hz(POOL[this.mel]), t, v);
+      // たまに 3度上を そえる
+      if (Math.random() < 0.18 && this.mel + 2 < POOL.length)
+        this.pluck(hz(POOL[this.mel + 2]), t + 0.012, v * 0.6);
+    }
+
+    // うすい シェイカー。レベルが 上がってから しか 出さない
+    if (this.intensity > 0.35 && s % 4 === 2 && Math.random() < 0.5)
+      this.hat(t, 0.012 + this.intensity * 0.014);
+
+    // ピンチのときだけ 低い脈
+    if (this.danger && s % 8 === 0) this.pulse(t);
+  },
+
+  setChord(ch, t) {
+    for (const p of this.padOsc)
+      p.o.frequency.setTargetAtTime(hz(ch.pad[p.i]) * Math.pow(2, p.det / 1200), t, 0.35);
+  },
+
+  pluck(f, t, v) {
+    const c = this.ctx;
+    const o = c.createOscillator(), g = c.createGain(), lp = c.createBiquadFilter();
+    o.type = 'triangle'; o.frequency.value = f;
+    lp.type = 'lowpass'; lp.frequency.value = 1400 + this.intensity * 1800;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(v, t + 0.014);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.85);
+    o.connect(lp); lp.connect(g);
+    g.connect(this.dry); g.connect(this.send);
+    o.start(t); o.stop(t + 0.9);
+  },
+  bass(f, t, dur, k = 1) {
+    const c = this.ctx;
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.07 * k, t + 0.06);
+    g.gain.setTargetAtTime(0.0001, t + dur * 0.55, dur * 0.30);
+    o.connect(g); g.connect(this.dry);
+    o.start(t); o.stop(t + dur + 0.4);
+  },
+  hat(t, v) {
+    const c = this.ctx;
+    const src = c.createBufferSource(); src.buffer = this.noise;
+    const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 7000;
+    const g = c.createGain();
+    g.gain.setValueAtTime(v, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+    src.connect(hp); hp.connect(g); g.connect(this.dry);
+    src.start(t); src.stop(t + 0.06);
+  },
+  pulse(t) {
+    const c = this.ctx;
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(58, t);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.05, t + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
+    o.connect(g); g.connect(this.dry);
+    o.start(t); o.stop(t + 0.75);
+  }
+};
+
+/* ============================================================
    操作・画面・CPU・通信・メインループ
    ============================================================ */
 
@@ -1605,6 +1826,7 @@ function endGame(win, reason) {
   UI.over = true;
   const g = UI.game;
   if (UI.mode === 'net' && !win && reason !== 'disc') Link.pushDead();
+  Music.duck(true);
   if (win) Snd.win();
   let title = 'ゲームオーバー', sub = 'また あそんでね';
   if (reason === 'disc') { title = 'ちゅうだん'; sub = 'あいてとの せつぞくが きれました'; }
@@ -1617,10 +1839,15 @@ function endGame(win, reason) {
     <button class="btn" id="btnHome">メニューに もどる</button>`;
   $('#overlay').classList.add('on');
   $('#btnAgain').onclick = () => {
+    Music.duck(false);
     if (UI.mode === 'net') { $('#overlay').classList.remove('on'); show('lobby'); Link.setReady(true); }
     else startSolo(UI.mode);
   };
-  $('#btnHome').onclick = () => { if (UI.mode === 'net') Link.stop(); $('#overlay').classList.remove('on'); show('title'); };
+  $('#btnHome').onclick = () => {
+    Music.duck(false);
+    if (UI.mode === 'net') Link.stop();
+    $('#overlay').classList.remove('on'); show('title');
+  };
 }
 
 /* ---------- 入力 ---------- */
@@ -1659,6 +1886,7 @@ function togglePause() {
   g.paused = !g.paused;
   if (UI.cpu) UI.cpu.paused = g.paused;
   Keys.clearAll();
+  Music.duck(g.paused);
   if (!g.paused) { $('#overlay').classList.remove('on'); toast('さいかい', '#fff'); return; }
   const card = $('#overlayCard');
   card.innerHTML = `
@@ -1671,6 +1899,7 @@ function togglePause() {
   $('#btnQuit').onclick = () => {
     $('#overlay').classList.remove('on');
     g.paused = false; if (UI.cpu) UI.cpu.paused = false;
+    Music.duck(false);
     show('title');
   };
 }
@@ -1802,6 +2031,12 @@ $$('#segSpeed button').forEach(b => b.addEventListener('click', () => {
   b.setAttribute('aria-pressed', 'true'); UI.speed = +b.dataset.sp;
   localStorage.setItem('gt_speed', UI.speed);
 }));
+$$('#segMusic button').forEach(b => b.addEventListener('click', () => {
+  $$('#segMusic button').forEach(x => x.setAttribute('aria-pressed', 'false'));
+  b.setAttribute('aria-pressed', 'true');
+  Music.setOn(b.dataset.mu === '1');
+  localStorage.setItem('gt_mus', b.dataset.mu);
+}));
 $$('#segSound button').forEach(b => b.addEventListener('click', () => {
   $$('#segSound button').forEach(x => x.setAttribute('aria-pressed', 'false'));
   b.setAttribute('aria-pressed', 'true'); Snd.on = b.dataset.sd === '1'; Snd.boot();
@@ -1848,6 +2083,7 @@ function updateHud() {
 
 /* ---------- メインループ ---------- */
 let last = performance.now();
+let musicClock = 0;
 function loop(now) {
   const dt = Math.min(64, now - last); last = now;
   Bg.draw(now, dt);
@@ -1859,6 +2095,9 @@ function loop(now) {
     // レベルで背景をきりかえる
     const want = (UI.game.level - 1) % STAGES.length;
     if (Bg.idx !== want && Bg.next < 0) Bg.go(want);
+    // 音楽にも いまの ぐあいを わたす（0.5秒に1回で じゅうぶん）
+    musicClock += dt;
+    if (musicClock > 500) { musicClock = 0; Music.feel(UI.game.level, UI.game.danger()); }
   }
   requestAnimationFrame(loop);
 }
@@ -1869,6 +2108,7 @@ function loop(now) {
   // 復元
   const sp = localStorage.getItem('gt_speed'); if (sp !== null) { UI.speed = +sp; $$('#segSpeed button').forEach(x => x.setAttribute('aria-pressed', x.dataset.sp === sp)); }
   const sd = localStorage.getItem('gt_snd'); if (sd !== null) { Snd.on = sd === '1'; $$('#segSound button').forEach(x => x.setAttribute('aria-pressed', x.dataset.sd === sd)); }
+  const mu = localStorage.getItem('gt_mus'); if (mu !== null) { Music.on = mu === '1'; $$('#segMusic button').forEach(x => x.setAttribute('aria-pressed', x.dataset.mu === mu)); }
   $('#inName').value = localStorage.getItem('gt_name') || '';
   $('#inRoom').value = localStorage.getItem('gt_room') || 'family';
 
@@ -1883,7 +2123,12 @@ function loop(now) {
 
   addEventListener('resize', () => setTimeout(layout, 60));
   addEventListener('orientationchange', () => setTimeout(layout, 220));
-  document.addEventListener('pointerdown', () => Snd.boot(), { once: true });
+  // 音は 最初の タップまで 鳴らせない（ブラウザの きまり）
+  document.addEventListener('pointerdown', () => { Snd.boot(); Music.boot(); }, { once: true });
+  // 画面を ふせたら 止める。バックグラウンドで 鳴りつづけないように
+  document.addEventListener('visibilitychange', () => {
+    document.hidden ? Music.suspend() : Music.resume();
+  });
   layout();
   requestAnimationFrame(loop);
 })();
