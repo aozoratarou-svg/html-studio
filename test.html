@@ -1,880 +1,1887 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>カロリィカルク - AIカロリー管理アプリ</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
-    
-    body {
-      font-family: 'Outfit', 'Noto Sans JP', sans-serif;
-      background-color: #f3f4f6;
-    }
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1b1730">
+<title>ガラスのテトリス</title>
+<style>
+:root{
+  --ink:#241f38;
+  --paper:rgba(255,255,255,.78);
+  --glass:rgba(255,255,255,.12);
+  --glass-2:rgba(255,255,255,.20);
+  --line:rgba(255,255,255,.34);
+  --halo:#fff7ea;
+  --shadow:0 10px 30px rgba(20,14,40,.28);
+  --display:"Hiragino Maru Gothic ProN","ヒラギノ丸ゴ ProN","M PLUS Rounded 1c","Yu Gothic UI","Meiryo",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --r:18px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none;touch-action:manipulation}
+body{
+  font-family:var(--display);color:#fff;background:#1b1730;
+  -webkit-user-select:none;user-select:none;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+#bg{position:fixed;inset:0;width:100%;height:100%;z-index:0}
+#veil{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(120% 80% at 50% 0%,rgba(255,255,255,.10),transparent 60%),
+             radial-gradient(120% 90% at 50% 100%,rgba(10,6,24,.42),transparent 62%)}
+#app{position:relative;z-index:2;height:100%;display:flex;flex-direction:column}
 
-    /* Custom scrollbar for history list */
-    .custom-scrollbar::-webkit-scrollbar {
-      width: 6px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
-      border-radius: 3px;
-    }
+/* ---------- shared glass chrome ---------- */
+.pane{
+  background:var(--glass);border:1px solid var(--line);border-radius:var(--r);
+  -webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3);
+  box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.35);
+}
+.btn{
+  font-family:var(--display);font-weight:700;color:#fff;font-size:16px;letter-spacing:.04em;
+  padding:14px 20px;border-radius:999px;border:1px solid var(--line);
+  background:linear-gradient(180deg,rgba(255,255,255,.26),rgba(255,255,255,.08));
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  box-shadow:0 6px 18px rgba(18,12,36,.30), inset 0 1px 0 rgba(255,255,255,.55);
+  cursor:pointer;transition:transform .12s cubic-bezier(.2,.9,.3,1.4),filter .12s;
+}
+.btn:active{transform:scale(.955);filter:brightness(1.12)}
+.btn.primary{background:linear-gradient(180deg,rgba(255,255,255,.92),rgba(255,241,225,.72));color:#2b2340;border-color:rgba(255,255,255,.8)}
+.btn:focus-visible{outline:3px solid #ffe9a8;outline-offset:3px}
+input{
+  font-family:var(--display);font-size:16px;color:#fff;padding:12px 14px;border-radius:14px;
+  border:1px solid var(--line);background:rgba(255,255,255,.10);width:100%;
+}
+input::placeholder{color:rgba(255,255,255,.5)}
+.lbl{font-size:11px;letter-spacing:.22em;opacity:.72;margin-bottom:6px;font-weight:700}
 
-    /* Scanning animation */
-    @keyframes scan {
-      0% { top: 0%; }
-      50% { top: 100%; }
-      100% { top: 0%; }
-    }
-    .scanner-line {
-      animation: scan 2s linear infinite;
-    }
+/* ---------- screens ---------- */
+.screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;padding:22px;gap:16px;z-index:3}
+.screen.on{display:flex}
+.wrap{width:min(420px,100%);display:flex;flex-direction:column;gap:14px}
 
-    /* Circular Progress Ring */
-    .progress-ring__circle {
-      transition: stroke-dashoffset 0.35s;
-      transform: rotate(-90deg);
-      transform-origin: 50% 50%;
-    }
-  </style>
+/* title */
+.logo{text-align:center;line-height:1;margin-bottom:4px}
+.logo b{
+  display:block;font-size:clamp(38px,12vw,60px);font-weight:800;letter-spacing:.02em;
+  background:linear-gradient(180deg,#fff,#ffe6f2 45%,#bfe9ff);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 4px 14px rgba(255,255,255,.35));
+}
+.logo span{display:block;margin-top:10px;font-size:12px;letter-spacing:.42em;opacity:.75}
+.menu{display:flex;flex-direction:column;gap:10px}
+.seg{display:flex;gap:8px}
+.seg button{
+  flex:1;padding:11px 6px;border-radius:14px;border:1px solid var(--line);
+  background:rgba(255,255,255,.08);color:#fff;font-family:var(--display);font-weight:700;font-size:14px;cursor:pointer;
+}
+.seg button[aria-pressed=true]{background:rgba(255,255,255,.86);color:#2b2340;box-shadow:inset 0 1px 0 #fff}
+.row{display:flex;gap:10px;align-items:center}
+.note{font-size:12px;line-height:1.7;opacity:.78}
+.note code{font-family:var(--mono);font-size:11px;background:rgba(0,0,0,.28);padding:2px 6px;border-radius:6px}
+
+/* ---------- play ---------- */
+#play{position:absolute;inset:0;display:none;flex-direction:column;z-index:3;padding:8px}
+#play.on{display:flex}
+.hud{display:flex;gap:8px;align-items:stretch;padding:6px 8px}
+.slot{padding:6px 8px;border-radius:14px;min-width:66px;display:flex;flex-direction:column;gap:2px;align-items:center}
+.slot .lbl{margin:0;font-size:9px;letter-spacing:.2em}
+.slot canvas{display:block}
+.slot.next{flex:1.15}
+.stats{position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;gap:2px;padding:6px 12px;border-radius:14px}
+.stats .k{font-size:9px;letter-spacing:.2em;opacity:.7;font-weight:700}
+.stats .v{font-family:var(--mono);font-size:19px;font-weight:600;line-height:1.05}
+.stats .sub{font-family:var(--mono);font-size:11px;opacity:.8}
+/* ポーズは あそんでいる指から いちばん遠い、HUDの すみに置く */
+.hudbtn{
+  position:absolute;top:4px;right:5px;width:30px;height:30px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--display);font-size:15px;font-weight:800;letter-spacing:-.06em;
+  color:rgba(255,255,255,.72);border:1px solid rgba(255,255,255,.22);
+  background:rgba(255,255,255,.07);cursor:pointer;
+}
+.hudbtn:active{background:rgba(255,255,255,.22);color:#fff}
+.hudbtn:focus-visible{outline:3px solid #ffe9a8;outline-offset:2px}
+
+.arena{flex:1;position:relative;display:flex;align-items:center;justify-content:center;min-height:0;perspective:1500px}
+#boardWrap{position:relative;transform:rotateX(6deg);transform-style:preserve-3d;transition:transform .4s ease}
+#board{display:block;border-radius:10px}
+.frame{position:absolute;inset:-10px;border-radius:16px;border:1px solid var(--line);
+  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.03));
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+  box-shadow:0 18px 44px rgba(12,8,28,.45), inset 0 1px 0 rgba(255,255,255,.4);pointer-events:none}
+#danger{position:absolute;inset:-10px;border-radius:16px;pointer-events:none;opacity:0;
+  box-shadow:inset 0 0 40px rgba(255,86,120,.85), 0 0 34px rgba(255,86,120,.5);transition:opacity .2s}
+
+/* opponent */
+#oppBox{position:absolute;top:0;right:0;padding:8px;border-radius:14px;display:none;flex-direction:column;gap:4px;align-items:center}
+#oppBox.on{display:flex}
+#oppBox .who{font-size:11px;font-weight:700;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#oppBox .st{font-family:var(--mono);font-size:10px;opacity:.8}
+#oppCv{display:block;border-radius:6px;background:rgba(10,6,24,.32)}
+
+/* incoming garbage gauge */
+#gauge{position:absolute;left:-20px;top:0;bottom:0;width:8px;border-radius:6px;background:rgba(255,255,255,.10);overflow:hidden}
+#gaugeFill{position:absolute;left:0;right:0;bottom:0;height:0%;border-radius:6px;
+  background:linear-gradient(180deg,#ff9bb4,#ff5678);box-shadow:0 0 14px rgba(255,86,120,.8);transition:height .18s}
+
+/* ---------- むかしながらの十字キー ---------- */
+#pad{
+  --dp:clamp(130px,40vw,170px);
+  --ab:clamp(58px,18vw,76px);
+  display:none;align-items:flex-end;justify-content:space-between;gap:8px;
+  padding:6px 14px calc(6px + env(safe-area-inset-bottom));
+}
+#pad.on{display:flex}
+.side{display:flex;flex-direction:column;align-items:center;gap:8px;flex:none}
+
+/* 台座 + 4つのキー */
+.dpad{
+  position:relative;width:var(--dp);height:var(--dp);touch-action:none;border-radius:50%;
+  background:radial-gradient(70% 70% at 38% 30%,rgba(255,255,255,.14),rgba(12,8,28,.30));
+  border:1px solid rgba(255,255,255,.22);
+  box-shadow:0 10px 26px rgba(14,9,32,.42), inset 0 1px 0 rgba(255,255,255,.30);
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+}
+.dpad b{
+  position:absolute;width:32%;height:32%;display:flex;align-items:center;justify-content:center;
+  font-size:calc(var(--dp)*.15);color:rgba(255,255,255,.92);border-radius:13px;
+  background:linear-gradient(180deg,rgba(255,255,255,.30),rgba(255,255,255,.09));
+  border:1px solid var(--line);
+  box-shadow:0 5px 12px rgba(18,12,36,.34), inset 0 1px 0 rgba(255,255,255,.55);
+  transition:transform .08s,filter .08s;pointer-events:none;
+}
+.dpad b.on{transform:scale(.92);filter:brightness(1.45)}
+.dpad .up{left:34%;top:2%}
+.dpad .down{left:34%;top:66%}
+.dpad .left{left:2%;top:34%}
+.dpad .right{left:66%;top:34%}
+.dpad .hub{
+  position:absolute;left:38%;top:38%;width:24%;height:24%;border-radius:50%;
+  background:radial-gradient(60% 60% at 35% 30%,rgba(255,255,255,.42),rgba(255,255,255,.10));
+  border:1px solid rgba(255,255,255,.28);pointer-events:none;
+}
+
+/* A / B / キープ */
+.abs{position:relative;width:calc(var(--ab)*2.2);height:calc(var(--ab)*2);flex:none}
+.ab{
+  position:absolute;border-radius:50%;border:1px solid var(--line);color:#fff;cursor:pointer;
+  font-family:var(--display);font-weight:800;font-size:calc(var(--ab)*.36);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  box-shadow:0 7px 18px rgba(18,12,36,.38), inset 0 2px 0 rgba(255,255,255,.55), inset 0 -6px 12px rgba(20,10,40,.28);
+  transition:transform .08s,filter .08s;
+}
+.ab small{font-size:calc(var(--ab)*.15);font-weight:700;opacity:.75;letter-spacing:.06em;margin-top:2px}
+.ab:active{transform:scale(.93) translateY(2px);filter:brightness(1.2)}
+.ab.a{width:var(--ab);height:var(--ab);right:0;top:calc(var(--ab)*.42);
+  background:linear-gradient(180deg,rgba(255,175,196,.62),rgba(226,102,136,.42))}
+.ab.b{width:var(--ab);height:var(--ab);left:calc(var(--ab)*.12);bottom:0;
+  background:linear-gradient(180deg,rgba(168,186,255,.60),rgba(108,124,214,.42))}
+.ab.keep{width:calc(var(--ab)*.78);height:calc(var(--ab)*.78);left:0;top:0;font-size:calc(var(--ab)*.17);
+  background:linear-gradient(180deg,rgba(255,255,255,.26),rgba(255,255,255,.08))}
+
+/* toasts / banners */
+#toast{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);z-index:6;pointer-events:none;
+  font-size:clamp(24px,7vw,40px);font-weight:800;letter-spacing:.04em;opacity:0;text-align:center;
+  text-shadow:0 4px 22px rgba(0,0,0,.5), 0 0 26px rgba(255,255,255,.5)}
+@keyframes pop{0%{opacity:0;transform:translate(-50%,-50%) scale(.7)}18%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}70%{opacity:1;transform:translate(-50%,-58%) scale(1)}100%{opacity:0;transform:translate(-50%,-72%) scale(1)}}
+#toast.go{animation:pop 1.15s cubic-bezier(.2,.9,.3,1) forwards}
+
+#overlay{position:absolute;inset:0;z-index:7;display:none;align-items:center;justify-content:center;padding:22px;
+  background:rgba(14,9,30,.55);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+#overlay.on{display:flex}
+.card{padding:24px;border-radius:24px;width:min(360px,100%);text-align:center;display:flex;flex-direction:column;gap:14px}
+.card h2{margin:0;font-size:30px;font-weight:800;letter-spacing:.04em}
+.card .big{font-family:var(--mono);font-size:34px;font-weight:600}
+
+/* 横画面：盤面のたかさを のこしたいので、コントローラーを下すみに おく */
+@media (orientation:landscape){
+  #pad{--dp:clamp(104px,25vh,152px);--ab:clamp(48px,11.5vh,70px);
+       position:absolute;left:0;right:0;bottom:0;z-index:5;pointer-events:none}
+  #pad .side{pointer-events:auto}
+  .arena{padding-bottom:6px}
+}
+@media (orientation:landscape){
+  .hud{padding:2px 10px;gap:6px}
+  .slot{padding:4px 8px}
+  .stats .v{font-size:16px}
+}
+@media (orientation:landscape) and (min-width:760px){
+  .hud{padding:4px 16px}
+  .slot.next{flex:none;min-width:190px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+</style>
 </head>
-<body class="flex justify-center items-center min-h-screen bg-slate-900 p-0 sm:p-4">
+<body>
+<canvas id="bg"></canvas>
+<div id="veil"></div>
 
-  <!-- Mobile Device Wrapper -->
-  <div class="w-full max-w-md bg-white sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col h-screen sm:h-[850px] relative border border-slate-100">
-    
-    <!-- Header -->
-    <header class="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-6 py-4 flex justify-between items-center shadow-md shrink-0">
-      <div class="flex items-center space-x-2">
-        <div class="bg-white/20 p-1.5 rounded-lg backdrop-blur-sm">
-          <i data-lucide="flame" class="w-6 h-6 text-amber-300 fill-amber-300"></i>
+<div id="app">
+
+  <!-- TITLE -->
+  <section class="screen on" id="scTitle">
+    <div class="wrap">
+      <div class="logo"><b>ガラスのテトリス</b><span>G L A S S&nbsp; B L O C K S</span></div>
+      <div class="menu">
+        <button class="btn primary" data-go="solo">ひとりで あそぶ</button>
+        <button class="btn" data-go="cpu">コンピュータと たいせん</button>
+        <button class="btn" data-go="lobby">ふたりで たいせん</button>
+      </div>
+      <div class="pane" style="padding:14px;display:flex;flex-direction:column;gap:12px">
+        <div>
+          <div class="lbl">スピード</div>
+          <div class="seg" id="segSpeed">
+            <button data-sp="0">ゆっくり</button>
+            <button data-sp="1" aria-pressed="true">ふつう</button>
+            <button data-sp="2">はやい</button>
+          </div>
         </div>
         <div>
-          <h1 class="text-xl font-bold tracking-wider">カロリィカルク</h1>
-          <p class="text-[10px] text-emerald-100 tracking-widest">CALORIE CALC AI</p>
-        </div>
-      </div>
-      <button onclick="openSettings()" class="p-2 hover:bg-white/10 rounded-full transition-colors">
-        <i data-lucide="settings" class="w-5 h-5"></i>
-      </button>
-    </header>
-
-    <!-- Main Content Area (Scrollable) -->
-    <main class="flex-1 overflow-y-auto custom-scrollbar pb-24 bg-slate-50">
-      
-      <!-- TAB 1: DASHBOARD -->
-      <div id="tab-dashboard" class="p-5 space-y-6">
-        <!-- Today's Summary Card -->
-        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col items-center">
-          <h2 class="text-sm font-bold text-slate-500 mb-4 self-start flex items-center gap-1">
-            <i data-lucide="calendar" class="w-4 h-4 text-emerald-500"></i> 本日の摂取カロリー
-          </h2>
-          
-          <!-- Circular Progress -->
-          <div class="relative flex items-center justify-center mb-4">
-            <svg class="w-40 h-40">
-              <circle class="text-slate-100" stroke-width="10" stroke="currentColor" fill="transparent" r="70" cx="80" cy="80"/>
-              <circle class="text-emerald-500 progress-ring__circle" id="progress-circle" stroke-width="10" stroke-dasharray="439.8" stroke-dashoffset="439.8" stroke-linecap="round" stroke="currentColor" fill="transparent" r="70" cx="80" cy="80"/>
-            </svg>
-            <div class="absolute text-center">
-              <span id="today-calories" class="text-3xl font-extrabold text-slate-800">0</span>
-              <span class="text-xs text-slate-400 block">/ <span id="target-calories-display">2000</span> kcal</span>
-            </div>
-          </div>
-
-          <!-- Quick Stats Grid -->
-          <div class="grid grid-cols-3 gap-4 w-full text-center border-t border-slate-100 pt-4">
-            <div>
-              <span class="text-xs text-slate-400 block">目標</span>
-              <span id="stat-target" class="text-sm font-bold text-slate-700">2000 kcal</span>
-            </div>
-            <div class="border-x border-slate-100">
-              <span class="text-xs text-slate-400 block">摂取済</span>
-              <span id="stat-consumed" class="text-sm font-bold text-emerald-600">0 kcal</span>
-            </div>
-            <div>
-              <span class="text-xs text-slate-400 block">残り</span>
-              <span id="stat-remaining" class="text-sm font-bold text-amber-500">2000 kcal</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- PFC Balance Card -->
-        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-          <h3 class="text-sm font-bold text-slate-500 mb-4 flex items-center gap-1">
-            <i data-lucide="pie-chart" class="w-4 h-4 text-emerald-500"></i> PFCバランス (目安)
-          </h3>
-          <div class="space-y-3">
-            <!-- Protein -->
-            <div>
-              <div class="flex justify-between text-xs mb-1">
-                <span class="font-medium text-slate-600">たんぱく質 (P)</span>
-                <span class="text-slate-500"><span id="pfc-p-val">0</span>g / 60g</span>
-              </div>
-              <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                <div id="pfc-p-bar" class="bg-blue-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
-              </div>
-            </div>
-            <!-- Fat -->
-            <div>
-              <div class="flex justify-between text-xs mb-1">
-                <span class="font-medium text-slate-600">脂質 (F)</span>
-                <span class="text-slate-500"><span id="pfc-f-val">0</span>g / 55g</span>
-              </div>
-              <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                <div id="pfc-f-bar" class="bg-amber-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
-              </div>
-            </div>
-            <!-- Carbs -->
-            <div>
-              <div class="flex justify-between text-xs mb-1">
-                <span class="font-medium text-slate-600">炭水化物 (C)</span>
-                <span class="text-slate-500"><span id="pfc-c-val">0</span>g / 250g</span>
-              </div>
-              <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                <div id="pfc-c-bar" class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Weekly Chart Card -->
-        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-          <h3 class="text-sm font-bold text-slate-500 mb-4 flex items-center gap-1">
-            <i data-lucide="trending-up" class="w-4 h-4 text-emerald-500"></i> 今週の推移
-          </h3>
-          <div class="h-48 w-full">
-            <canvas id="weeklyChart"></canvas>
+          <div class="lbl">おと</div>
+          <div class="seg" id="segSound">
+            <button data-sd="1" aria-pressed="true">おん</button>
+            <button data-sd="0">おふ</button>
           </div>
         </div>
       </div>
+      <div class="note" id="titleNote"></div>
+    </div>
+  </section>
 
-      <!-- TAB 2: ADD LOG -->
-      <div id="tab-add" class="p-5 space-y-6 hidden">
-        <!-- Input Method Selector -->
-        <div class="flex bg-slate-200/60 p-1 rounded-xl">
-          <button onclick="setInputMethod('camera')" id="btn-method-camera" class="flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 bg-white text-slate-800 shadow-sm">
-            <i data-lucide="camera" class="w-4 h-4"></i> カメラで撮影
-          </button>
-          <button onclick="setInputMethod('text')" id="btn-method-text" class="flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 text-slate-500 hover:text-slate-800">
-            <i data-lucide="text-cursor-input" class="w-4 h-4"></i> テキスト入力
-          </button>
-        </div>
+  <!-- LOBBY -->
+  <section class="screen" id="scLobby">
+    <div class="wrap">
+      <div class="logo" style="margin-bottom:2px"><b style="font-size:clamp(26px,8vw,36px)">ふたりで たいせん</b></div>
+      <div class="pane" style="padding:16px;display:flex;flex-direction:column;gap:12px">
+        <div><div class="lbl">なまえ</div><input id="inName" maxlength="10" placeholder="プレイヤー"></div>
+        <div><div class="lbl">あいことば（おなじにする）</div><input id="inRoom" maxlength="16" placeholder="family"></div>
+        <button class="btn primary" id="btnJoin">へやに はいる</button>
+      </div>
+      <div class="pane" id="roomPane" style="padding:16px;display:none;flex-direction:column;gap:12px">
+        <div class="lbl">へやの ようす</div>
+        <div id="roomList" class="note" style="font-size:14px;line-height:2"></div>
+        <button class="btn primary" id="btnReady">じゅんび かんりょう</button>
+      </div>
+      <button class="btn" data-go="title">もどる</button>
+      <div class="note" id="lobbyNote"></div>
+    </div>
+  </section>
 
-        <!-- Camera Input Section -->
-        <div id="section-camera" class="space-y-4">
-          <div class="relative bg-slate-950 rounded-2xl overflow-hidden aspect-square flex flex-col items-center justify-center border border-slate-800 shadow-inner">
-            <!-- Live Video Stream -->
-            <video id="video" class="w-full h-full object-cover hidden" autoplay playsinline></video>
-            <!-- Captured Image Preview -->
-            <img id="image-preview" class="w-full h-full object-cover hidden" alt="Captured food">
-            
-            <!-- Camera Placeholder / Upload Trigger -->
-            <div id="camera-placeholder" class="text-center p-6 space-y-3 z-10">
-              <div class="w-16 h-16 bg-slate-800/80 rounded-full flex items-center justify-center mx-auto text-emerald-400 border border-slate-700">
-                <i data-lucide="image" class="w-8 h-8"></i>
-              </div>
-              <p class="text-sm text-slate-400">写真を撮影するか、ライブラリから選択</p>
-              <label class="inline-block bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded-full cursor-pointer transition-colors shadow-md">
-                ファイルを選択
-                <input type="file" id="file-input" accept="image/*" class="hidden" onchange="handleFileSelect(event)">
-              </label>
-            </div>
+  <!-- PLAY -->
+  <section id="play">
+    <div class="hud">
+      <div class="slot pane"><div class="lbl">キープ</div><canvas id="holdCv" width="76" height="56"></canvas></div>
+      <div class="stats pane">
+        <div class="k">スコア</div><div class="v" id="stScore">0</div>
+        <div class="sub"><span id="stLines">0</span> ライン ・ Lv <span id="stLevel">1</span></div>
+        <div class="sub" id="stCombo" style="opacity:.9;color:#ffe7a1"></div>
+        <button class="hudbtn" id="btnPause" aria-label="ポーズ">॥</button>
+      </div>
+      <div class="slot pane next"><div class="lbl">つぎ</div><canvas id="nextCv" width="150" height="46"></canvas></div>
+    </div>
 
-            <!-- Scanning Overlay -->
-            <div id="scanning-overlay" class="absolute inset-0 bg-emerald-950/40 hidden z-20">
-              <div class="absolute w-full h-1 bg-emerald-400 shadow-[0_0_15px_#34c759] scanner-line"></div>
-              <div class="absolute inset-0 flex items-center justify-center">
-                <div class="bg-slate-900/80 text-white text-xs font-bold px-4 py-2 rounded-full flex items-center gap-2 backdrop-blur-sm border border-emerald-500/30">
-                  <svg class="animate-spin h-4 w-4 text-emerald-400" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  AIが食事を解析中...
-                </div>
-              </div>
-            </div>
-          </div>
+    <div class="arena">
+      <div id="boardWrap">
+        <div class="frame"></div>
+        <canvas id="board"></canvas>
+        <div id="danger"></div>
+        <div id="gauge"><div id="gaugeFill"></div></div>
+      </div>
+      <div id="oppBox" class="pane">
+        <div class="who" id="oppName">あいて</div>
+        <canvas id="oppCv" width="80" height="160"></canvas>
+        <div class="st" id="oppSt">-</div>
+      </div>
+      <div id="toast"></div>
+    </div>
 
-          <!-- Camera Controls -->
-          <div class="flex justify-center gap-4">
-            <button id="btn-start-camera" onclick="initCamera()" class="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 transition-colors">
-              <i data-lucide="aperture" class="w-4 h-4"></i> カメラを起動
-            </button>
-            <button id="btn-capture" onclick="capturePhoto()" class="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 transition-colors hidden">
-              <i data-lucide="camera" class="w-4 h-4"></i> シャッターを切る
-            </button>
-            <button id="btn-reset-photo" onclick="resetPhoto()" class="bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 transition-colors hidden">
-              <i data-lucide="rotate-ccw" class="w-4 h-4"></i> 撮り直す
-            </button>
-          </div>
-        </div>
-
-        <!-- Text Input Section -->
-        <div id="section-text" class="space-y-4 hidden">
-          <div class="space-y-2">
-            <label class="text-xs font-bold text-slate-500 block">食べたものを入力してください</label>
-            <textarea id="text-food-input" rows="3" class="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none text-sm text-slate-700 placeholder-slate-400 resize-none" placeholder="例: カツカレーとミニサラダ、ウーロン茶"></textarea>
-          </div>
-          
-          <!-- Quick Suggestions -->
-          <div class="space-y-2">
-            <span class="text-[11px] font-bold text-slate-400 block">人気のキーワード</span>
-            <div class="flex flex-wrap gap-1.5">
-              <button onclick="applySuggestion('ラーメン')" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs px-3 py-1.5 rounded-full transition-colors">🍜 ラーメン</button>
-              <button onclick="applySuggestion('牛丼')" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs px-3 py-1.5 rounded-full transition-colors">🍚 牛丼</button>
-              <button onclick="applySuggestion('アボカドトースト')" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs px-3 py-1.5 rounded-full transition-colors">🥑 アボカドトースト</button>
-              <button onclick="applySuggestion('チキンサラダ')" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs px-3 py-1.5 rounded-full transition-colors">🥗 チキンサラダ</button>
-              <button onclick="applySuggestion('マルゲリータピザ')" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs px-3 py-1.5 rounded-full transition-colors">🍕 ピザ</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Action Button -->
-        <button id="btn-analyze" onclick="startAIAnalysis()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2">
-          <i data-lucide="sparkles" class="w-5 h-5 text-amber-300 fill-amber-300"></i> AIカロリー解析を実行
-        </button>
-
-        <!-- AI Result Card -->
-        <div id="ai-result-card" class="bg-white rounded-2xl p-5 shadow-md border border-emerald-100 space-y-4 hidden">
-          <div class="flex justify-between items-start border-b border-slate-100 pb-3">
-            <div>
-              <span class="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full">AI解析結果</span>
-              <h4 id="result-food-name" class="text-lg font-bold text-slate-800 mt-1">カツカレー</h4>
-            </div>
-            <div class="text-right">
-              <span id="result-calories" class="text-2xl font-extrabold text-emerald-600">850</span>
-              <span class="text-xs text-slate-400"> kcal</span>
-            </div>
-          </div>
-
-          <!-- Macros Breakdown -->
-          <div class="grid grid-cols-3 gap-2 text-center bg-slate-50 p-3 rounded-xl">
-            <div>
-              <span class="text-[10px] text-slate-400 block">たんぱく質 (P)</span>
-              <span id="result-p" class="text-sm font-bold text-slate-700">22g</span>
-            </div>
-            <div class="border-x border-slate-200">
-              <span class="text-[10px] text-slate-400 block">脂質 (F)</span>
-              <span id="result-f" class="text-sm font-bold text-slate-700">28g</span>
-            </div>
-            <div>
-              <span class="text-[10px] text-slate-400 block">炭水化物 (C)</span>
-              <span id="result-c" class="text-sm font-bold text-slate-700">110g</span>
-            </div>
-          </div>
-
-          <!-- Save Button -->
-          <button onclick="saveAnalyzedLog()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
-            <i data-lucide="check-circle" class="w-5 h-5"></i> この内容で記録する
-          </button>
+    <div id="pad">
+      <div class="side">
+        <div class="dpad" id="dpad">
+          <span class="hub"></span>
+          <b class="up">⤓</b><b class="left">◀</b><b class="right">▶</b><b class="down">▼</b>
         </div>
       </div>
-
-      <!-- TAB 3: HISTORY -->
-      <div id="tab-history" class="p-5 space-y-4 hidden">
-        <div class="flex justify-between items-center">
-          <h3 class="text-sm font-bold text-slate-500 flex items-center gap-1">
-            <i data-lucide="history" class="w-4 h-4 text-emerald-500"></i> 履歴一覧
-          </h3>
-          <button onclick="clearAllLogs()" class="text-xs text-rose-500 hover:text-rose-600 font-bold flex items-center gap-1">
-            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> 全て削除
-          </button>
-        </div>
-
-        <!-- History List Container -->
-        <div id="history-list" class="space-y-3">
-          <!-- Dynamic items will be injected here -->
-        </div>
-
-        <!-- Empty State -->
-        <div id="history-empty" class="text-center py-12 space-y-3 hidden">
-          <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
-            <i data-lucide="clipboard-list" class="w-8 h-8"></i>
-          </div>
-          <p class="text-sm text-slate-500">まだ記録がありません。<br>食事を登録してみましょう！</p>
-        </div>
-      </div>
-
-    </main>
-
-    <!-- Settings Modal (Overlay) -->
-    <div id="settings-modal" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end justify-center hidden transition-opacity duration-300">
-      <div class="bg-white w-full rounded-t-3xl p-6 space-y-6 shadow-2xl transform translate-y-0 transition-transform duration-300">
-        <div class="flex justify-between items-center border-b border-slate-100 pb-4">
-          <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-            <i data-lucide="sliders" class="w-5 h-5 text-emerald-500"></i> 設定
-          </h3>
-          <button onclick="closeSettings()" class="p-1 hover:bg-slate-100 rounded-full transition-colors">
-            <i data-lucide="x" class="w-6 h-6 text-slate-400"></i>
-          </button>
-        </div>
-
-        <!-- Target Calorie Setting -->
-        <div class="space-y-2">
-          <label class="text-sm font-bold text-slate-600 block">1日の目標摂取カロリー (kcal)</label>
-          <div class="flex gap-2">
-            <input type="number" id="input-target-calories" class="flex-1 p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none text-slate-700 font-bold" value="2000">
-            <button onclick="saveSettings()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-6 rounded-xl transition-colors">保存</button>
-          </div>
-        </div>
-
-        <!-- App Info -->
-        <div class="bg-slate-50 p-4 rounded-2xl space-y-2 text-xs text-slate-500">
-          <div class="flex justify-between">
-            <span>アプリバージョン</span>
-            <span class="font-mono">v1.2.0 (AI Multimodal)</span>
-          </div>
-          <div class="flex justify-between">
-            <span>データベース同期</span>
-            <span class="text-emerald-600 font-bold flex items-center gap-1">
-              <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> ローカル保護中
-            </span>
-          </div>
+      <div class="side">
+        <div class="abs">
+          <button class="ab keep" data-k="hold">キープ</button>
+          <button class="ab b" data-k="rotL">B<small>ひだり</small></button>
+          <button class="ab a" data-k="rotR">A<small>みぎ</small></button>
         </div>
       </div>
     </div>
 
-    <!-- Bottom Navigation Bar -->
-    <nav class="absolute bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-100 px-6 py-2 flex justify-around items-center shrink-0 z-40 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
-      <button onclick="switchTab('dashboard')" id="nav-dashboard" class="flex flex-col items-center space-y-1 text-emerald-500 transition-colors py-1">
-        <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
-        <span class="text-[10px] font-bold">ダッシュボード</span>
-      </button>
-      <button onclick="switchTab('add')" id="nav-add" class="flex flex-col items-center space-y-1 text-slate-400 hover:text-slate-600 transition-colors py-1">
-        <i data-lucide="plus-circle" class="w-5 h-5"></i>
-        <span class="text-[10px] font-bold">記録する</span>
-      </button>
-      <button onclick="switchTab('history')" id="nav-history" class="flex flex-col items-center space-y-1 text-slate-400 hover:text-slate-600 transition-colors py-1">
-        <i data-lucide="history" class="w-5 h-5"></i>
-        <span class="text-[10px] font-bold">履歴</span>
-      </button>
-    </nav>
+    <div id="overlay"><div class="card pane" id="overlayCard"></div></div>
+  </section>
 
-  </div>
+</div>
+<script>
+/* ============================================================
+   ガラスのテトリス — engine core
+   ============================================================ */
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  <!-- Hidden Canvas for capturing photo frames -->
-  <canvas id="canvas" class="hidden"></canvas>
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
-  <script>
-    // --- STATE MANAGEMENT ---
-    let logs = JSON.parse(localStorage.getItem('calorie_logs')) || [];
-    let targetCalories = parseInt(localStorage.getItem('target_calories')) || 2000;
-    let currentTab = 'dashboard';
-    let currentInputMethod = 'camera';
-    let stream = null;
-    let capturedImageBase64 = null;
-    let currentAnalysisResult = null;
-    let weeklyChartInstance = null;
+/* ---------------- sound ---------------- */
+const Snd = {
+  ctx: null, on: true,
+  boot() { if (!this.ctx) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { } } if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); },
+  blip(freq, dur = .07, type = 'triangle', gain = .06, slide = 0) {
+    if (!this.on || !this.ctx) return;
+    const c = this.ctx, t = c.currentTime;
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, freq + slide), t + dur);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(gain, t + .008);
+    g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g).connect(c.destination); o.start(t); o.stop(t + dur + .02);
+  },
+  move() { this.blip(520, .035, 'square', .028); },
+  rot() { this.blip(720, .05, 'triangle', .04, 120); },
+  lock() { this.blip(200, .07, 'sine', .05, -60); },
+  hold() { this.blip(880, .07, 'sine', .05, 220); },
+  clear(n) { const base = [0, 620, 700, 800, 960][n] || 620; [0, 1, 2].forEach(i => setTimeout(() => this.blip(base * (1 + i * .26), .11, 'triangle', .055), i * 62)); },
+  garbage() { this.blip(120, .18, 'sawtooth', .05, -50); },
+  over() { [0, 1, 2, 3].forEach(i => setTimeout(() => this.blip(420 - i * 90, .2, 'sine', .06), i * 130)); },
+  win() { [0, 1, 2, 3].forEach(i => setTimeout(() => this.blip(520 + i * 160, .16, 'triangle', .06), i * 110)); }
+};
 
-    // --- FOOD DICTIONARY FOR AI SIMULATION ---
-    const foodDictionary = {
-      'ラーメン': { name: '醤油ラーメン', calories: 680, p: 22, f: 18, c: 95 },
-      'カレー': { name: 'カツカレー', calories: 850, p: 24, f: 32, c: 115 },
-      'カレーライス': { name: 'ビーフカレー', calories: 750, p: 18, f: 22, c: 110 },
-      '牛丼': { name: '牛丼 (並盛)', calories: 650, p: 20, f: 21, c: 92 },
-      '寿司': { name: '握り寿司盛り合わせ', calories: 550, p: 24, f: 6, c: 98 },
-      'サラダ': { name: 'チキンシーザーサラダ', calories: 280, p: 18, f: 18, c: 12 },
-      'チキンサラダ': { name: '蒸し鶏のグリーンサラダ', calories: 180, p: 22, f: 6, c: 8 },
-      'ハンバーガー': { name: 'チーズバーガー', calories: 450, p: 22, f: 25, c: 38 },
-      'ピザ': { name: 'マルゲリータピザ (1/2)', calories: 580, p: 20, f: 22, c: 75 },
-      'マルゲリータピザ': { name: 'マルゲリータピザ (1/2)', calories: 580, p: 20, f: 22, c: 75 },
-      'ステーキ': { name: 'サーロインステーキ (200g)', calories: 620, p: 42, f: 48, c: 2 },
-      'パスタ': { name: 'カルボナーラパスタ', calories: 740, p: 22, f: 28, c: 88 },
-      'おにぎり': { name: '鮭おにぎり', calories: 180, p: 4, f: 1, c: 38 },
-      '唐揚げ': { name: '鶏の唐揚げ (4個)', calories: 320, p: 18, f: 22, c: 10 },
-      'ビール': { name: '生ビール (中ジョッキ)', calories: 150, p: 1, f: 0, c: 12 },
-      'コーヒー': { name: 'ブラックコーヒー', calories: 8, p: 0, f: 0, c: 1.5 },
-      'アボカドトースト': { name: 'アボカドエッグトースト', calories: 380, p: 12, f: 22, c: 34 },
-      'オムライス': { name: 'ふわとろオムライス', calories: 710, p: 18, f: 20, c: 98 },
-      '餃子': { name: '焼き餃子 (6個)', calories: 290, p: 10, f: 16, c: 24 },
-      'うどん': { name: 'きつねうどん', calories: 420, p: 14, f: 6, c: 74 },
-      'そば': { name: '天ぷらそば', calories: 480, p: 16, f: 12, c: 72 }
-    };
+/* ---------------- pieces ---------------- */
+const COLORS = {
+  I: '#78E4F2', O: '#FFDF6B', T: '#C79CFF', S: '#88E6A6', Z: '#FF9CB6', J: '#8FA9FF', L: '#FFB579', G: '#B4B0C6'
+};
+const KEYS = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
+const CHAR = { 0: '.', I: 'I', O: 'O', T: 'T', S: 'S', Z: 'Z', J: 'J', L: 'L', G: 'G' };
 
-    // --- INITIALIZATION ---
-    window.addEventListener('DOMContentLoaded', () => {
-      lucide.createIcons();
-      updateDashboard();
-      initWeeklyChart();
-      
-      // Set initial target calorie input value
-      document.getElementById('input-target-calories').value = targetCalories;
-      document.getElementById('target-calories-display').textContent = targetCalories;
-    });
+const SHAPES = {
+  I: [[[0, 1], [1, 1], [2, 1], [3, 1]], [[2, 0], [2, 1], [2, 2], [2, 3]], [[0, 2], [1, 2], [2, 2], [3, 2]], [[1, 0], [1, 1], [1, 2], [1, 3]]],
+  O: [[[1, 0], [2, 0], [1, 1], [2, 1]], [[1, 0], [2, 0], [1, 1], [2, 1]], [[1, 0], [2, 0], [1, 1], [2, 1]], [[1, 0], [2, 0], [1, 1], [2, 1]]],
+  T: [[[1, 0], [0, 1], [1, 1], [2, 1]], [[1, 0], [1, 1], [2, 1], [1, 2]], [[0, 1], [1, 1], [2, 1], [1, 2]], [[1, 0], [0, 1], [1, 1], [1, 2]]],
+  S: [[[1, 0], [2, 0], [0, 1], [1, 1]], [[1, 0], [1, 1], [2, 1], [2, 2]], [[1, 1], [2, 1], [0, 2], [1, 2]], [[0, 0], [0, 1], [1, 1], [1, 2]]],
+  Z: [[[0, 0], [1, 0], [1, 1], [2, 1]], [[2, 0], [1, 1], [2, 1], [1, 2]], [[0, 1], [1, 1], [1, 2], [2, 2]], [[1, 0], [0, 1], [1, 1], [0, 2]]],
+  J: [[[0, 0], [0, 1], [1, 1], [2, 1]], [[1, 0], [2, 0], [1, 1], [1, 2]], [[0, 1], [1, 1], [2, 1], [2, 2]], [[1, 0], [1, 1], [0, 2], [1, 2]]],
+  L: [[[2, 0], [0, 1], [1, 1], [2, 1]], [[1, 0], [1, 1], [1, 2], [2, 2]], [[0, 1], [1, 1], [2, 1], [0, 2]], [[0, 0], [1, 0], [1, 1], [1, 2]]]
+};
 
-    // --- TAB SWITCHING ---
-    function switchTab(tabId) {
-      currentTab = tabId;
-      
-      // Hide all tabs
-      document.getElementById('tab-dashboard').classList.add('hidden');
-      document.getElementById('tab-add').classList.add('hidden');
-      document.getElementById('tab-history').classList.add('hidden');
-      
-      // Show active tab
-      document.getElementById(`tab-${tabId}`).classList.remove('hidden');
-      
-      // Update Nav Bar styling
-      const navs = ['dashboard', 'add', 'history'];
-      navs.forEach(nav => {
-        const btn = document.getElementById(`nav-${nav}`);
-        if (nav === tabId) {
-          btn.classList.remove('text-slate-400', 'hover:text-slate-600');
-          btn.classList.add('text-emerald-500');
-        } else {
-          btn.classList.remove('text-emerald-500');
-          btn.classList.add('text-slate-400', 'hover:text-slate-600');
-        }
+// SRS kicks — y は画面下方向を正に変換済み
+const K_JLSTZ = {
+  '01': [[0, 0], [-1, 0], [-1, -1], [0, 2], [-1, 2]],
+  '10': [[0, 0], [1, 0], [1, 1], [0, -2], [1, -2]],
+  '12': [[0, 0], [1, 0], [1, 1], [0, -2], [1, -2]],
+  '21': [[0, 0], [-1, 0], [-1, -1], [0, 2], [-1, 2]],
+  '23': [[0, 0], [1, 0], [1, -1], [0, 2], [1, 2]],
+  '32': [[0, 0], [-1, 0], [-1, 1], [0, -2], [-1, -2]],
+  '30': [[0, 0], [-1, 0], [-1, 1], [0, -2], [-1, -2]],
+  '03': [[0, 0], [1, 0], [1, -1], [0, 2], [1, 2]]
+};
+const K_I = {
+  '01': [[0, 0], [-2, 0], [1, 0], [-2, 1], [1, -2]],
+  '10': [[0, 0], [2, 0], [-1, 0], [2, -1], [-1, 2]],
+  '12': [[0, 0], [-1, 0], [2, 0], [-1, -2], [2, 1]],
+  '21': [[0, 0], [1, 0], [-2, 0], [1, 2], [-2, -1]],
+  '23': [[0, 0], [2, 0], [-1, 0], [2, -1], [-1, 2]],
+  '32': [[0, 0], [-2, 0], [1, 0], [-2, 1], [1, -2]],
+  '30': [[0, 0], [1, 0], [-2, 0], [1, 2], [-2, -1]],
+  '03': [[0, 0], [-1, 0], [2, 0], [-1, -2], [2, 1]]
+};
+
+const COLS = 10, HIDDEN = 2, ROWS = 20, TOT = ROWS + HIDDEN;
+const SPEEDS = [
+  { g: 1.35, name: 'ゆっくり' },   // 倍率（大きいほど遅い）
+  { g: 1.0, name: 'ふつう' },
+  { g: 0.62, name: 'はやい' }
+];
+
+/* ---------------- game ---------------- */
+class Game {
+  constructor(opt = {}) {
+    this.speedMul = opt.speedMul ?? 1;
+    this.on = Object.assign({ attack() { }, clear() { }, lock() { }, over() { }, garbage() { } }, opt.on || {});
+    this.reset(opt.seed ?? (Math.random() * 1e9) | 0);
+  }
+  reset(seed) {
+    this.seed = seed >>> 0;
+    this.rand = mulberry32(this.seed);
+    this.grid = new Array(TOT * COLS).fill(0);
+    this.bag = []; this.queue = [];
+    for (let i = 0; i < 6; i++) this.queue.push(this.pull());
+    this.hold = null; this.holdUsed = false;
+    this.score = 0; this.lines = 0; this.level = 1;
+    this.combo = -1; this.b2b = false;
+    this.pending = 0;          // 受け待ちのお邪魔
+    this.garbHole = (this.rand() * COLS) | 0;
+    this.alive = true; this.paused = false;
+    this.clearFx = null; this.shards = []; this.riseFx = 0;
+    this.lastAction = null; this.lastKick = 0;
+    this.dropTimer = 0; this.lockTimer = 0; this.lockResets = 0;
+    this.startedAt = performance.now();
+    this.spawn();
+  }
+  pull() {
+    if (!this.bag.length) {
+      this.bag = KEYS.slice();
+      for (let i = this.bag.length - 1; i > 0; i--) { const j = (this.rand() * (i + 1)) | 0;[this.bag[i], this.bag[j]] = [this.bag[j], this.bag[i]]; }
+    }
+    return this.bag.pop();
+  }
+  gravityMs() {
+    const l = this.level;
+    const base = Math.pow(0.80 - (l - 1) * 0.007, l - 1) * 1000;
+    return Math.max(28, base * this.speedMul);
+  }
+  cells(type, rot, x, y) { return SHAPES[type][rot].map(([cx, cy]) => [x + cx, y + cy]); }
+  collide(type, rot, x, y) {
+    for (const [cx, cy] of SHAPES[type][rot]) {
+      const px = x + cx, py = y + cy;
+      if (px < 0 || px >= COLS || py >= TOT) return true;
+      if (py >= 0 && this.grid[py * COLS + px]) return true;
+    }
+    return false;
+  }
+  spawn(type) {
+    this.cur = { type: type || this.queue.shift(), rot: 0, x: 3, y: 0 };
+    while (this.queue.length < 6) this.queue.push(this.pull());
+    this.holdUsed = false; this.lockTimer = 0; this.lockResets = 0; this.dropTimer = 0;
+    this.lastAction = null;
+    if (this.collide(this.cur.type, 0, this.cur.x, this.cur.y)) this.die();
+  }
+  die() { if (!this.alive) return; this.alive = false; Snd.over(); this.on.over(); }
+
+  move(dx) {
+    if (!this.alive || this.paused || this.clearFx) return false;
+    const c = this.cur;
+    if (!this.collide(c.type, c.rot, c.x + dx, c.y)) {
+      c.x += dx; this.lastAction = 'move'; this.touchLock(); Snd.move(); return true;
+    }
+    return false;
+  }
+  rotate(dir) {
+    if (!this.alive || this.paused || this.clearFx) return false;
+    const c = this.cur;
+    if (c.type === 'O') return false;
+    const to = (c.rot + (dir > 0 ? 1 : 3)) % 4;
+    const table = c.type === 'I' ? K_I : K_JLSTZ;
+    const kicks = table['' + c.rot + to] || [[0, 0]];
+    for (let i = 0; i < kicks.length; i++) {
+      const [kx, ky] = kicks[i];
+      if (!this.collide(c.type, to, c.x + kx, c.y + ky)) {
+        c.rot = to; c.x += kx; c.y += ky;
+        this.lastAction = 'rot'; this.lastKick = i;
+        this.touchLock(); Snd.rot(); return true;
+      }
+    }
+    return false;
+  }
+  touchLock() {
+    const c = this.cur;
+    if (this.collide(c.type, c.rot, c.x, c.y + 1) && this.lockResets < 15) { this.lockTimer = 0; this.lockResets++; }
+  }
+  softDrop() {
+    if (!this.alive || this.paused || this.clearFx) return;
+    const c = this.cur;
+    if (!this.collide(c.type, c.rot, c.x, c.y + 1)) { c.y++; this.score += 1; this.dropTimer = 0; this.lastAction = 'move'; }
+    else this.lockTimer = 999999;
+  }
+  hardDrop() {
+    if (!this.alive || this.paused || this.clearFx) return;
+    const c = this.cur; let d = 0;
+    while (!this.collide(c.type, c.rot, c.x, c.y + 1)) { c.y++; d++; }
+    this.score += d * 2; this.lastAction = 'move';
+    this.lockPiece();
+  }
+  swapHold() {
+    if (!this.alive || this.paused || this.holdUsed || this.clearFx) return;
+    const t = this.cur.type;
+    if (this.hold) { const h = this.hold; this.hold = t; this.spawn(h); }
+    else { this.hold = t; this.spawn(); }
+    this.holdUsed = true; Snd.hold();
+  }
+  ghostY() {
+    const c = this.cur; let y = c.y;
+    while (!this.collide(c.type, c.rot, c.x, y + 1)) y++;
+    return y;
+  }
+
+  tspin() {
+    const c = this.cur;
+    if (c.type !== 'T' || this.lastAction !== 'rot') return 0;
+    const cx = c.x + 1, cy = c.y + 1;
+    const at = (x, y) => (x < 0 || x >= COLS || y >= TOT) ? 1 : (y < 0 ? 0 : (this.grid[y * COLS + x] ? 1 : 0));
+    const corners = [at(cx - 1, cy - 1), at(cx + 1, cy - 1), at(cx - 1, cy + 1), at(cx + 1, cy + 1)];
+    const n = corners.reduce((a, b) => a + b, 0);
+    if (n < 3) return 0;
+    // 前方の2つ（向きに応じて）が埋まっていれば full
+    const front = [[0, 1], [1, 3], [3, 2], [2, 0]][c.rot];
+    const full = corners[front[0]] && corners[front[1]];
+    if (full || this.lastKick === 4) return 2; // full
+    return 1; // mini
+  }
+
+  lockPiece() {
+    const c = this.cur;
+    const ts = this.tspin();
+    for (const [px, py] of this.cells(c.type, c.rot, c.x, c.y)) {
+      if (py >= 0) this.grid[py * COLS + px] = c.type;
+    }
+    Snd.lock(); this.on.lock();
+
+    const rows = [];
+    for (let y = 0; y < TOT; y++) {
+      let full = true;
+      for (let x = 0; x < COLS; x++) if (!this.grid[y * COLS + x]) { full = false; break; }
+      if (full) rows.push(y);
+    }
+    const n = rows.length;
+
+    if (n) {
+      this.combo++;
+      const hard = (n === 4) || (ts > 0);
+      let atk = [0, 0, 1, 2, 4][n];
+      let label = '', pts = [0, 100, 300, 500, 800][n] * this.level;
+      if (ts === 2) { atk = [0, 2, 4, 6][n] || 6; pts = [0, 800, 1200, 1600][n] * this.level; label = ['', 'T-SPIN SINGLE', 'T-SPIN DOUBLE', 'T-SPIN TRIPLE'][n]; }
+      else if (ts === 1) { atk = n >= 2 ? 1 : 0; pts = 200 * this.level; label = 'T-SPIN MINI'; }
+      else label = ['', 'SINGLE', 'DOUBLE', 'TRIPLE', 'TETRIS'][n];
+      if (this.b2b && hard) { atk += 1; pts = (pts * 1.5) | 0; label = 'B2B ' + label; }
+      const cb = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 4, 5][Math.min(this.combo, 11)] || 0;
+      atk += cb;
+      // perfect clear
+      let empty = true;
+      for (let i = 0; i < TOT * COLS; i++) { if (this.grid[i] && rows.indexOf((i / COLS) | 0) < 0) { empty = false; break; } }
+      if (empty) { atk += 10; pts += 2000 * this.level; label = 'PERFECT CLEAR'; }
+
+      this.b2b = hard;
+      this.score += pts;
+      this.lines += n;
+      this.level = 1 + ((this.lines / 10) | 0);
+
+      // 相殺
+      const cancel = Math.min(this.pending, atk);
+      this.pending -= cancel; const out = atk - cancel;
+      if (out > 0) this.on.attack(out);
+
+      this.on.clear({ n, label, combo: this.combo, atk: out });
+      Snd.clear(n);
+      this.clearFx = { rows, t: 0 };
+      this.makeShards(rows);
+    } else {
+      this.combo = -1;
+      this.applyPending();
+      this.spawn();
+    }
+  }
+  finishClear() {
+    const rows = this.clearFx.rows.slice().sort((a, b) => a - b);
+    for (const y of rows) {
+      for (let yy = y; yy > 0; yy--) for (let x = 0; x < COLS; x++) this.grid[yy * COLS + x] = this.grid[(yy - 1) * COLS + x];
+      for (let x = 0; x < COLS; x++) this.grid[x] = 0;
+    }
+    this.clearFx = null;
+    this.applyPending();
+    this.spawn();
+  }
+  applyPending() {
+    if (!this.pending) return;
+    const n = Math.min(this.pending, 8);
+    this.pending -= n;
+    for (let k = 0; k < n; k++) {
+      for (let y = 0; y < TOT - 1; y++) for (let x = 0; x < COLS; x++) this.grid[y * COLS + x] = this.grid[(y + 1) * COLS + x];
+      if (this.rand() < 0.32) this.garbHole = (this.rand() * COLS) | 0;
+      for (let x = 0; x < COLS; x++) this.grid[(TOT - 1) * COLS + x] = (x === this.garbHole) ? 0 : 'G';
+    }
+    this.riseFx = 1; Snd.garbage();
+    // 押し出しで詰んだら終了
+    if (this.collide(this.cur.type, this.cur.rot, this.cur.x, this.cur.y)) {
+      if (!this.collide(this.cur.type, this.cur.rot, this.cur.x, this.cur.y - 1)) this.cur.y--;
+      else this.die();
+    }
+  }
+  addGarbage(n) { if (!this.alive) return; this.pending += n; }
+
+  makeShards(rows) {
+    if (REDUCED) return;
+    for (const y of rows) for (let x = 0; x < COLS; x++) {
+      const t = this.grid[y * COLS + x] || 'G';
+      for (let i = 0; i < 2; i++) this.shards.push({
+        x: x + Math.random(), y: y + Math.random(), vx: (Math.random() - .5) * .09,
+        vy: -Math.random() * .06, life: 1, c: COLORS[t] || '#fff', s: .18 + Math.random() * .3
       });
+    }
+  }
+  danger() {
+    for (let y = HIDDEN; y < HIDDEN + 5; y++) for (let x = 0; x < COLS; x++) if (this.grid[y * COLS + x]) return true;
+    return false;
+  }
+  serialize() {
+    let s = '';
+    const g = this.grid.slice();
+    if (this.alive && this.cur) for (const [px, py] of this.cells(this.cur.type, this.cur.rot, this.cur.x, this.cur.y)) if (py >= 0) g[py * COLS + px] = this.cur.type;
+    for (let i = HIDDEN * COLS; i < TOT * COLS; i++) s += CHAR[g[i]] || '.';
+    return s;
+  }
+  update(dt) {
+    if (!this.alive || this.paused) return;
+    if (this.riseFx > 0) this.riseFx = Math.max(0, this.riseFx - dt / 260);
+    for (let i = this.shards.length - 1; i >= 0; i--) {
+      const p = this.shards[i];
+      p.vy += 0.00028 * dt; p.x += p.vx * dt / 16; p.y += p.vy * dt / 16; p.life -= dt / 620;
+      if (p.life <= 0) this.shards.splice(i, 1);
+    }
+    if (this.clearFx) { this.clearFx.t += dt; if (this.clearFx.t > 250) this.finishClear(); return; }
 
-      // Stop camera if leaving the add tab
-      if (tabId !== 'add') {
-        stopCamera();
+    this.dropTimer += dt;
+    const gms = this.gravityMs();
+    while (this.dropTimer >= gms) {
+      this.dropTimer -= gms;
+      const c = this.cur;
+      if (!this.collide(c.type, c.rot, c.x, c.y + 1)) { c.y++; this.lastAction = 'move'; }
+      else break;
+    }
+    const c = this.cur;
+    if (this.collide(c.type, c.rot, c.x, c.y + 1)) {
+      this.lockTimer += dt;
+      if (this.lockTimer >= 500) this.lockPiece();
+    } else this.lockTimer = 0;
+  }
+}
+
+/* ============================================================
+   描画層 — ガラスブロック・盤面・背景ステージ
+   ============================================================ */
+
+/* ---------- 立体ガラスセル ---------- */
+function roundRect(ctx, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+function shade(hex, k) {
+  const n = parseInt(hex.slice(1), 16);
+  let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  if (k > 0) { r += (255 - r) * k; g += (255 - g) * k; b += (255 - b) * k; }
+  else { r *= (1 + k); g *= (1 + k); b *= (1 + k); }
+  return `rgb(${r | 0},${g | 0},${b | 0})`;
+}
+
+/* セル1つを「厚みのあるガラスの粒」として描く。
+   光は左上から。奥行きは右下へ押し出す。
+   グラデーションを毎フレーム作るとタブレットで重いので、
+   色・サイズ・不透明度ごとにスプライトへ焼いて使い回す。 */
+const _sprites = new Map();
+function cellSprite(color, s, a, d) {
+  const key = color + '|' + Math.round(s) + '|' + Math.round(a * 100) + '|' + Math.round(d);
+  let sp = _sprites.get(key);
+  if (sp) return sp;
+  if (_sprites.size > 140) _sprites.clear();
+  const dpr = Math.min(2, devicePixelRatio || 1);
+  const W = s + d + 2;
+  sp = document.createElement('canvas');
+  sp.width = Math.ceil(W * dpr); sp.height = Math.ceil(W * dpr);
+  const c = sp.getContext('2d');
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  paintGlass(c, 0, 0, s, color, a, d);
+  sp._w = W;
+  _sprites.set(key, sp);
+  return sp;
+}
+function glassCell(ctx, px, py, s, color, opt = {}) {
+  const a = opt.alpha ?? 0.66;
+  const d = opt.depth ?? Math.max(2, s * 0.17);
+  const sp = cellSprite(color, s, a, d);
+  ctx.drawImage(sp, px, py, sp._w, sp._w);
+}
+
+function paintGlass(ctx, ox, oy, s, color, a, d) {
+  const pad = s * 0.045;
+  const x = ox + pad, y = oy + pad, w = s - pad * 2, h = s - pad * 2;
+  const r = s * 0.24;
+
+  // --- 押し出し側面（右 + 下）
+  ctx.save();
+  ctx.globalAlpha = a * 0.82;
+  ctx.fillStyle = shade(color, -0.42);
+  roundRect(ctx, x + d, y + d, w, h, r);
+  ctx.fill();
+  ctx.restore();
+
+  // --- 天面（本体）
+  ctx.save();
+  ctx.globalAlpha = a;
+  const g = ctx.createLinearGradient(x, y, x + w, y + h);
+  g.addColorStop(0, shade(color, .46));
+  g.addColorStop(.42, color);
+  g.addColorStop(1, shade(color, -.22));
+  ctx.fillStyle = g;
+  roundRect(ctx, x, y, w, h, r);
+  ctx.fill();
+
+  // 内側の暗がり（右下）＝ガラスの肉厚
+  const g2 = ctx.createLinearGradient(x + w * .35, y + h * .35, x + w, y + h);
+  g2.addColorStop(0, 'rgba(0,0,0,0)');
+  g2.addColorStop(1, 'rgba(20,10,40,.36)');
+  ctx.fillStyle = g2; ctx.fill();
+  ctx.restore();
+
+  // --- ふち（屈折の線）
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, a + .22);
+  ctx.lineWidth = Math.max(1, s * 0.055);
+  ctx.strokeStyle = shade(color, .62);
+  roundRect(ctx, x, y, w, h, r);
+  ctx.stroke();
+  ctx.restore();
+
+  // --- ハイライト（左上のツヤ）
+  ctx.save();
+  ctx.globalAlpha = a * .85;
+  const hg = ctx.createLinearGradient(x, y, x, y + h * .58);
+  hg.addColorStop(0, 'rgba(255,255,255,.85)');
+  hg.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = hg;
+  roundRect(ctx, x + w * .12, y + h * .08, w * .76, h * .42, r * .8);
+  ctx.fill();
+  // 点の輝き
+  ctx.globalAlpha = a * .9;
+  ctx.fillStyle = 'rgba(255,255,255,.95)';
+  ctx.beginPath();
+  ctx.ellipse(x + w * .27, y + h * .22, w * .10, h * .07, -0.5, 0, 7);
+  ctx.fill();
+  ctx.restore();
+}
+
+function ghostCell(ctx, px, py, s, color) {
+  const pad = s * 0.14;
+  ctx.save();
+  ctx.globalAlpha = .30;
+  ctx.strokeStyle = color; ctx.lineWidth = Math.max(1.2, s * 0.07);
+  ctx.setLineDash([s * .22, s * .18]);
+  roundRect(ctx, px + pad, py + pad, s - pad * 2, s - pad * 2, s * .2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/* ---------- 盤面 ---------- */
+function drawBoard(cv, game) {
+  const ctx = cv.getContext('2d');
+  const dpr = cv._dpr || 1;
+  const W = cv.width / dpr, H = cv.height / dpr;
+  const s = W / COLS;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  // 盤面の底（すりガラス）
+  ctx.save();
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, 'rgba(10,6,26,.17)');
+  bg.addColorStop(.55, 'rgba(10,6,26,.26)');
+  bg.addColorStop(1, 'rgba(10,6,26,.38)');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  // グリッド
+  ctx.strokeStyle = 'rgba(255,255,255,.055)'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let x = 1; x < COLS; x++) { ctx.moveTo(x * s, 0); ctx.lineTo(x * s, H); }
+  for (let y = 1; y < ROWS; y++) { ctx.moveTo(0, y * s); ctx.lineTo(W, y * s); }
+  ctx.stroke();
+  ctx.restore();
+
+  const flash = game.clearFx ? Math.max(0, 1 - game.clearFx.t / 250) : 0;
+
+  // 固定ブロック
+  for (let y = HIDDEN; y < TOT; y++) {
+    const rowClearing = game.clearFx && game.clearFx.rows.indexOf(y) >= 0;
+    for (let x = 0; x < COLS; x++) {
+      const t = game.grid[y * COLS + x];
+      if (!t) continue;
+      const px = x * s, py = (y - HIDDEN) * s;
+      if (rowClearing) {
+        ctx.save();
+        ctx.globalAlpha = flash;
+        ctx.fillStyle = '#fff';
+        ctx.shadowColor = '#fff'; ctx.shadowBlur = s * .8;
+        roundRect(ctx, px + s * .04, py + s * .04, s * .92, s * .92, s * .24);
+        ctx.fill();
+        ctx.restore();
+      } else {
+        glassCell(ctx, px, py, s, COLORS[t] || '#B4B0C6', { alpha: t === 'G' ? .46 : .62 });
       }
+    }
+  }
 
-      // Refresh data if switching to dashboard or history
-      if (tabId === 'dashboard') {
-        updateDashboard();
-      } else if (tabId === 'history') {
-        renderHistory();
+  // ゴースト + 現在のピース
+  if (game.alive && game.cur && !game.clearFx) {
+    const c = game.cur, col = COLORS[c.type];
+    const gy = game.ghostY();
+    if (gy !== c.y) for (const [x, y] of game.cells(c.type, c.rot, c.x, gy)) {
+      if (y >= HIDDEN) ghostCell(ctx, x * s, (y - HIDDEN) * s, s, col);
+    }
+    for (const [x, y] of game.cells(c.type, c.rot, c.x, c.y)) {
+      if (y >= HIDDEN) glassCell(ctx, x * s, (y - HIDDEN) * s, s, col, { alpha: .80 });
+      else if (y >= 0) { ctx.save(); ctx.globalAlpha = .25; glassCell(ctx, x * s, -s * (HIDDEN - y) * 0.35, s, col, { alpha: .3 }); ctx.restore(); }
+    }
+  }
+
+  // 破片
+  for (const p of game.shards) {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, p.life) * .8;
+    ctx.fillStyle = p.c;
+    ctx.shadowColor = p.c; ctx.shadowBlur = s * .5;
+    const w = s * p.s;
+    roundRect(ctx, p.x * s, (p.y - HIDDEN) * s, w, w, w * .3);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // せり上がりの残光
+  if (game.riseFx > 0) {
+    ctx.save();
+    const gg = ctx.createLinearGradient(0, H, 0, H * .55);
+    gg.addColorStop(0, `rgba(255,86,120,${.42 * game.riseFx})`);
+    gg.addColorStop(1, 'rgba(255,86,120,0)');
+    ctx.fillStyle = gg; ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+
+  // 上端のガラス反射
+  ctx.save();
+  const rg = ctx.createLinearGradient(0, 0, 0, H * .18);
+  rg.addColorStop(0, 'rgba(255,255,255,.16)');
+  rg.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = rg; ctx.fillRect(0, 0, W, H * .18);
+  ctx.restore();
+}
+
+/* ---------- 小さいプレビュー ---------- */
+function drawPiecePreview(cv, type, scale) {
+  const ctx = cv.getContext('2d');
+  const dpr = cv._dpr || 1;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const W = cv.width / dpr, H = cv.height / dpr;
+  ctx.clearRect(0, 0, W, H);
+  if (!type) return;
+  const cells = SHAPES[type][0];
+  const xs = cells.map(c => c[0]), ys = cells.map(c => c[1]);
+  const minx = Math.min(...xs), maxx = Math.max(...xs), miny = Math.min(...ys), maxy = Math.max(...ys);
+  const bw = maxx - minx + 1, bh = maxy - miny + 1;
+  const s = scale ?? Math.min(W / (bw + .6), H / (bh + .6));
+  const ox = (W - bw * s) / 2, oy = (H - bh * s) / 2;
+  for (const [cx, cy] of cells) glassCell(ctx, ox + (cx - minx) * s, oy + (cy - miny) * s, s, COLORS[type], { alpha: .78, depth: s * .15 });
+}
+function drawNext(cv, queue) {
+  const ctx = cv.getContext('2d');
+  const dpr = cv._dpr || 1;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const W = cv.width / dpr, H = cv.height / dpr;
+  ctx.clearRect(0, 0, W, H);
+  const horiz = W > H;                       // たてがき／よこがき を自動でえらぶ
+  const n = Math.min(horiz ? 3 : 4, queue.length);
+  if (!n) return;
+  const slotW = horiz ? W / n : W;
+  const slotH = horiz ? H : H / n;
+  for (let i = 0; i < n; i++) {
+    const type = queue[i];
+    const cells = SHAPES[type][0];
+    const xs = cells.map(c => c[0]), ys = cells.map(c => c[1]);
+    const minx = Math.min(...xs), maxx = Math.max(...xs), miny = Math.min(...ys), maxy = Math.max(...ys);
+    const bw = maxx - minx + 1, bh = maxy - miny + 1;
+    const grow = i === 0 ? 1 : .8;
+    const s = Math.min(slotW / (bw + .7), slotH / (bh + .7)) * grow;
+    const ox = (horiz ? i * slotW : 0) + (slotW - bw * s) / 2;
+    const oy = (horiz ? 0 : i * slotH) + (slotH - bh * s) / 2;
+    ctx.save(); ctx.globalAlpha = i === 0 ? 1 : .66;
+    for (const [cx, cy] of cells) glassCell(ctx, ox + (cx - minx) * s, oy + (cy - miny) * s, s, COLORS[type], { alpha: .74, depth: s * .15 });
+    ctx.restore();
+  }
+}
+function drawMini(cv, str, alive) {
+  const ctx = cv.getContext('2d');
+  const dpr = cv._dpr || 1;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const W = cv.width / dpr, H = cv.height / dpr;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(10,6,24,.34)'; ctx.fillRect(0, 0, W, H);
+  if (!str) return;
+  const s = W / COLS;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i]; if (ch === '.') continue;
+    const x = i % COLS, y = (i / COLS) | 0;
+    const col = COLORS[ch] || '#B4B0C6';
+    ctx.save();
+    ctx.globalAlpha = alive ? .88 : .3;
+    ctx.fillStyle = col;
+    roundRect(ctx, x * s + .5, y * s + .5, s - 1, s - 1, Math.max(1, s * .25));
+    ctx.fill();
+    ctx.globalAlpha = alive ? .5 : .18;
+    ctx.fillStyle = 'rgba(255,255,255,.8)';
+    roundRect(ctx, x * s + .5, y * s + .5, s - 1, (s - 1) * .45, Math.max(1, s * .22));
+    ctx.fill();
+    ctx.restore();
+  }
+  if (!alive) {
+    ctx.save(); ctx.fillStyle = 'rgba(12,8,28,.5)'; ctx.fillRect(0, 0, W, H); ctx.restore();
+  }
+}
+
+/* ============================================================
+   背景ステージ — 自動でうつりかわる
+   ============================================================ */
+const P = (t, a, b) => a + (b - a) * t;
+function hsl(h, s, l, a = 1) { return `hsla(${h},${s}%,${l}%,${a})`; }
+
+const STAGES = [
+  {
+    name: 'あさやけ',
+    dim: .20,
+    sky: ['#FFC5A8', '#FFB6C8', '#C9B3F0', '#8FA9E8'],
+    paint(c, t, W, H, rnd) {
+      // 太陽
+      const sy = H * .34 + Math.sin(t / 9000) * H * .012;
+      const gr = c.createRadialGradient(W * .74, sy, 0, W * .74, sy, W * .40);
+      gr.addColorStop(0, 'rgba(255,247,220,.95)');
+      gr.addColorStop(.16, 'rgba(255,214,160,.55)');
+      gr.addColorStop(1, 'rgba(255,190,150,0)');
+      c.fillStyle = gr; c.fillRect(0, 0, W, H);
+      // 雲
+      for (let i = 0; i < 7; i++) {
+        const r = rnd[i];
+        const x = ((r.a * W + t * (0.006 + r.b * .012)) % (W * 1.5)) - W * .25;
+        const y = H * (.12 + r.b * .48);
+        const w = W * (.20 + r.c * .34), h = w * .18;
+        c.save(); c.globalAlpha = .26 + r.c * .24;
+        c.fillStyle = '#fff'; c.filter = 'blur(1px)';
+        c.beginPath(); c.ellipse(x, y, w, h, 0, 0, 7); c.fill();
+        c.beginPath(); c.ellipse(x + w * .4, y - h * .5, w * .5, h * .9, 0, 0, 7); c.fill();
+        c.restore();
       }
     }
-
-    // --- SETTINGS MODAL ---
-    function openSettings() {
-      const modal = document.getElementById('settings-modal');
-      modal.classList.remove('hidden');
-    }
-
-    function closeSettings() {
-      const modal = document.getElementById('settings-modal');
-      modal.classList.add('hidden');
-    }
-
-    function saveSettings() {
-      const inputVal = parseInt(document.getElementById('input-target-calories').value);
-      if (inputVal && inputVal > 0) {
-        targetCalories = inputVal;
-        localStorage.setItem('target_calories', targetCalories);
-        document.getElementById('target-calories-display').textContent = targetCalories;
-        updateDashboard();
-        closeSettings();
+  },
+  {
+    name: 'うみのなか',
+    dim: .08,
+    sky: ['#0E5F8A', '#127FA8', '#1FA5B8', '#7FE0D2'],
+    paint(c, t, W, H, rnd) {
+      // 光のすじ
+      c.save(); c.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 6; i++) {
+        const r = rnd[i];
+        const x = W * (.06 + r.a * .9) + Math.sin(t / 3600 + i) * W * .03;
+        c.save(); c.translate(x, -H * .1); c.rotate(-0.12 + r.b * .24);
+        const g = c.createLinearGradient(0, 0, 0, H * 1.1);
+        g.addColorStop(0, `rgba(210,255,255,${.16 + r.c * .10})`);
+        g.addColorStop(1, 'rgba(210,255,255,0)');
+        c.fillStyle = g;
+        c.beginPath(); c.moveTo(-W * .03, 0); c.lineTo(W * .03, 0); c.lineTo(W * .11, H * 1.1); c.lineTo(-W * .09, H * 1.1); c.fill();
+        c.restore();
+      }
+      c.restore();
+      // あわ
+      for (let i = 0; i < 34; i++) {
+        const r = rnd[i];
+        const sp = 0.010 + r.b * 0.024;
+        const y = H - ((t * sp + r.a * H * 2) % (H * 1.15));
+        const x = W * r.a + Math.sin(t / 900 + i) * W * .022;
+        const rad = 2 + r.c * 7;
+        c.save(); c.globalAlpha = .30 + r.c * .3;
+        c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = 1.2;
+        c.beginPath(); c.arc(x, y, rad, 0, 7); c.stroke();
+        c.fillStyle = 'rgba(255,255,255,.28)'; c.beginPath(); c.arc(x - rad * .3, y - rad * .3, rad * .34, 0, 7); c.fill();
+        c.restore();
       }
     }
-
-    // --- DASHBOARD LOGIC ---
-    function updateDashboard() {
-      // Filter logs for today
-      const today = new Date().toDateString();
-      const todayLogs = logs.filter(log => new Date(log.date).toDateString() === today);
-      
-      const totalCalories = todayLogs.reduce((sum, log) => sum + log.calories, 0);
-      const totalP = todayLogs.reduce((sum, log) => sum + log.p, 0);
-      const totalF = todayLogs.reduce((sum, log) => sum + log.f, 0);
-      const totalC = todayLogs.reduce((sum, log) => sum + log.c, 0);
-
-      // Update text values
-      document.getElementById('today-calories').textContent = totalCalories;
-      document.getElementById('stat-consumed').textContent = `${totalCalories} kcal`;
-      
-      const remaining = Math.max(0, targetCalories - totalCalories);
-      document.getElementById('stat-remaining').textContent = `${remaining} kcal`;
-      document.getElementById('stat-target').textContent = `${targetCalories} kcal`;
-
-      // Update Circular Progress Ring
-      const circle = document.getElementById('progress-circle');
-      const radius = circle.r.baseVal.value;
-      const circumference = radius * 2 * Math.PI;
-      const percent = Math.min(100, (totalCalories / targetCalories) * 100);
-      const offset = circumference - (percent / 100) * circumference;
-      circle.style.strokeDashoffset = offset;
-
-      // Update PFC Progress Bars (Standard targets: P: 60g, F: 55g, C: 250g)
-      document.getElementById('pfc-p-val').textContent = totalP;
-      document.getElementById('pfc-p-bar').style.width = `${Math.min(100, (totalP / 60) * 100)}%`;
-      
-      document.getElementById('pfc-f-val').textContent = totalF;
-      document.getElementById('pfc-f-bar').style.width = `${Math.min(100, (totalF / 55) * 100)}%`;
-      
-      document.getElementById('pfc-c-val').textContent = totalC;
-      document.getElementById('pfc-c-bar').style.width = `${Math.min(100, (totalC / 250) * 100)}%`;
-
-      // Update Chart
-      updateWeeklyChart();
-    }
-
-    // --- CHART LOGIC ---
-    function initWeeklyChart() {
-      const ctx = document.getElementById('weeklyChart').getContext('2d');
-      
-      // Generate last 7 days labels
-      const labels = [];
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        labels.push(`${d.getMonth() + 1}/${d.getDate()}`);
+  },
+  {
+    name: 'さくら',
+    dim: .26,
+    sky: ['#FFE9E4', '#FFD3D8', '#E7BEDC', '#9E93CF'],
+    paint(c, t, W, H, rnd) {
+      // 遠くの丘
+      c.save(); c.globalAlpha = .22; c.fillStyle = '#6E5C93';
+      c.beginPath(); c.moveTo(0, H);
+      for (let x = 0; x <= W; x += 24) c.lineTo(x, H * .72 + Math.sin(x / W * 3.4) * H * .06 + Math.sin(x / W * 9) * H * .015);
+      c.lineTo(W, H); c.fill(); c.restore();
+      c.save(); c.globalAlpha = .16; c.fillStyle = '#4C3F72';
+      c.beginPath(); c.moveTo(0, H);
+      for (let x = 0; x <= W; x += 24) c.lineTo(x, H * .82 + Math.cos(x / W * 4.2) * H * .05);
+      c.lineTo(W, H); c.fill(); c.restore();
+      // 花びら
+      for (let i = 0; i < 30; i++) {
+        const r = rnd[i];
+        const sp = .014 + r.b * .022;
+        const y = ((t * sp + r.a * H * 2) % (H * 1.2)) - H * .1;
+        const x = (W * r.a + Math.sin(t / 1100 + i * 1.7) * W * .07 + t * .004) % W;
+        const rot = t / 700 + i;
+        c.save(); c.translate(x, y); c.rotate(rot);
+        c.globalAlpha = .55 + r.c * .35;
+        c.fillStyle = i % 4 === 0 ? '#fff' : '#FFB7C9';
+        const s = 3 + r.c * 5;
+        c.beginPath(); c.ellipse(0, 0, s, s * .62, 0, 0, 7); c.fill();
+        c.restore();
       }
-
-      weeklyChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: '摂取カロリー',
-            data: [0, 0, 0, 0, 0, 0, 0],
-            backgroundColor: 'rgba(52, 199, 89, 0.8)',
-            borderColor: 'rgba(52, 199, 89, 1)',
-            borderWidth: 1,
-            borderRadius: 6,
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false }
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              grid: { color: '#f1f5f9' },
-              ticks: { font: { size: 10 } }
-            },
-            x: {
-              grid: { display: false },
-              ticks: { font: { size: 10 } }
-            }
+    }
+  },
+  {
+    name: 'オーロラ',
+    dim: 0,
+    sky: ['#0A0B26', '#131945', '#1B2A5E', '#26406F'],
+    paint(c, t, W, H, rnd) {
+      // 星
+      for (let i = 0; i < 60; i++) {
+        const r = rnd[i];
+        const x = r.a * W, y = r.b * H * .8;
+        const tw = .35 + .65 * Math.abs(Math.sin(t / 900 + i * 2.1));
+        c.save(); c.globalAlpha = tw * (.4 + r.c * .6);
+        c.fillStyle = '#fff'; c.beginPath(); c.arc(x, y, .6 + r.c * 1.5, 0, 7); c.fill(); c.restore();
+      }
+      // オーロラの帯
+      c.save(); c.globalCompositeOperation = 'lighter';
+      for (let b = 0; b < 3; b++) {
+        const hue = 150 + b * 48 + Math.sin(t / 5200 + b) * 26;
+        const g = c.createLinearGradient(0, H * .1, 0, H * .72);
+        g.addColorStop(0, hsl(hue, 90, 62, 0));
+        g.addColorStop(.42, hsl(hue, 88, 60, .24));
+        g.addColorStop(1, hsl(hue + 30, 90, 58, 0));
+        c.fillStyle = g;
+        c.beginPath(); c.moveTo(-20, H);
+        for (let x = -20; x <= W + 20; x += 16) {
+          const k = x / W;
+          const y = H * .30 + Math.sin(k * 3.1 + t / 2600 + b * 1.5) * H * .10 + Math.sin(k * 7.7 + t / 1500 + b) * H * .035 + b * H * .05;
+          c.lineTo(x, y);
+        }
+        for (let x = W + 20; x >= -20; x -= 16) {
+          const k = x / W;
+          const y = H * .30 + Math.sin(k * 3.1 + t / 2600 + b * 1.5) * H * .10 + Math.sin(k * 7.7 + t / 1500 + b) * H * .035 + b * H * .05 + H * .30;
+          c.lineTo(x, y);
+        }
+        c.fill();
+      }
+      c.restore();
+    }
+  },
+  {
+    name: 'よぞらのまち',
+    dim: 0,
+    sky: ['#0B1030', '#151A47', '#2A2159', '#4A2E63'],
+    paint(c, t, W, H, rnd) {
+      for (let i = 0; i < 50; i++) {
+        const r = rnd[i];
+        c.save(); c.globalAlpha = .3 + .6 * Math.abs(Math.sin(t / 1200 + i));
+        c.fillStyle = '#fff'; c.beginPath(); c.arc(r.a * W, r.b * H * .6, .7 + r.c, 0, 7); c.fill(); c.restore();
+      }
+      // 流れ星
+      const sh = (t / 5200) % 1;
+      if (sh < .13) {
+        const k = sh / .13;
+        c.save(); c.globalAlpha = Math.sin(k * Math.PI);
+        c.strokeStyle = '#fff'; c.lineWidth = 2; c.lineCap = 'round';
+        const x = W * (.1 + k * .8), y = H * (.08 + k * .22);
+        c.beginPath(); c.moveTo(x, y); c.lineTo(x - W * .09, y - H * .028); c.stroke(); c.restore();
+      }
+      // ビル
+      const base = H * .96;
+      let x = -30, i = 0;
+      while (x < W + 30) {
+        const r = rnd[i % rnd.length];
+        const w = 26 + r.a * 52, h = H * (.14 + r.b * .30);
+        c.save(); c.globalAlpha = .55; c.fillStyle = '#0A0D22';
+        c.fillRect(x, base - h, w, h);
+        // まど
+        for (let wy = base - h + 8; wy < base - 8; wy += 13) for (let wx = x + 6; wx < x + w - 8; wx += 11) {
+          const lit = Math.sin(wx * 12.9898 + wy * 78.233 + Math.floor(t / 2400)) * 43758.5453;
+          if ((lit - Math.floor(lit)) > .55) {
+            c.globalAlpha = .5 + .4 * ((lit * 7) % 1);
+            c.fillStyle = ['#FFE2A0', '#FFD07A', '#BFE6FF'][(wx + wy) % 3];
+            c.fillRect(wx, wy, 5, 6);
           }
         }
-      });
-    }
-
-    function updateWeeklyChart() {
-      if (!weeklyChartInstance) return;
-
-      const data = [];
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const dayString = d.toDateString();
-        
-        const dayLogs = logs.filter(log => new Date(log.date).toDateString() === dayString);
-        const dayTotal = dayLogs.reduce((sum, log) => sum + log.calories, 0);
-        data.push(dayTotal);
-      }
-
-      weeklyChartInstance.data.datasets[0].data = data;
-      weeklyChartInstance.update();
-    }
-
-    // --- ADD LOG LOGIC ---
-    function setInputMethod(method) {
-      currentInputMethod = method;
-      
-      const btnCamera = document.getElementById('btn-method-camera');
-      const btnText = document.getElementById('btn-method-text');
-      const secCamera = document.getElementById('section-camera');
-      const secText = document.getElementById('section-text');
-
-      if (method === 'camera') {
-        btnCamera.className = "flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 bg-white text-slate-800 shadow-sm";
-        btnText.className = "flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 text-slate-500 hover:text-slate-800";
-        secCamera.classList.remove('hidden');
-        secText.classList.add('hidden');
-      } else {
-        btnText.className = "flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 bg-white text-slate-800 shadow-sm";
-        btnCamera.className = "flex-1 py-2.5 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 text-slate-500 hover:text-slate-800";
-        secText.classList.remove('hidden');
-        secCamera.classList.add('hidden');
-        stopCamera();
+        c.restore();
+        x += w + 6 + r.c * 12; i++;
       }
     }
-
-    // --- CAMERA & FILE UPLOAD ---
-    async function initCamera() {
-      const video = document.getElementById('video');
-      const placeholder = document.getElementById('camera-placeholder');
-      const btnStart = document.getElementById('btn-start-camera');
-      const btnCapture = document.getElementById('btn-capture');
-
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-        video.srcObject = stream;
-        video.classList.remove('hidden');
-        placeholder.classList.add('hidden');
-        btnStart.classList.add('hidden');
-        btnCapture.classList.remove('hidden');
-      } catch (err) {
-        alert('カメラの起動に失敗しました。ファイルアップロードをご利用ください。');
-        console.error(err);
+  },
+  {
+    name: 'キャンディ',
+    dim: .30,
+    sky: ['#FFF0F6', '#FFD9EC', '#D7E7FF', '#C6F5E9'],
+    paint(c, t, W, H, rnd) {
+      for (let i = 0; i < 16; i++) {
+        const r = rnd[i];
+        const x = (r.a * W + Math.sin(t / 3400 + i) * W * .06);
+        const y = H - ((t * (.006 + r.b * .012) + r.a * H * 2) % (H * 1.25));
+        const rad = W * (.05 + r.c * .10);
+        c.save(); c.globalAlpha = .52;
+        const g = c.createRadialGradient(x - rad * .3, y - rad * .3, rad * .1, x, y, rad);
+        const hue = (i * 47 + t / 90) % 360;
+        g.addColorStop(0, hsl(hue, 100, 86, .95));
+        g.addColorStop(.62, hsl(hue, 96, 78, .38));
+        g.addColorStop(1, hsl(hue, 92, 70, 0));
+        c.fillStyle = g; c.beginPath(); c.arc(x, y, rad, 0, 7); c.fill(); c.restore();
+      }
+      // スプリンクル
+      for (let i = 0; i < 26; i++) {
+        const r = rnd[(i + 7) % rnd.length];
+        const y = ((t * (.012 + r.b * .02) + r.a * H * 2) % (H * 1.2)) - H * .1;
+        const x = r.a * W + Math.sin(t / 800 + i) * 14;
+        c.save(); c.translate(x, y); c.rotate(t / 600 + i);
+        c.globalAlpha = .7; c.fillStyle = ['#FF9EC4', '#FFD86B', '#8FD9FF', '#A8ECC0'][i % 4];
+        roundRect(c, -1.6, -5, 3.2, 10, 1.6); c.fill(); c.restore();
       }
     }
+  }
+];
 
-    function stopCamera() {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        stream = null;
+const Bg = {
+  cv: null, ctx: null, W: 0, H: 0, dpr: 1,
+  idx: 0, next: -1, mix: 0, timer: 0, rnd: [],
+  init(cv) {
+    this.cv = cv; this.ctx = cv.getContext('2d');
+    this.rnd = Array.from({ length: 64 }, () => ({ a: Math.random(), b: Math.random(), c: Math.random() }));
+    this.idx = (Math.random() * STAGES.length) | 0;
+    this.resize();
+    addEventListener('resize', () => this.resize());
+  },
+  resize() {
+    this.dpr = Math.min(2, devicePixelRatio || 1);
+    this.W = innerWidth; this.H = innerHeight;
+    this.cv.width = this.W * this.dpr; this.cv.height = this.H * this.dpr;
+  },
+  go(i) { if (i === this.idx || this.next >= 0) return; this.next = i % STAGES.length; this.mix = 0; },
+  cycle() { this.go((this.idx + 1) % STAGES.length); },
+  sky(c, st) {
+    const g = c.createLinearGradient(0, 0, 0, this.H);
+    st.sky.forEach((col, i) => g.addColorStop(i / (st.sky.length - 1), col));
+    c.fillStyle = g; c.fillRect(0, 0, this.W, this.H);
+  },
+  draw(t, dt) {
+    const c = this.ctx;
+    c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    this.timer += dt;
+    if (this.timer > 42000 && this.next < 0) { this.timer = 0; this.cycle(); }
+    const cur = STAGES[this.idx];
+    this.sky(c, cur); cur.paint(c, t, this.W, this.H, this.rnd);
+    let dim = cur.dim || 0;
+    if (this.next >= 0) {
+      this.mix = Math.min(1, this.mix + dt / 1600);
+      c.save(); c.globalAlpha = this.mix;
+      const nx = STAGES[this.next];
+      this.sky(c, nx); nx.paint(c, t, this.W, this.H, this.rnd);
+      c.restore();
+      dim = P(this.mix, dim, nx.dim || 0);
+      if (this.mix >= 1) { this.idx = this.next; this.next = -1; this.timer = 0; }
+    }
+    // あかるいステージでも文字が読めるように、ひかえめに落とす
+    if (dim > 0) { c.fillStyle = `rgba(20,14,40,${dim})`; c.fillRect(0, 0, this.W, this.H); }
+  }
+};
+
+/* ============================================================
+   操作・画面・CPU・通信・メインループ
+   ============================================================ */
+
+const UI = {
+  screen: 'title', mode: 'solo', speed: 1,
+  game: null, cpu: null, cpuBrain: null,
+  over: false, result: null
+};
+
+/* ---------- canvas helpers ---------- */
+function fitCanvas(cv, w, h) {
+  const dpr = Math.min(2, devicePixelRatio || 1);
+  cv._dpr = dpr;
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  cv.style.width = w + 'px'; cv.style.height = h + 'px';
+}
+function layout() {
+  const arena = $('.arena');
+  if (!arena) return;
+  const aw = arena.clientWidth, ah = arena.clientHeight;
+  const cell = Math.max(10, Math.floor(Math.min((aw - 34) / COLS, (ah - 26) / ROWS)));
+  const boardW = cell * COLS;
+  fitCanvas($('#board'), boardW, cell * ROWS);
+
+  // キープ
+  const hc = $('#holdCv');
+  fitCanvas(hc, Math.max(52, hc.parentElement.clientWidth - 14), innerWidth > innerHeight ? 40 : 46);
+
+  // つぎ ── HUDは よこ長の おびなので つねに よこ並び
+  const nc = $('#nextCv'), nslot = nc.parentElement;
+  const land = innerWidth > innerHeight;
+  const nw = Math.max(56, nslot.clientWidth - 14);
+  fitCanvas(nc, nw, land ? 40 : 46);
+
+  // 相手ビューは 盤面の よこの すきまに おさめる
+  const side = Math.max(0, (aw - boardW) / 2);
+  const ow = clamp(side - 14, 40, 96);
+  const oc = $('#oppCv');
+  fitCanvas(oc, ow, ow * 2);
+  $('#oppBox').style.opacity = side < 52 ? '.82' : '1';
+}
+
+/* ---------- toast ---------- */
+let toastT = null;
+function toast(text, color) {
+  const el = $('#toast');
+  el.textContent = text;
+  el.style.color = color || '#fff';
+  el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
+}
+
+/* ---------- screens ---------- */
+function show(name) {
+  UI.screen = name;
+  $('#scTitle').classList.toggle('on', name === 'title');
+  $('#scLobby').classList.toggle('on', name === 'lobby');
+  $('#play').classList.toggle('on', name === 'play');
+  if (name === 'play') { requestAnimationFrame(() => { layout(); }); }
+}
+
+/* ---------- CPU ---------- */
+class Bot {
+  constructor(level = 1) { this.level = level; this.plan = null; this.t = 0; this.think = 0; }
+  evaluate(grid) {
+    const h = new Array(COLS).fill(0);
+    let holes = 0, agg = 0, bump = 0, wells = 0;
+    for (let x = 0; x < COLS; x++) {
+      let seen = false;
+      for (let y = 0; y < TOT; y++) {
+        if (grid[y * COLS + x]) { if (!seen) { seen = true; h[x] = TOT - y; } }
+        else if (seen) holes++;
       }
-      const video = document.getElementById('video');
-      if (video) video.classList.add('hidden');
-      
-      document.getElementById('camera-placeholder').classList.remove('hidden');
-      document.getElementById('btn-start-camera').classList.remove('hidden');
-      document.getElementById('btn-capture').classList.add('hidden');
+      agg += h[x];
     }
-
-    function capturePhoto() {
-      const video = document.getElementById('video');
-      const canvas = document.getElementById('canvas');
-      const preview = document.getElementById('image-preview');
-      const ctx = canvas.getContext('2d');
-
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      capturedImageBase64 = canvas.toDataURL('image/jpeg');
-      preview.src = capturedImageBase64;
-      
-      preview.classList.remove('hidden');
-      video.classList.add('hidden');
-      
-      document.getElementById('btn-capture').classList.add('hidden');
-      document.getElementById('btn-reset-photo').classList.remove('hidden');
-      
-      stopCamera();
-    }
-
-    function handleFileSelect(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        capturedImageBase64 = e.target.result;
-        const preview = document.getElementById('image-preview');
-        preview.src = capturedImageBase64;
-        preview.classList.remove('hidden');
-        document.getElementById('camera-placeholder').classList.add('hidden');
-        document.getElementById('btn-start-camera').classList.add('hidden');
-        document.getElementById('btn-reset-photo').classList.remove('hidden');
-      };
-      reader.readAsDataURL(file);
-    }
-
-    function resetPhoto() {
-      capturedImageBase64 = null;
-      document.getElementById('image-preview').classList.add('hidden');
-      document.getElementById('camera-placeholder').classList.remove('hidden');
-      document.getElementById('btn-start-camera').classList.remove('hidden');
-      document.getElementById('btn-reset-photo').classList.add('hidden');
-      document.getElementById('file-input').value = '';
-    }
-
-    function applySuggestion(text) {
-      document.getElementById('text-food-input').value = text;
-    }
-
-    // --- AI ANALYSIS SIMULATION ---
-    function startAIAnalysis() {
-      let foodQuery = "";
-
-      if (currentInputMethod === 'text') {
-        foodQuery = document.getElementById('text-food-input').value.trim();
-        if (!foodQuery) {
-          alert('食べたものを入力してください。');
-          return;
-        }
-      } else {
-        if (!capturedImageBase64) {
-          alert('写真を撮影するか、ファイルを選択してください。');
-          return;
-        }
-        // For image analysis, we simulate visual recognition by picking a random popular food
-        const keys = Object.keys(foodDictionary);
-        foodQuery = keys[Math.floor(Math.random() * keys.length)];
+    for (let x = 0; x < COLS - 1; x++) bump += Math.abs(h[x] - h[x + 1]);
+    const maxh = Math.max(...h);
+    return { agg, holes, bump, maxh, h };
+  }
+  best(game) {
+    const t = game.cur.type;
+    let best = null;
+    const rots = t === 'O' ? 1 : (t === 'I' || t === 'S' || t === 'Z') ? 2 : 4;
+    for (let r = 0; r < rots; r++) {
+      for (let x = -2; x < COLS + 2; x++) {
+        if (game.collide(t, r, x, 0)) continue;
+        let y = 0;
+        while (!game.collide(t, r, x, y + 1)) y++;
+        const g = game.grid.slice();
+        let ok = true;
+        for (const [px, py] of game.cells(t, r, x, y)) { if (py < 0) { ok = false; break; } g[py * COLS + px] = t; }
+        if (!ok) continue;
+        let lines = 0;
+        for (let yy = 0; yy < TOT; yy++) { let f = true; for (let xx = 0; xx < COLS; xx++) if (!g[yy * COLS + xx]) { f = false; break; } if (f) lines++; }
+        const e = this.evaluate(g);
+        let s = -0.52 * e.agg + 0.86 * lines * (lines >= 4 ? 1.9 : 1) - 0.42 * e.holes - 0.19 * e.bump - 0.28 * Math.max(0, e.maxh - 14);
+        s += (Math.random() - .5) * (this.level === 0 ? 6 : this.level === 1 ? 2.2 : 0.5);
+        if (!best || s > best.s) best = { s, r, x };
       }
-
-      // Show scanning overlay
-      const overlay = document.getElementById('scanning-overlay');
-      overlay.classList.remove('hidden');
-
-      // Simulate network/AI processing delay
-      setTimeout(() => {
-        overlay.classList.add('hidden');
-        performAnalysis(foodQuery);
-      }, 2000);
     }
+    return best;
+  }
+  step(game, dt) {
+    if (!game.alive || game.clearFx || game.paused) { this.plan = null; return; }
+    if (!this.plan) {
+      this.plan = this.best(game);
+      this.think = this.level === 0 ? 420 : this.level === 1 ? 210 : 90;
+      return;
+    }
+    this.t += dt;
+    const gap = this.level === 0 ? 150 : this.level === 1 ? 85 : 42;
+    if (this.think > 0) { this.think -= dt; return; }
+    if (this.t < gap) return;
+    this.t = 0;
+    const p = this.plan;
+    if (game.cur.rot !== p.r) { game.rotate(1); return; }
+    if (game.cur.x < p.x) { if (!game.move(1)) { this.plan = null; } return; }
+    if (game.cur.x > p.x) { if (!game.move(-1)) { this.plan = null; } return; }
+    game.hardDrop();
+    this.plan = null;
+  }
+}
 
-    function performAnalysis(query) {
-      // Simple keyword matching in our dictionary
-      let matchedFood = null;
-      
-      for (const key in foodDictionary) {
-        if (query.toLowerCase().includes(key)) {
-          matchedFood = foodDictionary[key];
-          break;
-        }
+/* ============================================================
+   つなぎかた
+     https 配信（GitHub Pages など）→ WebRTC でちょくせつ
+     http  配信（おうちの relay.py）→ リレーごし
+     file://                        → たいせんなし
+   ?link=p2p / ?link=relay で うわがきできる
+   ============================================================ */
+const LINK_MODE = (() => {
+  const q = new URLSearchParams(location.search).get('link');
+  if (q === 'p2p' || q === 'relay') return q;
+  if (location.protocol === 'https:') return 'p2p';
+  if (location.protocol === 'http:') return 'relay';
+  return null;                       // file:// は たいせん不可
+})();
+
+const PEERJS_CDN = [
+  'https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js',
+  'https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.5/peerjs.min.js',
+  'https://unpkg.com/peerjs@1/dist/peerjs.min.js'
+];
+let peerjsPromise = null;
+function loadPeerJS() {
+  if (window.Peer) return Promise.resolve();
+  if (peerjsPromise) return peerjsPromise;
+  peerjsPromise = new Promise((res, rej) => {
+    let i = 0;
+    (function next() {
+      if (i >= PEERJS_CDN.length) return rej(new Error('cdn'));
+      const s = document.createElement('script');
+      s.src = PEERJS_CDN[i++];
+      s.onload = () => (window.Peer ? res() : next());
+      s.onerror = next;
+      document.head.appendChild(s);
+    })();
+  });
+  return peerjsPromise;
+}
+// あいことばは そのままの形では ブローカーに ながさない
+function roomKey(s) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return 'gt5' + (h >>> 0).toString(36);
+}
+function escapeHtml(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+/* ---------- うわむきの まとめ役 ---------- */
+const Link = {
+  kind: null, room: '', name: '', ready: false, isHost: false, matchId: null, impl: null, peer: null,
+  note(t) { const el = $('#lobbyNote'); if (el) el.textContent = t; },
+  clearPeer() { this.peer = { name: 'あいて', ready: false, alive: true, state: null, present: false }; },
+  start(room, name) {
+    this.stop();
+    this.kind = LINK_MODE; this.room = room; this.name = name;
+    this.ready = false; this.matchId = null; this.isHost = false;
+    this.clearPeer();
+    this.impl = this.kind === 'p2p' ? P2PNet : RelayNet;
+    this.impl.start(room, name);
+  },
+  stop() { if (this.impl) { try { this.impl.stop(); } catch (e) { } this.impl = null; } this.ready = false; this.clearPeer(); },
+  setReady(v) { this.ready = v; if (this.impl) this.impl.ready(v); },
+  attack(n) { if (this.impl) this.impl.attack(n); },
+  pushDead() { if (this.impl) this.impl.dead(); },
+  onGarbage(n) { if (n > 0 && UI.game && UI.screen === 'play') UI.game.addGarbage(n); },
+  onMatch(m) {
+    if (!m || m.id === this.matchId) return;
+    this.matchId = m.id;
+    this.ready = false; this.peer.ready = false; this.peer.alive = true; this.peer.state = null;
+    startVersus(m);
+  }
+};
+Link.clearPeer();
+
+/* ---------- おうちの PC ごし（relay.py） ---------- */
+const RelayNet = {
+  id: 'p' + Math.random().toString(36).slice(2, 9),
+  timer: null, out: 0, fails: 0, room: '', name: '',
+  start(room, name) {
+    this.room = room; this.name = name; this.out = 0; this.fails = 0;
+    Link.note('おうちの PC ごしに つないでいます…');
+    this.tick();
+    this.timer = setInterval(() => this.tick(), 120);
+  },
+  stop() { clearInterval(this.timer); this.timer = null; },
+  ready() { },                    // つぎの tick で いっしょに おくる
+  attack(n) { this.out += n; },
+  dead() { },                     // alive フラグで つたわる
+  async tick() {
+    const g = UI.game;
+    const body = {
+      room: this.room, id: this.id, name: this.name, ready: Link.ready,
+      send: this.out, alive: g ? g.alive : true,
+      state: (UI.screen === 'play' && g) ? { board: g.serialize(), lines: g.lines, level: g.level } : null
+    };
+    this.out = 0;
+    try {
+      const r = await fetch('api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!r.ok) throw new Error('http');
+      const res = await r.json();
+      if (this.fails >= 6) Link.note('つながりました。');
+      this.fails = 0;
+      const o = (res.others || [])[0];
+      if (o) {
+        Link.peer.present = true; Link.peer.name = o.name || 'あいて';
+        Link.peer.ready = !!o.ready; Link.peer.state = o.state;
+        if (o.alive === false) Link.peer.alive = false;   // 生き返らせない
       }
-
-      // Fallback if no match is found (generate realistic values based on string length)
-      if (!matchedFood) {
-        const hash = query.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        const generatedCalories = 150 + (hash % 650); // 150 to 800 kcal
-        const generatedP = 5 + (hash % 35); // 5 to 40g
-        const generatedF = 2 + (hash % 28); // 2 to 30g
-        const generatedC = 10 + (hash % 90); // 10 to 100g
-        
-        matchedFood = {
-          name: query,
-          calories: generatedCalories,
-          p: generatedP,
-          f: generatedF,
-          c: generatedC
-        };
-      }
-
-      // Store current result
-      currentAnalysisResult = {
-        ...matchedFood,
-        image: capturedImageBase64 || null
-      };
-
-      // Update Result Card UI
-      document.getElementById('result-food-name').textContent = currentAnalysisResult.name;
-      document.getElementById('result-calories').textContent = currentAnalysisResult.calories;
-      document.getElementById('result-p').textContent = `${currentAnalysisResult.p}g`;
-      document.getElementById('result-f').textContent = `${currentAnalysisResult.f}g`;
-      document.getElementById('result-c').textContent = `${currentAnalysisResult.c}g`;
-
-      // Show Result Card
-      document.getElementById('ai-result-card').classList.remove('hidden');
-      
-      // Scroll to result card
-      document.getElementById('ai-result-card').scrollIntoView({ behavior: 'smooth', block: 'end' });
+      else Link.peer.present = false;
+      Link.onGarbage(res.garbage || 0);
+      Link.onMatch(res.match);
+    } catch (e) {
+      if (++this.fails === 6) Link.note('おうちの PC に つながりません。relay.py が うごいているか かくにんしてね。');
     }
+  }
+};
 
-    function saveAnalyzedLog() {
-      if (!currentAnalysisResult) return;
-
-      const newLog = {
-        id: Date.now(),
-        date: new Date().toISOString(),
-        name: currentAnalysisResult.name,
-        calories: currentAnalysisResult.calories,
-        p: currentAnalysisResult.p,
-        f: currentAnalysisResult.f,
-        c: currentAnalysisResult.c,
-        image: currentAnalysisResult.image
-      };
-
-      logs.unshift(newLog);
-      localStorage.setItem('calorie_logs', JSON.stringify(logs));
-
-      // Reset Add Log Form
-      resetPhoto();
-      document.getElementById('text-food-input').value = '';
-      document.getElementById('ai-result-card').classList.add('hidden');
-      currentAnalysisResult = null;
-
-      // Switch to Dashboard and show success
-      switchTab('dashboard');
-    }
-
-    // --- HISTORY LOGIC ---
-    function renderHistory() {
-      const listContainer = document.getElementById('history-list');
-      const emptyState = document.getElementById('history-empty');
-      
-      listContainer.innerHTML = '';
-
-      if (logs.length === 0) {
-        emptyState.classList.remove('hidden');
+/* ---------- WebRTC でちょくせつ（PeerJS） ---------- */
+const P2PNet = {
+  peer: null, conn: null, timer: null, gen: 0, retries: 0, isHost: false, room: '', name: '',
+  async start(room, name) {
+    this.room = room; this.name = name; this.retries = 0;
+    Link.note('つなぎに いく ぶひんを よみこんでいます…');
+    try { await loadPeerJS(); }
+    catch (e) { Link.note('ぶひんを よみこめませんでした。インターネットに つながっているか かくにんしてね。'); return; }
+    this.claim();
+  },
+  // まず ホストとして 名のる。とられていたら ゲストに まわる
+  claim() { this.mk(roomKey(this.room) + '-h', true); },
+  mk(id, asHost) {
+    const gen = ++this.gen;
+    if (this.peer) { try { this.peer.destroy(); } catch (e) { } this.peer = null; }
+    const p = new window.Peer(id || undefined, { debug: 0 });
+    this.peer = p; this.isHost = asHost; Link.isHost = asHost;
+    p.on('open', () => {
+      if (gen !== this.gen) return;
+      if (asHost) Link.note('あいてを まっています…');
+      else { Link.note('あいてに つないでいます…'); this.bind(p.connect(roomKey(this.room) + '-h', { reliable: true })); }
+    });
+    p.on('connection', c => { if (gen !== this.gen) return; asHost ? this.bind(c) : c.close(); });
+    p.on('disconnected', () => { if (gen === this.gen) { try { p.reconnect(); } catch (e) { } } });
+    p.on('error', err => {
+      if (gen !== this.gen) return;
+      const t = err && err.type;
+      if (asHost && t === 'unavailable-id') { this.mk(null, false); return; }
+      if (!asHost && t === 'peer-unavailable') {
+        // ホストが きえた／まだ いない → もういちど ホストを ねらう
+        if (this.retries++ < 15) setTimeout(() => { if (gen === this.gen) this.claim(); }, 1200);
+        else Link.note('あいてが みつかりません。あいことばが おなじか かくにんしてね。');
         return;
       }
-
-      emptyState.classList.add('hidden');
-
-      // Group logs by date
-      const groups = {};
-      logs.forEach(log => {
-        const dateStr = new Date(log.date).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
-        if (!groups[dateStr]) groups[dateStr] = [];
-        groups[dateStr].push(log);
-      });
-
-      for (const dateStr in groups) {
-        // Create Date Header
-        const dateHeader = document.createElement('div');
-        dateHeader.className = "text-xs font-bold text-slate-400 mt-4 mb-2 px-1";
-        dateHeader.textContent = dateStr;
-        listContainer.appendChild(dateHeader);
-
-        // Create Log Cards
-        groups[dateStr].forEach(log => {
-          const card = document.createElement('div');
-          card.className = "bg-white rounded-xl p-3.5 shadow-sm border border-slate-100 flex items-center justify-between gap-3";
-          
-          // Thumbnail
-          const imgHtml = log.image 
-            ? `<img src="${log.image}" class="w-12 h-12 rounded-lg object-cover shrink-0 border border-slate-100">`
-            : `<div class="w-12 h-12 rounded-lg bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0"><i data-lucide="utensils" class="w-5 h-5"></i></div>`;
-
-          card.innerHTML = `
-            <div class="flex items-center gap-3 min-w-0 flex-1">
-              ${imgHtml}
-              <div class="min-w-0">
-                <h4 class="text-sm font-bold text-slate-700 truncate">${log.name}</h4>
-                <div class="flex gap-2 text-[10px] text-slate-400 mt-0.5">
-                  <span>P: ${log.p}g</span>
-                  <span>F: ${log.f}g</span>
-                  <span>C: ${log.c}g</span>
-                </div>
-              </div>
-            </div>
-            <div class="flex items-center gap-3">
-              <div class="text-right">
-                <span class="text-base font-extrabold text-slate-800">${log.calories}</span>
-                <span class="text-[10px] text-slate-400"> kcal</span>
-              </div>
-              <button onclick="deleteLog(${log.id})" class="p-1.5 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-lg transition-colors">
-                <i data-lucide="trash-2" class="w-4 h-4"></i>
-              </button>
-            </div>
-          `;
-          listContainer.appendChild(card);
-        });
+      if (t === 'network' || t === 'server-error' || t === 'socket-error') {
+        Link.note('よびだし サーバーに つながりません。しばらくして やりなおしてね。'); return;
       }
-      
-      lucide.createIcons();
+      Link.note('つなぐのに しっぱいしました（' + (t || '?') + '）');
+    });
+  },
+  bind(c) {
+    this.conn = c;
+    c.on('open', () => {
+      this.retries = 0;
+      Link.peer.present = true;
+      Link.note('つながりました。');
+      this.send({ t: 'hello', name: this.name, ready: Link.ready });
+      clearInterval(this.timer);
+      this.timer = setInterval(() => this.pump(), 110);
+    });
+    c.on('data', d => this.recv(d));
+    c.on('close', () => { Link.peer.present = false; clearInterval(this.timer); Link.note('あいてが きれました。'); });
+    c.on('error', () => { });
+  },
+  send(o) { try { if (this.conn && this.conn.open) this.conn.send(o); } catch (e) { } },
+  stop() {
+    this.gen++;
+    clearInterval(this.timer); this.timer = null;
+    try { this.conn && this.conn.close(); } catch (e) { }
+    try { this.peer && this.peer.destroy(); } catch (e) { }
+    this.conn = null; this.peer = null;
+  },
+  ready(v) { this.send({ t: 'ready', v }); this.maybeStart(); },
+  attack(n) { this.send({ t: 'atk', n }); },
+  dead() { this.send({ t: 'dead' }); },
+  pump() {
+    const g = UI.game;
+    if (UI.screen === 'play' && g) this.send({ t: 'st', b: g.serialize(), l: g.lines, lv: g.level, a: g.alive });
+  },
+  // 開始のあいずは ホストが 出す（シードも ホストが きめる）
+  maybeStart() {
+    if (!this.isHost || !this.conn || !this.conn.open) return;
+    if (!(Link.ready && Link.peer.ready)) return;
+    const m = { id: 'm' + Date.now(), seed: (Math.random() * 1e9) | 0 };
+    this.send({ t: 'start', id: m.id, seed: m.seed });
+    Link.onMatch(m);
+  },
+  recv(d) {
+    if (!d || !d.t) return;
+    switch (d.t) {
+      case 'hello': Link.peer.present = true; Link.peer.name = d.name || 'あいて'; Link.peer.ready = !!d.ready; this.maybeStart(); break;
+      case 'ready': Link.peer.ready = !!d.v; this.maybeStart(); break;
+      case 'start': Link.onMatch({ id: d.id, seed: d.seed }); break;
+      case 'st':
+        Link.peer.state = { board: d.b, lines: d.l, level: d.lv };
+        if (d.a === false) Link.peer.alive = false;       // 生き返らせない
+        break;
+      case 'atk': Link.onGarbage(d.n || 0); break;
+      case 'dead': Link.peer.alive = false; break;
     }
+  }
+};
 
-    function deleteLog(id) {
-      if (confirm('この記録を削除しますか？')) {
-        logs = logs.filter(log => log.id !== id);
-        localStorage.setItem('calorie_logs', JSON.stringify(logs));
-        renderHistory();
-      }
-    }
+/* ---------- ロビー表示 ---------- */
+function renderLobby() {
+  if (UI.screen !== 'lobby' || !Link.impl) return;
+  const me = `<div>${Link.ready ? '✅' : '⏳'} ${escapeHtml(Link.name)}（じぶん）</div>`;
+  const you = Link.peer.present
+    ? `<div>${Link.peer.ready ? '✅' : '⏳'} ${escapeHtml(Link.peer.name)}</div>`
+    : `<div style="opacity:.6">あいてを まっています…</div>`;
+  $('#roomList').innerHTML = me + you;
+  $('#btnReady').textContent = Link.ready ? 'まっています…' : 'じゅんび かんりょう';
+}
 
-    function clearAllLogs() {
-      if (confirm('すべての記録を削除しますか？この操作は取り消せません。')) {
-        logs = [];
-        localStorage.removeItem('calorie_logs');
-        renderHistory();
-      }
+/* ---------- ゲーム開始 ---------- */
+function makeGame(seed) {
+  return new Game({
+    seed, speedMul: SPEEDS[UI.speed].g,
+    on: {
+      attack(n) {
+        if (UI.mode === 'cpu' && UI.cpu) UI.cpu.addGarbage(n);
+        else if (UI.mode === 'net') Link.attack(n);
+      },
+      clear(info) {
+        if (info.label && info.label !== 'SINGLE') toast(info.label, '#FFF2C6');
+        else if (info.combo >= 2) toast(info.combo + ' れんさ！', '#BFF0FF');
+      },
+      over() { endGame(false); }
     }
-  </script>
+  });
+}
+
+function startSolo(mode) {
+  UI.mode = mode; UI.over = false;
+  const seed = (Math.random() * 1e9) | 0;
+  UI.game = makeGame(seed);
+  if (mode === 'cpu') {
+    UI.cpu = new Game({
+      seed: seed + 1, speedMul: SPEEDS[UI.speed].g,
+      on: { attack(n) { if (UI.game) UI.game.addGarbage(n); }, over() { endGame(true); } }
+    });
+    UI.cpuBrain = new Bot(UI.speed);
+    $('#oppBox').classList.add('on');
+    $('#oppName').textContent = 'コンピュータ';
+  } else {
+    UI.cpu = null; UI.cpuBrain = null;
+    $('#oppBox').classList.remove('on');
+  }
+  $('#overlay').classList.remove('on');
+  show('play');
+  toast('スタート！', '#fff');
+}
+
+function startVersus(m) {
+  UI.mode = 'net'; UI.over = false;
+  UI.cpu = null; UI.cpuBrain = null;
+  UI.game = makeGame(m.seed);
+  UI.game.paused = true;
+  $('#oppBox').classList.add('on');
+  $('#oppName').textContent = Link.peer.name;
+  $('#overlay').classList.remove('on');
+  show('play');
+  let k = 3;
+  toast('3', '#fff');
+  const iv = setInterval(() => {
+    k--;
+    if (k > 0) toast(String(k), '#fff');
+    else {
+      clearInterval(iv);
+      toast('スタート！', '#FFF2C6');
+      if (UI.game) { UI.game.paused = false; UI.game.startedAt = performance.now(); }
+    }
+  }, 800);
+}
+
+function endGame(win, reason) {
+  if (UI.over) return;
+  UI.over = true;
+  const g = UI.game;
+  if (UI.mode === 'net' && !win && reason !== 'disc') Link.pushDead();
+  if (win) Snd.win();
+  let title = 'ゲームオーバー', sub = 'また あそんでね';
+  if (reason === 'disc') { title = 'ちゅうだん'; sub = 'あいてとの せつぞくが きれました'; }
+  else if (UI.mode !== 'solo') { title = win ? 'かち！ 🎉' : 'まけ…'; sub = win ? 'つよい！' : 'つぎは いける'; }
+  $('#overlayCard').innerHTML = `
+    <h2>${title}</h2>
+    <div class="big">${g.score.toLocaleString()}</div>
+    <div class="note" style="font-size:13px">${g.lines} ライン ・ Lv ${g.level}<br>${sub}</div>
+    <button class="btn primary" id="btnAgain">もういちど</button>
+    <button class="btn" id="btnHome">メニューに もどる</button>`;
+  $('#overlay').classList.add('on');
+  $('#btnAgain').onclick = () => {
+    if (UI.mode === 'net') { $('#overlay').classList.remove('on'); show('lobby'); Link.setReady(true); }
+    else startSolo(UI.mode);
+  };
+  $('#btnHome').onclick = () => { if (UI.mode === 'net') Link.stop(); $('#overlay').classList.remove('on'); show('title'); };
+}
+
+/* ---------- 入力 ---------- */
+const Keys = {
+  das: 150, arr: 40,
+  held: {}, timers: {},
+  press(k) {
+    const g = UI.game; if (!g) return;
+    if (k === 'left') g.move(-1);
+    else if (k === 'right') g.move(1);
+    else if (k === 'down') g.softDrop();
+    else if (k === 'drop') g.hardDrop();
+    else if (k === 'rotR') g.rotate(1);
+    else if (k === 'rotL') g.rotate(-1);
+    else if (k === 'hold') g.swapHold();
+    else if (k === 'pause') togglePause();
+  },
+  down(k, repeatable) {
+    if (this.held[k]) return;
+    this.held[k] = true;
+    this.press(k);
+    if (!repeatable) return;
+    this.timers[k] = setTimeout(() => {
+      this.timers[k] = setInterval(() => this.press(k), k === 'down' ? 32 : this.arr);
+    }, this.das);
+  },
+  up(k) {
+    this.held[k] = false;
+    clearTimeout(this.timers[k]); clearInterval(this.timers[k]); this.timers[k] = null;
+  },
+  clearAll() { for (const k in this.timers) this.up(k); }
+};
+function togglePause() {
+  const g = UI.game; if (!g || UI.over) return;
+  if (UI.mode === 'net') { toast('たいせんちゅうは ポーズできません', '#FFD3D8'); return; }
+  g.paused = !g.paused;
+  if (UI.cpu) UI.cpu.paused = g.paused;
+  Keys.clearAll();
+  if (!g.paused) { $('#overlay').classList.remove('on'); toast('さいかい', '#fff'); return; }
+  const card = $('#overlayCard');
+  card.innerHTML = `
+    <h2>ポーズちゅう</h2>
+    <div class="note" style="font-size:13px">${g.score.toLocaleString()} てん ・ ${g.lines} ライン</div>
+    <button class="btn primary" id="btnResume">つづける</button>
+    <button class="btn" id="btnQuit">やめて メニューへ</button>`;
+  $('#overlay').classList.add('on');
+  $('#btnResume').onclick = () => togglePause();
+  $('#btnQuit').onclick = () => {
+    $('#overlay').classList.remove('on');
+    g.paused = false; if (UI.cpu) UI.cpu.paused = false;
+    show('title');
+  };
+}
+
+const KEYMAP = {
+  ArrowLeft: ['left', 1], ArrowRight: ['right', 1], ArrowDown: ['down', 1],
+  ArrowUp: ['rotR', 0], KeyX: ['rotR', 0], KeyZ: ['rotL', 0], ControlLeft: ['rotL', 0],
+  Space: ['drop', 0], KeyC: ['hold', 0], ShiftLeft: ['hold', 0], Escape: ['pause', 0], KeyP: ['pause', 0]
+};
+addEventListener('keydown', e => {
+  if (UI.screen !== 'play') return;
+  const m = KEYMAP[e.code]; if (!m) return;
+  e.preventDefault(); Keys.down(m[0], m[1]);
+});
+addEventListener('keyup', e => {
+  const m = KEYMAP[e.code]; if (!m) return;
+  e.preventDefault(); Keys.up(m[0]);
+});
+addEventListener('blur', () => Keys.clearAll());
+
+// A / B / キープ / ポーズ（押しっぱなしのリピートなし）
+$$('#pad button').forEach(b => {
+  const k = b.dataset.k;
+  const down = e => { e.preventDefault(); Snd.boot(); Keys.down(k, false); };
+  const up = e => { e.preventDefault(); Keys.up(k); };
+  b.addEventListener('pointerdown', down);
+  b.addEventListener('pointerup', up);
+  b.addEventListener('pointercancel', up);
+  b.addEventListener('pointerleave', up);
+  b.addEventListener('contextmenu', e => e.preventDefault());
+});
+
+// ポーズは あやまって さわっても 効かないように、
+// 押して → 同じボタンの上で 離した ときだけ 発火させる
+$('#btnPause').addEventListener('click', e => { e.preventDefault(); Snd.boot(); togglePause(); });
+
+// 十字キー ── 指を置いたまま すべらせて 方向を かえられる
+(function dpad() {
+  const dp = $('#dpad'); if (!dp) return;
+  const arm = { left: $('.left', dp), right: $('.right', dp), down: $('.down', dp), up: $('.up', dp) };
+  const KEY = { left: 'left', right: 'right', down: 'down', up: 'drop' };
+  let active = null, first = null, pid = null;
+
+  function dirAt(e) {
+    const r = dp.getBoundingClientRect();
+    const x = e.clientX - (r.left + r.width / 2);
+    const y = e.clientY - (r.top + r.height / 2);
+    const dead = r.width * 0.15;
+    if (Math.abs(x) < dead && Math.abs(y) < dead) return null;
+    return Math.abs(x) >= Math.abs(y) ? (x > 0 ? 'right' : 'left') : (y > 0 ? 'down' : 'up');
+  }
+  function set(dir) {
+    if (dir === active) return;
+    if (active) { Keys.up(KEY[active]); arm[active].classList.remove('on'); }
+    active = dir;
+    if (!dir) return;
+    arm[dir].classList.add('on');
+    // ハードドロップは すべって入るのを ふせぐ（さいしょに押した方向のときだけ）
+    if (dir === 'up') { if (first === 'up') Keys.down('drop', false); }
+    else Keys.down(dir, true);
+  }
+  dp.addEventListener('pointerdown', e => {
+    e.preventDefault(); Snd.boot(); pid = e.pointerId;
+    try { dp.setPointerCapture(pid); } catch (_) { }
+    first = dirAt(e); set(first);
+  });
+  dp.addEventListener('pointermove', e => {
+    if (e.pointerId !== pid) return;
+    e.preventDefault();
+    const d = dirAt(e);
+    set(d === 'up' && first !== 'up' ? null : d);
+  });
+  const end = e => { if (pid !== null && e.pointerId !== pid) return; set(null); first = null; pid = null; };
+  dp.addEventListener('pointerup', end);
+  dp.addEventListener('pointercancel', end);
+  dp.addEventListener('lostpointercapture', end);
+  dp.addEventListener('contextmenu', e => e.preventDefault());
+})();
+
+// 盤面スワイプ（おまけ）
+(() => {
+  const el = $('.arena');
+  let sx = 0, sy = 0, st = 0, moved = 0, cell = 0;
+  const padOn = () => $('#pad').classList.contains('on');
+  el.addEventListener('pointerdown', e => {
+    if (padOn() || e.target.closest('#pad')) return;
+    sx = e.clientX; sy = e.clientY; st = performance.now(); moved = 0;
+    cell = ($('#board').clientWidth || 300) / COLS;
+  });
+  el.addEventListener('pointermove', e => {
+    if (!st || !UI.game || padOn()) return;
+    const dx = e.clientX - sx;
+    while (Math.abs(dx - moved) >= cell) {
+      const dir = dx > moved ? 1 : -1;
+      UI.game.move(dir); moved += dir * cell;
+    }
+  });
+  el.addEventListener('pointerup', e => {
+    if (!st || !UI.game || padOn()) { st = 0; return; }
+    const dx = e.clientX - sx, dy = e.clientY - sy, dt = performance.now() - st;
+    if (Math.abs(dx) < 18 && Math.abs(dy) < 18 && dt < 260) UI.game.rotate(1);
+    else if (dy > 70 && Math.abs(dx) < 60 && dt < 320) UI.game.hardDrop();
+    else if (dy < -70 && Math.abs(dx) < 60 && dt < 320) UI.game.swapHold();
+    st = 0;
+  });
+})();
+
+/* ---------- メニュー配線 ---------- */
+$$('[data-go]').forEach(b => b.addEventListener('click', () => {
+  Snd.boot();
+  const go = b.dataset.go;
+  if (go === 'solo') startSolo('solo');
+  else if (go === 'cpu') startSolo('cpu');
+  else if (go === 'lobby') {
+    if (!LINK_MODE) { alert('たいせんには、GitHub Pages などの https で ひらくか、おうちの PC の relay.py から ひらいてください。'); return; }
+    show('lobby');
+  }
+  else if (go === 'title') { Link.stop(); show('title'); }
+}));
+$$('#segSpeed button').forEach(b => b.addEventListener('click', () => {
+  $$('#segSpeed button').forEach(x => x.setAttribute('aria-pressed', 'false'));
+  b.setAttribute('aria-pressed', 'true'); UI.speed = +b.dataset.sp;
+  localStorage.setItem('gt_speed', UI.speed);
+}));
+$$('#segSound button').forEach(b => b.addEventListener('click', () => {
+  $$('#segSound button').forEach(x => x.setAttribute('aria-pressed', 'false'));
+  b.setAttribute('aria-pressed', 'true'); Snd.on = b.dataset.sd === '1'; Snd.boot();
+  localStorage.setItem('gt_snd', Snd.on ? 1 : 0);
+}));
+$('#btnJoin').addEventListener('click', () => {
+  const name = ($('#inName').value || 'プレイヤー').trim().slice(0, 10);
+  const room = ($('#inRoom').value || 'family').trim().slice(0, 16);
+  localStorage.setItem('gt_name', name); localStorage.setItem('gt_room', room);
+  Link.start(room, name);
+  $('#roomPane').style.display = 'flex';
+  $('#lobbyNote').textContent = 'もう ひとつの たんまつでも おなじ あいことばで はいってね。';
+});
+$('#btnReady').addEventListener('click', () => { Snd.boot(); Link.setReady(!Link.ready); });
+
+/* ---------- HUD ---------- */
+function updateHud() {
+  const g = UI.game; if (!g) return;
+  $('#stScore').textContent = g.score.toLocaleString();
+  $('#stLines').textContent = g.lines;
+  $('#stLevel').textContent = g.level;
+  $('#stCombo').textContent = g.combo >= 1 ? `${g.combo + 1} コンボ` : (g.b2b ? 'B2B' : '');
+  drawPiecePreview($('#holdCv'), g.hold);
+  drawNext($('#nextCv'), g.queue);
+  const pend = Math.min(1, g.pending / 10);
+  $('#gaugeFill').style.height = (pend * 100) + '%';
+  $('#danger').style.opacity = g.danger() ? (0.35 + 0.35 * Math.sin(performance.now() / 180)) : 0;
+  // 相手
+  if (UI.mode === 'cpu' && UI.cpu) {
+    drawMini($('#oppCv'), UI.cpu.serialize(), UI.cpu.alive);
+    $('#oppSt').textContent = UI.cpu.lines + ' ライン';
+  } else if (UI.mode === 'net') {
+    const p = Link.peer;
+    $('#oppName').textContent = p.name;
+    drawMini($('#oppCv'), p.state && p.state.board, p.alive);
+    $('#oppSt').textContent = p.present ? (p.state ? p.state.lines + ' ライン' : 'まちうけ') : 'せつだん…';
+    const running = performance.now() - g.startedAt > 1500;
+    if (running && !UI.over) {
+      if (!p.present) endGame(false, 'disc');
+      else if (!p.alive && g.alive) endGame(true);
+    }
+  }
+}
+
+/* ---------- メインループ ---------- */
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(64, now - last); last = now;
+  Bg.draw(now, dt);
+  if (UI.screen === 'play' && UI.game) {
+    UI.game.update(dt);
+    if (UI.cpu) { UI.cpuBrain.step(UI.cpu, dt); UI.cpu.update(dt); }
+    drawBoard($('#board'), UI.game);
+    updateHud();
+    // レベルで背景をきりかえる
+    const want = (UI.game.level - 1) % STAGES.length;
+    if (Bg.idx !== want && Bg.next < 0) Bg.go(want);
+  }
+  requestAnimationFrame(loop);
+}
+
+/* ---------- 起動 ---------- */
+(function boot() {
+  Bg.init($('#bg'));
+  // 復元
+  const sp = localStorage.getItem('gt_speed'); if (sp !== null) { UI.speed = +sp; $$('#segSpeed button').forEach(x => x.setAttribute('aria-pressed', x.dataset.sp === sp)); }
+  const sd = localStorage.getItem('gt_snd'); if (sd !== null) { Snd.on = sd === '1'; $$('#segSound button').forEach(x => x.setAttribute('aria-pressed', x.dataset.sd === sd)); }
+  $('#inName').value = localStorage.getItem('gt_name') || '';
+  $('#inRoom').value = localStorage.getItem('gt_room') || 'family';
+
+  const touch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+  $('#pad').classList.toggle('on', touch);
+
+  $('#titleNote').innerHTML =
+    LINK_MODE === 'p2p' ? 'たいせんは たんまつどうしを ちょくせつ つなぎます。おなじ あいことばで へやに はいってね。'
+    : LINK_MODE === 'relay' ? 'おうちの PC ごしに たいせんします。おなじ あいことばで へやに はいってね。'
+    : 'いまは 1人用モードです。たいせんするには、こうかいした https の アドレスで ひらくか、PCで <code>python3 relay.py</code> を うごかしてください。';
+  setInterval(renderLobby, 200);
+
+  addEventListener('resize', () => setTimeout(layout, 60));
+  addEventListener('orientationchange', () => setTimeout(layout, 220));
+  document.addEventListener('pointerdown', () => Snd.boot(), { once: true });
+  layout();
+  requestAnimationFrame(loop);
+})();
+
+
+</script>
 </body>
 </html>
