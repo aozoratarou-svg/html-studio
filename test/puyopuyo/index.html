@@ -10,8 +10,8 @@
 :root{
   --ink:#241f38;
   --paper:rgba(255,255,255,.78);
-  --glass:rgba(255,255,255,.12);
-  --glass-2:rgba(255,255,255,.20);
+  --glass:rgba(26,18,46,.62);
+  --glass-2:rgba(26,18,46,.74);
   --line:rgba(255,255,255,.34);
   --halo:#fff7ea;
   --shadow:0 10px 30px rgba(20,14,40,.28);
@@ -32,18 +32,16 @@ body{
              radial-gradient(120% 90% at 50% 100%,rgba(10,6,24,.42),transparent 62%)}
 #app{position:relative;z-index:2;height:100%;display:flex;flex-direction:column}
 
-/* ---------- shared glass chrome ---------- */
+/* ---------- shared chrome（すりガラスなし） ---------- */
 .pane{
   background:var(--glass);border:1px solid var(--line);border-radius:var(--r);
-  -webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3);
-  box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.35);
+  box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.14);
 }
 .btn{
   font-family:var(--display);font-weight:700;color:#fff;font-size:16px;letter-spacing:.04em;
   padding:14px 20px;border-radius:999px;border:1px solid var(--line);
-  background:linear-gradient(180deg,rgba(255,255,255,.26),rgba(255,255,255,.08));
-  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
-  box-shadow:0 6px 18px rgba(18,12,36,.30), inset 0 1px 0 rgba(255,255,255,.55);
+  background:linear-gradient(180deg,rgba(70,58,102,.92),rgba(46,36,72,.92));
+  box-shadow:0 6px 18px rgba(18,12,36,.30), inset 0 1px 0 rgba(255,255,255,.20);
   cursor:pointer;transition:transform .12s cubic-bezier(.2,.9,.3,1.4),filter .12s;
 }
 .btn:active{transform:scale(.955);filter:brightness(1.12)}
@@ -108,9 +106,8 @@ input::placeholder{color:rgba(255,255,255,.5)}
 #boardWrap{position:relative;transform:rotateX(6deg);transform-style:preserve-3d;transition:transform .4s ease}
 #board{display:block;border-radius:10px}
 .frame{position:absolute;inset:-10px;border-radius:16px;border:1px solid var(--line);
-  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.03));
-  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
-  box-shadow:0 18px 44px rgba(12,8,28,.45), inset 0 1px 0 rgba(255,255,255,.4);pointer-events:none}
+  background:rgba(20,14,38,.30);
+  box-shadow:0 18px 44px rgba(12,8,28,.45), inset 0 1px 0 rgba(255,255,255,.22);pointer-events:none}
 #danger{position:absolute;inset:-10px;border-radius:16px;pointer-events:none;opacity:0;
   box-shadow:inset 0 0 40px rgba(255,86,120,.85), 0 0 34px rgba(255,86,120,.5);transition:opacity .2s}
 
@@ -139,17 +136,16 @@ input::placeholder{color:rgba(255,255,255,.5)}
 /* 台座 + 4つのキー */
 .dpad{
   position:relative;width:var(--dp);height:var(--dp);touch-action:none;border-radius:50%;
-  background:radial-gradient(70% 70% at 38% 30%,rgba(255,255,255,.14),rgba(12,8,28,.30));
+  background:radial-gradient(70% 70% at 38% 30%,rgba(70,58,102,.55),rgba(16,11,30,.68));
   border:1px solid rgba(255,255,255,.22);
-  box-shadow:0 10px 26px rgba(14,9,32,.42), inset 0 1px 0 rgba(255,255,255,.30);
-  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  box-shadow:0 10px 26px rgba(14,9,32,.42), inset 0 1px 0 rgba(255,255,255,.20);
 }
 .dpad b{
   position:absolute;width:32%;height:32%;display:flex;align-items:center;justify-content:center;
   font-size:calc(var(--dp)*.15);color:rgba(255,255,255,.92);border-radius:13px;
-  background:linear-gradient(180deg,rgba(255,255,255,.30),rgba(255,255,255,.09));
+  background:linear-gradient(180deg,rgba(90,76,128,.92),rgba(52,42,80,.92));
   border:1px solid var(--line);
-  box-shadow:0 5px 12px rgba(18,12,36,.34), inset 0 1px 0 rgba(255,255,255,.55);
+  box-shadow:0 5px 12px rgba(18,12,36,.34), inset 0 1px 0 rgba(255,255,255,.28);
   transition:transform .08s,filter .08s;pointer-events:none;
 }
 .dpad b.on{transform:scale(.92);filter:brightness(1.45)}
@@ -159,8 +155,8 @@ input::placeholder{color:rgba(255,255,255,.5)}
 .dpad .right{left:66%;top:34%}
 .dpad .hub{
   position:absolute;left:38%;top:38%;width:24%;height:24%;border-radius:50%;
-  background:radial-gradient(60% 60% at 35% 30%,rgba(255,255,255,.42),rgba(255,255,255,.10));
-  border:1px solid rgba(255,255,255,.28);pointer-events:none;
+  background:radial-gradient(60% 60% at 35% 30%,rgba(120,104,160,.75),rgba(40,32,62,.75));
+  border:1px solid rgba(255,255,255,.24);pointer-events:none;
 }
 
 /* A / B / キープ */
@@ -169,18 +165,17 @@ input::placeholder{color:rgba(255,255,255,.5)}
   position:absolute;border-radius:50%;border:1px solid var(--line);color:#fff;cursor:pointer;
   font-family:var(--display);font-weight:800;font-size:calc(var(--ab)*.36);
   display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;
-  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
-  box-shadow:0 7px 18px rgba(18,12,36,.38), inset 0 2px 0 rgba(255,255,255,.55), inset 0 -6px 12px rgba(20,10,40,.28);
+  box-shadow:0 7px 18px rgba(18,12,36,.38), inset 0 2px 0 rgba(255,255,255,.32), inset 0 -6px 12px rgba(20,10,40,.28);
   transition:transform .08s,filter .08s;
 }
 .ab small{font-size:calc(var(--ab)*.15);font-weight:700;opacity:.75;letter-spacing:.06em;margin-top:2px}
 .ab:active{transform:scale(.93) translateY(2px);filter:brightness(1.2)}
 .ab.a{width:var(--ab);height:var(--ab);right:0;top:calc(var(--ab)*.42);
-  background:linear-gradient(180deg,rgba(255,175,196,.62),rgba(226,102,136,.42))}
+  background:linear-gradient(180deg,#ffb0c8,#e2668c)}
 .ab.b{width:var(--ab);height:var(--ab);left:calc(var(--ab)*.12);bottom:0;
-  background:linear-gradient(180deg,rgba(168,186,255,.60),rgba(108,124,214,.42))}
+  background:linear-gradient(180deg,#a8baff,#6c7cd6)}
 .ab.keep{width:calc(var(--ab)*.78);height:calc(var(--ab)*.78);left:0;top:0;font-size:calc(var(--ab)*.17);
-  background:linear-gradient(180deg,rgba(255,255,255,.26),rgba(255,255,255,.08))}
+  background:linear-gradient(180deg,rgba(90,76,128,.92),rgba(52,42,80,.92))}
 
 /* toasts / banners */
 #toast{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);z-index:6;pointer-events:none;
@@ -190,7 +185,7 @@ input::placeholder{color:rgba(255,255,255,.5)}
 #toast.go{animation:pop 1.15s cubic-bezier(.2,.9,.3,1) forwards}
 
 #overlay{position:absolute;inset:0;z-index:7;display:none;align-items:center;justify-content:center;padding:22px;
-  background:rgba(14,9,30,.55);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+  background:rgba(14,9,30,.82)}
 #overlay.on{display:flex}
 .card{padding:24px;border-radius:24px;width:min(360px,100%);text-align:center;display:flex;flex-direction:column;gap:14px}
 .card h2{margin:0;font-size:30px;font-weight:800;letter-spacing:.04em}
