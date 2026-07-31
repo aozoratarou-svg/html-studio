@@ -65,22 +65,27 @@ body{
 :root{--dk:54px;--ak:66px;--gk:44px}
 #ctrl{
   position:absolute;left:0;right:0;bottom:calc(10px + env(safe-area-inset-bottom));
-  display:flex;align-items:center;justify-content:space-between;gap:6px;
+  display:flex;align-items:flex-end;justify-content:space-between;gap:6px;
   padding-left:max(10px,env(safe-area-inset-left));
   padding-right:max(10px,env(safe-area-inset-right));
   pointer-events:none;
 }
 #ctrl > *{pointer-events:auto}
-#dpad{display:grid;grid-template-columns:repeat(3,var(--dk));grid-template-rows:repeat(3,var(--dk));gap:5px}
-#abtn{display:flex;gap:13px;align-items:center}
+/* ▲ / ◀ ▼ ▶ の2段。padding-bottom で ◀▶ と回転ボタンの中心線を揃える */
+#dpad{
+  display:grid;grid-template-columns:repeat(3,var(--dk));grid-template-rows:repeat(2,var(--dk));gap:5px;
+  padding-bottom:calc((var(--ak) - var(--dk))/2);
+}
+#abtn{display:flex;gap:13px;align-items:flex-end}
 .gp{padding:0;display:grid;place-items:center;font-size:22px;line-height:1}
 #dpad .gp{width:var(--dk);height:var(--dk);border-radius:16px}
 #dpad .gp:nth-child(1){grid-area:1/2/2/3}
 #dpad .gp:nth-child(2){grid-area:2/1/3/2}
 #dpad .gp:nth-child(3){grid-area:2/3/3/4}
-#dpad .gp:nth-child(4){grid-area:3/2/4/3}
+#dpad .gp:nth-child(4){grid-area:2/2/3/3}
 #abtn .gp{width:var(--ak);height:var(--ak);border-radius:50%;font-size:26px}
-#mid{position:relative;display:grid;place-items:center}
+#mid{position:relative;display:grid;place-items:center;
+  padding-bottom:calc((var(--ak) - var(--gk))/2)}
 #bgear{width:var(--gk);height:var(--gk);padding:0;border-radius:50%;font-size:18px;
   display:grid;place-items:center;opacity:.7}
 #bgear.on{opacity:1;background:rgba(255,255,255,.26)}
@@ -1206,17 +1211,17 @@ function drawGame(){
   if (nextRect){
     const n = nextRect;
     glassPanel(n.x, n.y, n.w, n.h, cell*0.34);
-    ctx.fillStyle = 'rgba(255,255,255,.72)'; ctx.font = `700 ${Math.round(cell*0.26)}px "Zen Maru Gothic",system-ui,sans-serif`;
-    ctx.textAlign = 'center'; ctx.fillText('NEXT', n.x + n.w/2, n.y + cell*0.36);
+    ctx.fillStyle = 'rgba(255,255,255,.72)';
+    ctx.font = `700 ${Math.round(Math.min(cell*0.26, n.w*0.25))}px "Zen Maru Gothic",system-ui,sans-serif`;
+    ctx.textAlign = 'center'; ctx.fillText('NEXT', n.x + n.w/2, n.y + cell*0.38);
     for (let i=0;i<2 && !(USE_GL && GLR.ok);i++){
       const q = queue[i]; if (!q) continue;
-      const s = i === 0 ? 1 : 0.76;
-      const cx = n.x + n.w/2, cy = n.y + cell*0.62 + Rs*1.15 + i*(Rs*2.9) + (i?Rs*0.5:0);
+      const P = nextPairPos(i);
       const a = timeNow*1.4 + i;
       const dummy1 = { color:q[1], phase:a, sq:Math.sin(a*1.3)*0.05, m2:0, m3:0, lean:0, lx:0, ly:0.3, blink:0, pop:0 };
       const dummy0 = { color:q[0], phase:a+2, sq:Math.sin(a*1.3+0.4)*0.05, m2:0, m3:0, lean:0, lx:0, ly:0.3, blink:0, pop:0 };
-      drawPuyo(cx, cy - Rs*s*1.02, Rs*s, dummy1, 0, GS, {});
-      drawPuyo(cx, cy + Rs*s*1.02, Rs*s, dummy0, 0, GS, {});
+      drawPuyo(P.cx, P.cy - P.rr*1.02, P.rr, dummy1, 0, GS, {});
+      drawPuyo(P.cx, P.cy + P.rr*1.02, P.rr, dummy0, 0, GS, {});
     }
   }
 
@@ -1595,9 +1600,8 @@ const GLR = {
       const n = nextRect; nb = 0;
       for (let i=0;i<2 && i<queue.length;i++){
         const q = queue[i]; if (!q) continue;
-        const sc2 = i === 0 ? 1 : 0.76, rr = Rs*sc2;
-        const cx2 = n.x + n.w/2 + shakeX;
-        const cy2 = n.y + cell*0.62 + Rs*1.15 + i*(Rs*2.9) + (i?Rs*0.5:0) + shakeY;
+        const P = nextPairPos(i), rr = P.rr;
+        const cx2 = P.cx + shakeX, cy2 = P.cy + shakeY;
         const a = timeNow*1.4 + i;
         const d1 = { color:q[1], phase:a, sq:Math.sin(a*1.3)*0.05, m2:0, m3:0, lean:0, lx:0, ly:0.35, blink:0, pop:0 };
         const d0 = { color:q[0], phase:a+2, sq:Math.sin(a*1.3+0.4)*0.05, m2:0, m3:0, lean:0, lx:0, ly:0.35, blink:0, pop:0 };
@@ -1630,20 +1634,33 @@ function topReserve(){
   const r = el.getBoundingClientRect();
   return clamp(r.bottom + 8, 20, H*0.3);
 }
+const MG = 6, GAP = 6, NEXT_MIN = 38;   // 画面端／盤面との間隔とNEXTの最小幅
 function layout(){
   wide = W / H > 1.02;
   // 横持ちは十字キーと盤面が横に並ぶので下を空ける必要がない
   const topRes = wide ? 10 : topReserve();
   const reserve = wide ? 14 : padReserve();
   const availH = Math.max(140, H - topRes - reserve);
-  const availW = (W - (wide ? 44 : 24)) / (COLS + 2.62);   // 盤面 + すき間 + NEXT
+  // 盤面は画面中央。左右に等しく空く余白へ NEXT が収まることだけを条件にする
+  const availW = (W - 2*(NEXT_MIN + MG + GAP)) / COLS;
   cell = Math.max(14, Math.floor(Math.min(availW, availH/ROWS)));
   boardW = cell*COLS; boardH = cell*ROWS;
-  bx = Math.round((W - (boardW + cell*2.62))/2);
+  bx = Math.round((W - boardW)/2);
   by = Math.round(topRes + Math.max(0, availH - boardH)*(wide ? 0.5 : 0.28));
-  R = cell*0.465; Rs = cell*0.34;
+  R = cell*0.465;
+  const side = W - (bx + boardW);
+  const nw = clamp(side - MG - GAP, NEXT_MIN, cell*1.9);
+  nextRect = { x: Math.round(Math.min(W - MG - nw, bx + boardW + Math.max(GAP, cell*0.5))),
+               y: by, w: Math.round(nw), h: 0 };
+  Rs = Math.min(cell*0.34, nextRect.w*0.30);
+  nextRect.h = Math.round(cell*0.55 + Rs*7.9);
   G = buildGrads(R); GS = buildGrads(Rs);
-  nextRect = { x: bx + boardW + cell*0.72, y: by, w: cell*1.9, h: cell*2.8 };
+}
+// NEXT の各ペアの位置（2D描画とGL描画で共有する）
+function nextPairPos(i){
+  const n = nextRect, rr = i ? Rs*0.76 : Rs;
+  const cy0 = n.y + cell*0.55 + Rs*2.05;
+  return { cx: n.x + n.w/2, cy: i === 0 ? cy0 : cy0 + Rs*2.35 + rr*2.05, rr };
 }
 function resize(){
   DPR = Math.min(window.devicePixelRatio || 1, 2);
