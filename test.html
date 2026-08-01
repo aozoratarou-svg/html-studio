@@ -64,7 +64,9 @@ body{
 /* 左右の親指で持つ前提：◀▶ と 回転ボタンを同じ高さに揃える */
 :root{--dk:54px;--ak:66px;--gk:44px}
 #ctrl{
-  position:absolute;left:0;right:0;bottom:calc(10px + env(safe-area-inset-bottom));
+  /* 親指の自然な位置に合わせて、1段ぶん（キー1個分）浮かせる */
+  position:absolute;left:0;right:0;
+  bottom:calc(10px + var(--dk) + 5px + env(safe-area-inset-bottom));
   display:flex;align-items:flex-end;justify-content:space-between;gap:6px;
   padding-left:max(10px,env(safe-area-inset-left));
   padding-right:max(10px,env(safe-area-inset-right));
@@ -1626,7 +1628,7 @@ function padReserve(){
   const el = document.getElementById('ctrl');
   if (!el) return 200;
   const r = el.getBoundingClientRect();
-  return clamp(H - r.top + 10, 60, H*0.52);
+  return clamp(H - r.top + 14, 60, H*0.56);
 }
 function topReserve(){
   const el = document.getElementById('scorebox');
