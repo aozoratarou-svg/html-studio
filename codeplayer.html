@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>App Runner</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #000;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* 実行用 iframe */
+    #runner-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+      background-color: #fff;
+    }
+
+    /* 設定呼び出しフローティングボタン */
+    #settings-btn {
+      position: fixed;
+      top: env(safe-area-inset-top, 16px);
+      right: env(safe-area-inset-right, 16px);
+      width: 44px;
+      height: 44px;
+      background: rgba(30, 30, 30, 0.4);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 9999;
+      color: #fff;
+      font-size: 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+      transition: opacity 0.2s, transform 0.2s;
+    }
+
+    #settings-btn:active {
+      transform: scale(0.92);
+      opacity: 0.8;
+    }
+
+    /* 設定・エディタモーダル */
+    #modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      padding: env(safe-area-inset-top, 16px) env(safe-area-inset-right, 16px) env(safe-area-inset-bottom, 16px) env(safe-area-inset-left, 16px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    #modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      color: #fff;
+    }
+
+    .panel-title {
+      font-size: 17px;
+      font-weight: 600;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: #aaa;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+
+    /* ツールバー (貼り付け/クリア/保存/スロット) */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .btn {
+      background: #2c2c2e;
+      color: #0a84ff;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .btn:active {
+      background: #3a3a3c;
+    }
+
+    .btn-danger {
+      color: #ff453a;
+    }
+
+    .btn-primary {
+      background: #0a84ff;
+      color: #fff;
+      font-weight: 600;
+      flex-grow: 1;
+    }
+    .btn-primary:active {
+      background: #0071e3;
+    }
+
+    /* コード入力エリア */
+    .editor-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 12px;
+    }
+
+    #code-input {
+      width: 100%;
+      flex: 1;
+      background: #1c1c1e;
+      color: #f2f2f7;
+      border: 1px solid #38383a;
+      border-radius: 12px;
+      padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.4;
+      resize: none;
+      outline: none;
+      white-space: pre;
+      tab-size: 2;
+    }
+
+    #code-input:focus {
+      border-color: #0a84ff;
+    }
+
+    /* 保存スロット選択 */
+    .save-slots {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #1c1c1e;
+      padding: 4px 8px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .save-slots span {
+      color: #8e8e93;
+      font-size: 12px;
+    }
+
+    .slot-select {
+      background: transparent;
+      color: #fff;
+      border: none;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .footer-actions {
+      display: flex;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 全画面アプリ実行用 iframe -->
+  <iframe id="runner-frame" sandbox="allow-scripts allow-same-origin allow-modals allow-forms allow-popups allow-downloads"></iframe>
+
+  <!-- 右上設定ボタン -->
+  <div id="settings-btn" title="コード編集・設定">⚙️</div>
+
+  <!-- 設定・エディタ画面モーダル -->
+  <div id="modal-overlay">
+    <div class="panel-header">
+      <div class="panel-title">Code Runner</div>
+      <button class="close-btn" id="modal-close">&times;</button>
+    </div>
+
+    <!-- 操作ツールバー -->
+    <div class="toolbar">
+      <button class="btn" id="btn-paste">📋 貼り付け</button>
+      <button class="btn btn-danger" id="btn-clear">🗑️ クリア</button>
+      
+      <div class="save-slots">
+        <span>スロット:</span>
+        <select id="slot-select" class="slot-select">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">5</option>
+          <option value="5">5</option>
+        </select>
+      </div>
+      <button class="btn" id="btn-save">💾 保存</button>
+      <button class="btn" id="btn-load">📂 呼出</button>
+    </div>
+
+    <!-- エディタ本体 -->
+    <div class="editor-container">
+      <textarea id="code-input" placeholder="ここに HTML/CSS/JS コードを入力または貼り付け..." spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+    </div>
+
+    <!-- 実行フッター -->
+    <div class="footer-actions">
+      <button class="btn btn-primary" id="btn-run">▶ 実行して全画面表示</button>
+    </div>
+  </div>
+
+  <script>
+    const runnerFrame = document.getElementById('runner-frame');
+    const settingsBtn = document.getElementById('settings-btn');
+    const modalOverlay = document.getElementById('modal-overlay');
+    const modalClose = document.getElementById('modal-close');
+    const codeInput = document.getElementById('code-input');
+    const btnPaste = document.getElementById('btn-paste');
+    const btnClear = document.getElementById('btn-clear');
+    const btnSave = document.getElementById('btn-save');
+    const btnLoad = document.getElementById('btn-load');
+    const slotSelect = document.getElementById('slot-select');
+    const btnRun = document.getElementById('btn-run');
+
+    const STORAGE_KEY_PREFIX = 'html_runner_slot_';
+    const LAST_ACTIVE_KEY = 'html_runner_last_active';
+
+    // 初期化: 直前のコードがあれば復元、なければ初期テンプレートを表示
+    window.addEventListener('DOMContentLoaded', () => {
+      const lastCode = localStorage.getItem(LAST_ACTIVE_KEY);
+      if (lastCode) {
+        codeInput.value = lastCode;
+        runCode(lastCode);
+      } else {
+        // デフォルトサンプル
+        const defaultSample = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background: #121212;
+      color: #fff;
+      font-family: sans-serif;
+    }
+    h1 { font-size: 24px; margin-bottom: 8px; }
+    p { color: #888; font-size: 14px; text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>App Ready</h1>
+  <p>右上の ⚙️ ボタンから<br>コードを貼り付けて実行できます。</p>
+</body>
+</html>`;
+        codeInput.value = defaultSample;
+        runCode(defaultSample);
+        openModal();
+      }
+    });
+
+    // モーダル開閉
+    function openModal() {
+      modalOverlay.classList.add('active');
+    }
+    function closeModal() {
+      modalOverlay.classList.remove('active');
+    }
+
+    settingsBtn.addEventListener('click', openModal);
+    modalClose.addEventListener('click', closeModal);
+
+    // 実行処理
+    function runCode(srcDocContent) {
+      runnerFrame.srcdoc = srcDocContent;
+    }
+
+    btnRun.addEventListener('click', () => {
+      const code = codeInput.value;
+      try {
+        localStorage.setItem(LAST_ACTIVE_KEY, code);
+      } catch (e) {
+        console.warn('localStorage capacity reached for autosave:', e);
+      }
+      runCode(code);
+      closeModal();
+    });
+
+    // 貼り付けボタン (Clipboard API)
+    btnPaste.addEventListener('click', async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          codeInput.value = text;
+        }
+      } catch (err) {
+        // クリップボード読み取り権限がない場合のフォールバック
+        codeInput.focus();
+        alert('クリップボードの読み取りを許可するか、入力欄を長押しして貼り付けてください。');
+      }
+    });
+
+    // クリアボタン
+    btnClear.addEventListener('click', () => {
+      if (confirm('コードをクリアしますか？')) {
+        codeInput.value = '';
+      }
+    });
+
+    // 保存ボタン (localStorage)
+    btnSave.addEventListener('click', () => {
+      const slot = slotSelect.value;
+      const code = codeInput.value;
+      try {
+        localStorage.setItem(STORAGE_KEY_PREFIX + slot, code);
+        alert(`スロット ${slot} に保存しました。`);
+      } catch (e) {
+        alert('保存容量オーバーです。コードサイズが大きすぎる可能性があります。');
+      }
+    });
+
+    // 呼出ボタン
+    btnLoad.addEventListener('click', () => {
+      const slot = slotSelect.value;
+      const savedCode = localStorage.getItem(STORAGE_KEY_PREFIX + slot);
+      if (savedCode !== null) {
+        codeInput.value = savedCode;
+      } else {
+        alert(`スロット ${slot} に保存されたコードはありません。`);
+      }
+    });
+  </script>
+</body>
+</html>
