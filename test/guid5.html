@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ゼロつく❺ 事前予習ガイド | 見てわかる生成AIのしくみ</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --primary: #38bdf8;
+      --primary-dark: #0284c7;
+      --accent: #f43f5e;
+      --accent-sub: #10b981;
+      --text: #f8fafc;
+      --text-sub: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 16px 12px 60px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 460px;
+    }
+
+    /* ヘッダー */
+    header {
+      text-align: center;
+      padding: 24px 8px 16px;
+    }
+
+    .badge {
+      display: inline-block;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--primary);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 4px 14px;
+      border-radius: 9999px;
+      margin-bottom: 12px;
+      letter-spacing: 0.05em;
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 800;
+      line-height: 1.35;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #e0f2fe, #38bdf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .lead {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+    }
+
+    /* 3秒サマリー */
+    .summary-card {
+      background: linear-gradient(145deg, #1e293b, #0f172a);
+      border: 1px solid #3b82f6;
+      border-radius: 16px;
+      padding: 18px 16px;
+      margin: 16px 0 24px;
+      box-shadow: 0 4px 20px rgba(56, 189, 248, 0.15);
+    }
+
+    .summary-card h2 {
+      font-size: 0.95rem;
+      color: var(--primary);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .summary-card p {
+      font-size: 0.88rem;
+      color: #cbd5e1;
+      line-height: 1.6;
+    }
+
+    /* セクション見出し */
+    .section-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin: 28px 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title::before {
+      content: "";
+      width: 4px;
+      height: 1.1rem;
+      background: var(--primary);
+      border-radius: 2px;
+    }
+
+    /* 体験シミュレーター */
+    .demo-box {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .canvas-wrapper {
+      position: relative;
+      display: inline-block;
+      margin: 12px auto;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 2px solid #475569;
+    }
+
+    canvas {
+      display: block;
+      background: #000;
+    }
+
+    .slider-container {
+      margin-top: 8px;
+      padding: 0 8px;
+    }
+
+    .slider-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-sub);
+      margin-bottom: 6px;
+    }
+
+    input[type=range] {
+      width: 100%;
+      height: 6px;
+      background: #334155;
+      border-radius: 3px;
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--primary);
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
+    }
+
+    .demo-desc {
+      font-size: 0.82rem;
+      color: var(--text-sub);
+      margin-top: 10px;
+      text-align: left;
+    }
+
+    /* タブ切り替え */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: #0f172a;
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+      margin-bottom: 12px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      border: none;
+      background: transparent;
+      padding: 8px 4px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-sub);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      background: var(--card-bg);
+      color: var(--primary);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .tab-content {
+      display: none;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      padding: 16px;
+      border-radius: 14px;
+      font-size: 0.88rem;
+      line-height: 1.6;
+    }
+
+    .tab-content.active {
+      display: block;
+      animation: fadeIn 0.25s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .phase-badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: rgba(56, 189, 248, 0.1);
+      color: var(--primary);
+      margin-bottom: 6px;
+    }
+
+    /* 用語アコーディオン */
+    .accordion-item {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      margin-bottom: 8px;
+      overflow: hidden;
+    }
+
+    .accordion-header {
+      width: 100%;
+      padding: 12px 14px;
+      border: none;
+      background: none;
+      text-align: left;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .accordion-header .icon {
+      font-size: 0.75rem;
+      color: var(--primary);
+      transition: transform 0.25s ease;
+    }
+
+    .accordion-item.open .icon {
+      transform: rotate(90deg);
+    }
+
+    .accordion-body {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.25s ease-out;
+      background: rgba(15, 23, 42, 0.4);
+    }
+
+    .accordion-body p {
+      padding: 12px 14px;
+      font-size: 0.82rem;
+      color: #cbd5e1;
+      border-top: 1px solid var(--card-border);
+    }
+
+    /* チェックリスト */
+    .checklist-item {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 0.84rem;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .checklist-item input[type="checkbox"] {
+      margin-top: 3px;
+      width: 18px;
+      height: 18px;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    .checklist-item.checked {
+      opacity: 0.5;
+      text-decoration: line-through;
+    }
+
+    footer {
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--text-sub);
+      margin-top: 32px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <span class="badge">読書前 3分プレビュー</span>
+      <h1>ゼロから作る<br>Deep Learning ❺ 予習ガイド</h1>
+      <p class="lead">数式で挫折しない！「画像生成AI」の山登りロードマップ</p>
+    </header>
+
+    <!-- 結論サマリー -->
+    <div class="summary-card">
+      <h2>💡 30秒でわかるこの本の核心</h2>
+      <p>
+        Stable Diffusionのような画像生成AIは、絵を描いているのではなく<strong>「砂嵐（ノイズ）から少しずつ元の絵を取り戻す逆再生」</strong>をしています。<br>
+        本書はこの超ハイテク技術を、高校数学の「正規分布」から順を追って1本道で作り上げる構成になっています。
+      </p>
+    </div>
+
+    <!-- 体験ウィジェット -->
+    <div class="section-title">見て体感：AIは何をしているのか？</div>
+    <div class="demo-box">
+      <div class="canvas-wrapper">
+        <canvas id="noiseCanvas" width="180" height="180"></canvas>
+      </div>
+      <div class="slider-container">
+        <div class="slider-labels">
+          <span>100% 砂嵐ノイズ</span>
+          <span style="color: var(--primary); font-weight: bold;">◀ スライダーを動かす ▶</span>
+          <span>完成画像</span>
+        </div>
+        <input type="range" id="denoiseSlider" min="0" max="100" value="0">
+      </div>
+      <p class="demo-desc">
+        右へ動かすと、ノイズの中から輪郭（数字の「8」）が浮き上がります。AIが行うのは<strong>「今あるノイズの量を予想して少し引く」</strong>という引き算の繰り返し（逆拡散過程）です。
+      </p>
+    </div>
+
+    <!-- 10のステップの俯瞰タブ -->
+    <div class="section-title">本の全体像（3つの登山口）</div>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab(0)">序盤: 確率の基礎</button>
+      <button class="tab-btn" onclick="switchTab(1)">中盤: VAE</button>
+      <button class="tab-btn" onclick="switchTab(2)">終盤: 拡散モデル</button>
+    </div>
+
+    <div class="tab-content active" id="tab-0">
+      <span class="phase-badge">Step 1 〜 5</span>
+      <h3 style="font-size: 0.95rem; margin-bottom: 6px;">確率と「もっともらしさ」の計算</h3>
+      <p style="color: var(--text-sub);">
+        最初は「正規分布（つりがね型の確率グラフ）」や「最尤推定（もっともそれっぽい数値を当てる手法）」を学びます。「数学なんて実社会で何に使うの？」の答えがここにあります。後半の高度なAIも、すべてこの基礎の上に成り立っています。
+      </p>
+    </div>
+
+    <div class="tab-content" id="tab-1">
+      <span class="phase-badge">Step 6 〜 7</span>
+      <h3 style="font-size: 0.95rem; margin-bottom: 6px;">変分オートエンコーダ（VAE）</h3>
+      <p style="color: var(--text-sub);">
+        Step 6でPyTorchという強力なツールを導入。画像をぎゅっと縮めて暗号化（潜在変数）し、そこから復元するニューラルネットワークを作ります。少しボヤけた絵が生成できるようになります。
+      </p>
+    </div>
+
+    <div class="tab-content" id="tab-2">
+      <span class="phase-badge">Step 8 〜 10</span>
+      <h3 style="font-size: 0.95rem; margin-bottom: 6px;">拡散モデルの理論・実装・応用</h3>
+      <p style="color: var(--text-sub);">
+        本書の頂点です。画像をノイズまみれにする過程を数式化し、それを逆再生する「U-Net」というネットワークを実装。「ネコ」と指示したらネコを描く条件付き生成（Stable Diffusionの基盤）まで完成させます。
+      </p>
+    </div>
+
+    <!-- 事前用語トグル -->
+    <div class="section-title">本を開く前に知っておくとラクな3大用語</div>
+
+    <div class="accordion-item">
+      <button class="accordion-header" onclick="toggleAccordion(this)">
+        ① 正規分布（せいきぶんぷ）
+        <span class="icon">▶</span>
+      </button>
+      <div class="accordion-body">
+        <p>
+          テストの点数や身長など、平均値付近が一番多くて端にいくほど少なくなる「左右対称の富士山型グラフ」。AIがばら撒く砂嵐ノイズの正体もこれです。
+        </p>
+      </div>
+    </div>
+
+    <div class="accordion-item">
+      <button class="accordion-header" onclick="toggleAccordion(this)">
+        ② 潜在変数（せんざいへんすう）
+        <span class="icon">▶</span>
+      </button>
+      <div class="accordion-body">
+        <p>
+          目に見える画像（縦横の画素データ）の裏にある「本質的な特徴」のこと。例えば人の顔なら「笑顔度」「目の大きさ」「髪の長さ」のようなエッセンスの数字です。
+        </p>
+      </div>
+    </div>
+
+    <div class="accordion-item">
+      <button class="accordion-header" onclick="toggleAccordion(this)">
+        ③ デノイズ（Denoise）
+        <span class="icon">▶</span>
+      </button>
+      <div class="accordion-body">
+        <p>
+          ノイズ（砂嵐）を取り除くこと。拡散モデルは「絵を描く」のではなく、「ノイズからゴミを取り除き続けたら綺麗な絵が残った」という逆転の発想で作られています。
+        </p>
+      </div>
+    </div>
+
+    <!-- 読書前の心構えチェック -->
+    <div class="section-title">挫折を防ぐ読み方チェックリスト</div>
+    <label class="checklist-item">
+      <input type="checkbox" onchange="toggleCheck(this)">
+      <span><strong>マーク（✪）の付いた数式は読み飛ばしてOK</strong><br><small style="color: var(--text-sub);">著者が「難解だけど飛ばしてもOK」と明言してくれています。</small></span>
+    </label>
+    <label class="checklist-item">
+      <input type="checkbox" onchange="toggleCheck(this)">
+      <span><strong>「何のためにこの式を解いているのか」だけ追う</strong><br><small style="color: var(--text-sub);">計算の細部より「ノイズの量を測りたいんだな」などの目的を把握します。</small></span>
+    </label>
+    <label class="checklist-item">
+      <input type="checkbox" onchange="toggleCheck(this)">
+      <span><strong>付属のコード（Jupyter Notebook）を実際に動かす</strong><br><small style="color: var(--text-sub);">頭で悩むより、実行ボタンを押してグラフや画像を見た方が圧倒的に早いです。</small></span>
+    </label>
+
+    <footer>
+      ゼロから作るDeep Learning ❺ 読書サポート資料<br>スマホ縦スクロール最適化UI
+    </footer>
+  </div>
+
+  <script>
+    // タブ切り替え
+    function switchTab(idx) {
+      document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i === idx);
+      });
+      document.querySelectorAll('.tab-content').forEach((card, i) => {
+        card.classList.toggle('active', i === idx);
+      });
+    }
+
+    // アコーディオン開閉
+    function toggleAccordion(btn) {
+      const item = btn.parentElement;
+      const body = btn.nextElementSibling;
+      const isOpen = item.classList.contains('open');
+
+      document.querySelectorAll('.accordion-item').forEach(el => {
+        el.classList.remove('open');
+        el.querySelector('.accordion-body').style.maxHeight = null;
+      });
+
+      if (!isOpen) {
+        item.classList.add('open');
+        body.style.maxHeight = body.scrollHeight + "px";
+      }
+    }
+
+    // チェックリストの見た目変更
+    function toggleCheck(checkbox) {
+      const label = checkbox.closest('.checklist-item');
+      label.classList.toggle('checked', checkbox.checked);
+    }
+
+    // ノイズ除去の体感シミュレーション (Canvas)
+    const canvas = document.getElementById('noiseCanvas');
+    const ctx = canvas.getContext('2d');
+    const slider = document.getElementById('denoiseSlider');
+    const W = canvas.width;
+    const H = canvas.height;
+
+    // ターゲットとなる手書き数字「8」のパターンを生成
+    const targetPattern = [];
+    for (let y = 0; y < H; y++) {
+      targetPattern[y] = [];
+      for (let x = 0; x < W; x++) {
+        // 2つの円を描いて「8」の字を擬似生成
+        const d1 = Math.hypot(x - W/2, y - H*0.35);
+        const d2 = Math.hypot(x - W/2, y - H*0.65);
+        const ring1 = Math.abs(d1 - 32) < 14 ? 1 : 0;
+        const ring2 = Math.abs(d2 - 38) < 16 ? 1 : 0;
+        targetPattern[y][x] = (ring1 || ring2) ? 230 : 25;
+      }
+    }
+
+    // ノイズバッファ
+    const noiseBuffer = [];
+    for (let y = 0; y < H; y++) {
+      noiseBuffer[y] = [];
+      for (let x = 0; x < W; x++) {
+        noiseBuffer[y][x] = Math.random() * 255;
+      }
+    }
+
+    function renderImage(progress) {
+      const imgData = ctx.createImageData(W, H);
+      const data = imgData.data;
+      const alpha = progress / 100; // 0 = 砂嵐, 1 = ターゲット画像
+
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          const idx = (y * W + x) * 4;
+          const targetVal = targetPattern[y][x];
+          const noiseVal = noiseBuffer[y][x];
+          
+          // ノイズからターゲット値へ線形補間
+          const val = Math.floor(noiseVal * (1 - alpha) + targetVal * alpha);
+          
+          // 青みがかったサイバー風カラーリング
+          data[idx] = Math.floor(val * 0.2);     // R
+          data[idx + 1] = Math.floor(val * 0.8); // G
+          data[idx + 2] = val;                   // B
+          data[idx + 3] = 255;                   // Alpha
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+    }
+
+    slider.addEventListener('input', (e) => {
+      renderImage(e.target.value);
+    });
+
+    // 初期描画（ノイズ状態）
+    renderImage(0);
+  </script>
+</body>
+</html>
