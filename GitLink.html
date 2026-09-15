@@ -264,10 +264,18 @@
         function executeSelected() {
             const selected = document.querySelectorAll('.file-card.selected');
             if (selected.length === 0) return alert("ファイルが選択されていません。");
+            let blockedCount = 0;
             selected.forEach(card => {
-                window.open(card.dataset.url, '_blank');
-                card.classList.remove('selected');
+                const win = window.open(card.dataset.url, '_blank');
+                if (win) {
+                    card.classList.remove('selected');
+                } else {
+                    blockedCount++;
+                }
             });
+            if (blockedCount > 0) {
+                alert(`${blockedCount}件のファイルはポップアップブロックにより開けませんでした。\nブラウザのポップアップブロック設定を確認するか、1件ずつ選択して「開く」を押してください。`);
+            }
             updateActionBar();
         }
 
