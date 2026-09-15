@@ -91,11 +91,8 @@
             background: rgba(0, 0, 0, 0.95); border-top: var(--bdr);
             padding: 15px 12px max(15px, env(safe-area-inset-bottom));
             display: flex; gap: 10px; z-index: 1000;
-            transform: translateY(100%);
-            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             box-shadow: 0 -4px 10px rgba(0,0,0,0.7);
         }
-        #bottom-action-bar.visible { transform: translateY(0); }
 
     </style>
 </head>
@@ -252,12 +249,7 @@
             const selectedCount = document.querySelectorAll('.file-card.selected').length;
             const bar = $('bottom-action-bar');
             if (bar) {
-                if (selectedCount > 0) {
-                    bar.classList.add('visible');
-                    bar.querySelector('.red').textContent = `▶️ 開く (${selectedCount})`;
-                } else {
-                    bar.classList.remove('visible');
-                }
+                bar.querySelector('.red').textContent = selectedCount > 0 ? `▶️ 開く (${selectedCount})` : '▶️ 開く';
             }
         }
 
