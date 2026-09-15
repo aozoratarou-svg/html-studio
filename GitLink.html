@@ -58,11 +58,12 @@
         
         .file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
         
-        .file-card { 
-            background: #111; border: 1px solid #555; padding: 10px 8px; 
+        .file-card {
+            background: #111; border: 1px solid #555; padding: 10px 8px;
             text-align: center; cursor: pointer; transition: all 0.2s;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
             min-height: 60px; word-break: break-all; text-decoration: none; color: #fff;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
         }
         .file-card:hover { background: #222; border-color: var(--blue); }
         .file-card:active { background: #333; }
