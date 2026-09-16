@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="フリック練習">
+<title>フリック入力練習 - 英語＆記号</title>
+<style>
+  :root{
+    --bg:#f2f3f7; --card:#ffffff; --text:#1c1c1e; --sub:#8a8a8e;
+    --accent:#007aff; --good:#34c759; --bad:#ff3b30; --key:#ffffff;
+    --key-shadow:rgba(0,0,0,.12); --border:#e4e4e8;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    overscroll-behavior:none; user-select:none; -webkit-user-select:none;
+    display:flex; flex-direction:column; height:100dvh;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  button{font-family:inherit;}
+
+  header{
+    flex:0 0 auto; padding:8px 12px 4px; background:var(--card);
+    border-bottom:1px solid var(--border);
+  }
+  .top-row{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+  .top-row h1{font-size:.95rem; margin:0; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .icon-btn{
+    background:var(--bg); border:none; border-radius:10px; width:34px; height:34px;
+    font-size:1rem; display:flex; align-items:center; justify-content:center; flex:0 0 auto;
+  }
+  .stats-row{display:flex; gap:10px; margin-top:6px; font-size:.72rem; color:var(--sub);}
+  .stats-row b{color:var(--text); font-size:.8rem;}
+  .progress-track{height:6px; background:var(--border); border-radius:3px; margin-top:6px; overflow:hidden;}
+  .progress-fill{height:100%; background:var(--accent); width:0%; transition:width .3s;}
+
+  main{flex:1 1 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:10px; min-height:0; overflow:hidden;}
+  #target-seq{display:flex; flex-wrap:wrap; justify-content:center; gap:4px; max-width:100%;}
+  .tchar{
+    font-size:1.6rem; font-weight:600; padding:4px 6px; border-radius:8px; min-width:1.2em; text-align:center;
+    transition:all .15s;
+  }
+  .tchar.pending{color:var(--sub); opacity:.5;}
+  .tchar.current{color:#fff; background:var(--accent); box-shadow:0 2px 8px rgba(0,122,255,.4); transform:scale(1.08);}
+  .tchar.done-correct{color:var(--good); opacity:.7;}
+  .tchar.done-wrong{color:var(--bad); opacity:.85; text-decoration:line-through;}
+
+  #feedback{height:22px; margin-top:8px; font-size:.85rem; font-weight:600; text-align:center;}
+  #feedback.ok{color:var(--good);}
+  #feedback.ng{color:var(--bad);}
+
+  #switch-hint{
+    margin-top:10px; background:#fff4d6; color:#8a6300; padding:8px 14px; border-radius:10px;
+    font-size:.8rem; font-weight:600; text-align:center;
+  }
+  #switch-hint.hidden{display:none;}
+
+  #keyboard-container{flex:0 0 auto; padding:6px 6px calc(6px + env(safe-area-inset-bottom)); background:var(--card); border-top:1px solid var(--border);}
+  .kb{display:flex; flex-direction:column; gap:5px;}
+  .kb-row{display:flex; gap:5px;}
+  .kb-row10{gap:3px;}
+  .key{
+    background:var(--key); border-radius:9px; box-shadow:0 1px 0 var(--key-shadow);
+    display:flex; align-items:center; justify-content:center; flex:1;
+    height:52px; font-size:1rem; font-weight:600; touch-action:none; position:relative;
+    border:1px solid var(--border);
+  }
+  .kb-row10 .key{height:40px; font-size:.85rem;}
+  .kb-row3 .key{height:44px; font-size:.95rem;}
+  .key.pressed{background:#e8eef9;}
+  .func-key{background:#eceef2; font-size:.72rem; color:var(--sub); flex:1;}
+  .func-key.wide{flex:2.2;}
+  .flick-key{display:grid; grid-template-columns:1fr 1fr 1fr; grid-template-rows:1fr 1fr 1fr; padding:2px;}
+  .klabel{line-height:1;}
+  .klabel.k-up{grid-column:2; grid-row:1; font-size:.62em; color:var(--sub);}
+  .klabel.k-left{grid-column:1; grid-row:2; font-size:.62em; color:var(--sub); justify-self:start;}
+  .klabel.k-center{grid-column:2; grid-row:2; font-size:1.35em; font-weight:700;}
+  .klabel.k-right{grid-column:3; grid-row:2; font-size:.62em; color:var(--sub); justify-self:end;}
+  .klabel.k-down{grid-column:2; grid-row:3; font-size:.62em; color:var(--sub);}
+
+  #flick-guide{
+    position:fixed; z-index:50; width:150px; height:150px; pointer-events:none;
+    display:grid; grid-template-columns:1fr 1fr 1fr; grid-template-rows:1fr 1fr 1fr;
+    background:rgba(40,40,45,.94); border-radius:18px; transform:translate(-50%,-115%);
+  }
+  #flick-guide.hidden{display:none;}
+  .fg-slot{display:flex; align-items:center; justify-content:center; color:#cfd2d8; font-size:1.15rem; font-weight:600; border-radius:10px; margin:2px;}
+  .fg-up{grid-column:2; grid-row:1;} .fg-left{grid-column:1; grid-row:2;}
+  .fg-center{grid-column:2; grid-row:2;} .fg-right{grid-column:3; grid-row:2;}
+  .fg-down{grid-column:2; grid-row:3;}
+  .fg-slot.active{background:var(--accent); color:#fff; transform:scale(1.12);}
+
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; align-items:flex-end;
+    z-index:100;
+  }
+  .modal-overlay.hidden{display:none;}
+  .modal-sheet{
+    background:var(--card); width:100%; max-height:82vh; overflow-y:auto; border-radius:18px 18px 0 0;
+    padding:16px 16px calc(16px + env(safe-area-inset-bottom));
+  }
+  .modal-sheet h2{margin:0 0 10px; font-size:1.05rem;}
+  .close-btn{float:right; background:var(--bg); border:none; border-radius:8px; padding:6px 10px; font-size:.85rem;}
+  .level-item{
+    display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-radius:12px;
+    background:var(--bg); margin-bottom:8px;
+  }
+  .level-item.locked{opacity:.45;}
+  .level-item.current{outline:2px solid var(--accent);}
+  .level-name{font-size:.88rem; font-weight:600;}
+  .level-sub{font-size:.7rem; color:var(--sub);}
+  .badge{font-size:.7rem; padding:3px 8px; border-radius:20px; background:var(--good); color:#fff; font-weight:700;}
+  .badge.lock{background:#c7c7cc;}
+  .badge.now{background:var(--accent);}
+
+  .stat-line{display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border); font-size:.85rem;}
+  .weak-item{display:flex; justify-content:space-between; padding:6px 0; font-size:.85rem;}
+  .danger-btn{background:#ffe5e3; color:var(--bad); border:none; border-radius:10px; padding:10px; width:100%; font-weight:700; margin-top:14px;}
+
+  .clear-body{text-align:center; padding:10px 0;}
+  .clear-body .big{font-size:2.2rem;}
+  .primary-btn{background:var(--accent); color:#fff; border:none; border-radius:12px; padding:12px; width:100%; font-weight:700; font-size:1rem; margin-top:12px;}
+  .ghost-btn{background:var(--bg); border:none; border-radius:12px; padding:10px; width:100%; font-weight:600; font-size:.9rem; margin-top:8px;}
+  .help-text{font-size:.82rem; line-height:1.6; color:var(--text);}
+  .help-diagram{display:flex; justify-content:center; margin:12px 0;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="top-row">
+    <button class="icon-btn" id="btn-levels">☰</button>
+    <h1 id="level-title">読み込み中...</h1>
+    <div style="display:flex; gap:6px;">
+      <button class="icon-btn" id="btn-help">?</button>
+      <button class="icon-btn" id="btn-stats">📊</button>
+    </div>
+  </div>
+  <div class="stats-row">
+    <div>正解率 <b id="stat-acc">100%</b></div>
+    <div>連続 <b id="stat-streak">0</b></div>
+    <div>速度 <b id="stat-cpm">0</b>字/分</div>
+  </div>
+  <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+</header>
+
+<main>
+  <div id="target-seq"></div>
+  <div id="feedback"></div>
+  <div id="switch-hint" class="hidden"></div>
+</main>
+
+<div id="keyboard-container"></div>
+
+<div id="flick-guide" class="hidden">
+  <div class="fg-slot fg-up"></div>
+  <div class="fg-slot fg-left"></div>
+  <div class="fg-slot fg-center"></div>
+  <div class="fg-slot fg-right"></div>
+  <div class="fg-slot fg-down"></div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-levels">
+  <div class="modal-sheet">
+    <button class="close-btn" data-close="modal-levels">閉じる</button>
+    <h2>レベル一覧</h2>
+    <div id="level-list"></div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-stats">
+  <div class="modal-sheet">
+    <button class="close-btn" data-close="modal-stats">閉じる</button>
+    <h2>成績</h2>
+    <div id="stats-body"></div>
+    <button class="danger-btn" id="btn-reset">進捗をリセットする</button>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-clear">
+  <div class="modal-sheet">
+    <div class="clear-body">
+      <div class="big">🎉</div>
+      <h2 id="clear-title">レベルクリア！</h2>
+      <p class="help-text" id="clear-desc"></p>
+      <button class="primary-btn" id="btn-next-level">次のレベルへ</button>
+      <button class="ghost-btn" id="btn-stay-level">このレベルを続ける</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-help">
+  <div class="modal-sheet">
+    <button class="close-btn" data-close="modal-help">閉じる</button>
+    <h2>使い方</h2>
+    <p class="help-text">
+      青くハイライトされた文字を、下のキーボードで入力しよう。<br>
+      英字キーボードは <b>タップ＝中央の文字</b>、<b>指を上/左/右/下にスライド（フリック）</b>すると別の文字が出るよ（iPhoneのフリック入力と同じ配列）。
+    </p>
+    <div class="help-diagram">
+      <div style="display:grid; grid-template-columns:repeat(3,44px); grid-template-rows:repeat(3,44px); gap:2px;">
+        <div></div><div style="text-align:center;">↑C</div><div></div>
+        <div style="text-align:center;">←B</div><div style="text-align:center; font-weight:700;">A</div><div style="text-align:center;">→</div>
+        <div></div><div></div><div></div>
+      </div>
+    </div>
+    <p class="help-text">
+      数字・記号は実機と同じく <b>タップのみ</b>（フリック不要）。<br>
+      「123」「#+=」「ABC」ボタンでページを切り替えられるよ。切り替えが必要なときは黄色いバナーで教えてくれる。<br><br>
+      レベルは反復練習でクリアすると次が解放される。ミスした文字は次に出やすくなるので、苦手なところを自然に復習できるよ。
+    </p>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ---------- キーボード定義（iPhoneフリック配列） ---------- */
+const ABC_ROWS = [
+  [
+    {id:'ABC', dirs:{center:'a', left:'b', up:'c'}},
+    {id:'DEF', dirs:{center:'d', left:'e', up:'f'}},
+    {id:'GHI', dirs:{center:'g', left:'h', up:'i'}},
+  ],
+  [
+    {id:'JKL', dirs:{center:'j', left:'k', up:'l'}},
+    {id:'MNO', dirs:{center:'m', left:'n', up:'o'}},
+    {id:'PQRS', dirs:{center:'p', left:'q', up:'r', right:'s'}},
+  ],
+  [
+    {id:'TUV', dirs:{center:'t', left:'u', up:'v'}},
+    {id:'WXYZ', dirs:{center:'w', left:'x', up:'y', right:'z'}},
+    {id:'PUNC', dirs:{center:'.', left:',', up:'?', right:'!', down:"'"}},
+  ],
+];
+const NUM_ROWS = {
+  row1:['1','2','3','4','5','6','7','8','9','0'],
+  row2:['-','/',':',';','(',')','$','&','@','"'],
+  row3mid:['.',',','?','!',"'"],
+};
+const HASH_ROWS = {
+  row1:['[',']','{','}','#','%','^','*','+','='],
+  row2:['_','\\','|','~','<','>','€','£','¥','•'],
+  row3mid:['.',',','?','!',"'"],
+};
+const ABC_CHARS = new Set('abcdefghijklmnopqrstuvwxyz'.split('').concat(['.',',','?','!',"'",' ']));
+const NUM_CHARS = new Set([...NUM_ROWS.row1, ...NUM_ROWS.row2, ...NUM_ROWS.row3mid, ' ']);
+const HASH_CHARS = new Set([...HASH_ROWS.row1, ...HASH_ROWS.row2, ...HASH_ROWS.row3mid, ' ']);
+
+function keyboardHasChar(kbId, ch){
+  ch = ch.toLowerCase();
+  if(kbId==='abc') return ABC_CHARS.has(ch);
+  if(kbId==='123') return NUM_CHARS.has(ch);
+  if(kbId==='hash') return HASH_CHARS.has(ch);
+  return false;
+}
+function ownerKeyboard(ch){
+  ch = ch.toLowerCase();
+  if(/[a-z]/.test(ch)) return 'abc';
+  if(NUM_ROWS.row1.includes(ch) || NUM_ROWS.row2.includes(ch)) return '123';
+  if(HASH_ROWS.row1.includes(ch) || HASH_ROWS.row2.includes(ch)) return 'hash';
+  return null;
+}
+
+/* ---------- レベル定義（反復練習でだんだん範囲を増やす） ---------- */
+const LEVELS = [
+  {id:'l1', title:'英字きほん(タップのみ)', kind:'char', keyboard:'abc', pool:['a','d','g','j','m','p','t','w']},
+  {id:'l2', title:'英字(←フリック追加)', kind:'char', keyboard:'abc', pool:['a','d','g','j','m','p','t','w','b','e','h','k','n','q','u','x']},
+  {id:'l3', title:'英字(↑フリック追加)', kind:'char', keyboard:'abc', pool:['a','d','g','j','m','p','t','w','b','e','h','k','n','q','u','x','c','f','i','l','o','r','v','y']},
+  {id:'l4', title:'英字ぜんぶ(→フリック追加)', kind:'char', keyboard:'abc', pool:'abcdefghijklmnopqrstuvwxyz'.split('')},
+  {id:'l5', title:'たんご練習', kind:'word', keyboard:'abc', pool:['cat','dog','sun','pen','box','run','big','red','sky','ice','cup','hat','key','map','net','owl','pig','fox','bee','jam','desk','lamp','book','fish','frog','star','moon','rain','snow','wind']},
+  {id:'l6', title:'きごうきほん ( . , ? ! \' )', kind:'char', keyboard:'abc', pool:['.',',','?','!',"'"]},
+  {id:'l7', title:'たんぶん練習(単語+記号)', kind:'word', keyboard:'abc', pool:["it's ok.","see you!","what's up?","i'm fine.","good job!","let's go.","who's there?","no way!","that's it.","here we go!","don't stop.","i can't wait!","how are you?","nice to meet you.","have a nice day!"]},
+  {id:'l8', title:'すうじ入力(123)', kind:'char', keyboard:'123', pool:['1','2','3','4','5','6','7','8','9','0']},
+  {id:'l9', title:'きごう(123ページ)', kind:'char', keyboard:'123', pool:['-','/',':',';','(',')','$','&','@','"']},
+  {id:'l10', title:'きごう(#+=ページ)', kind:'char', keyboard:'hash', pool:['[',']','{','}','#','%','^','*','+','=','_','\\','|','~','<','>']},
+  {id:'l11', title:'そうごう練習(ページ切替あり)', kind:'word', keyboard:'abc', pool:['test@mail.com','price: $9.99','50% off!','id_007','a & b','10:30 am','3 + 4 = 7','#trending','(urgent)','hello_world','call me: 090','it costs $5.','[done]','50 / 2 = 25','a+b=c']},
+];
+
+/* ---------- 状態管理 ---------- */
+const STORAGE_KEY = 'flickPracticeState_v1';
+let state = null;
+let currentSequence = [];
+let currentIndex = 0;
+let posResults = [];
+let lastItem = null;
+let sessionCorrect = 0, sessionTotal = 0, streak = 0;
+let levelStartTime = Date.now();
+let uiKeyboard = 'abc';
+
+function defaultState(){
+  return {
+    levelIndex:0,
+    unlockedUpTo:0,
+    clearedLevels:[],
+    perCharStats:{},
+    perLevelProgress:{},
+    lifetime:{totalAttempts:0, totalCorrect:0, bestStreak:0},
+  };
+}
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return Object.assign(defaultState(), JSON.parse(raw));
+  }catch(e){}
+  return defaultState();
+}
+function saveState(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+}
+function getLevelProgress(id){
+  if(!state.perLevelProgress[id]) state.perLevelProgress[id] = {attempts:0, correct:0, recent:[], seen:[]};
+  return state.perLevelProgress[id];
+}
+function levelRequirement(level){
+  return level.kind==='char' ? Math.max(20, level.pool.length*3) : Math.max(15, Math.round(level.pool.length*1.5));
+}
+function levelSeenTarget(level){
+  return level.kind==='char' ? level.pool.length : Math.min(level.pool.length, 8);
+}
+function checkMastery(levelIdx){
+  const level = LEVELS[levelIdx];
+  const prog = getLevelProgress(level.id);
+  const req = levelRequirement(level);
+  const recent = prog.recent.slice(-20);
+  const acc = recent.length ? recent.filter(Boolean).length/recent.length : 0;
+  return prog.attempts>=req && acc>=0.85 && prog.seen.length>=levelSeenTarget(level);
+}
+
+/* ---------- ドリル選択（苦手を重点的に出す） ---------- */
+function itemWeight(item){
+  const chars = item.toLowerCase().split('').filter(c=>c!==' ');
+  if(chars.length===0) return 3;
+  const total = chars.reduce((sum,c)=>{
+    const s = state.perCharStats[c];
+    if(!s || s.attempts===0) return sum+3;
+    const errRate = 1 - s.correct/s.attempts;
+    return sum + 1 + errRate*5;
+  }, 0);
+  return total/chars.length;
+}
+function pickNextItem(level){
+  const pool = level.pool;
+  const weights = pool.map(itemWeight);
+  if(pool.length>1 && lastItem){
+    const idx = pool.indexOf(lastItem);
+    if(idx>=0) weights[idx]*=0.15;
+  }
+  const total = weights.reduce((a,b)=>a+b,0);
+  let r = Math.random()*total;
+  for(let i=0;i<pool.length;i++){ r-=weights[i]; if(r<=0) return pool[i]; }
+  return pool[pool.length-1];
+}
+
+/* ---------- 進行ロジック ---------- */
+function startLevel(idx){
+  state.levelIndex = idx;
+  uiKeyboard = LEVELS[idx].keyboard;
+  sessionCorrect=0; sessionTotal=0; streak=0; levelStartTime=Date.now();
+  closeModal('modal-levels');
+  loadNextItem();
+  renderKeyboard();
+  updateHeaderStats();
+  saveState();
+}
+function loadNextItem(){
+  const level = LEVELS[state.levelIndex];
+  const item = pickNextItem(level);
+  lastItem = item;
+  currentSequence = item.split('');
+  currentIndex = 0;
+  posResults = new Array(currentSequence.length).fill(null);
+  renderTarget();
+  maybeShowSwitchHint();
+}
+function onItemComplete(){
+  setTimeout(loadNextItem, 260);
+}
+function handleInputChar(ch){
+  const expected = currentSequence[currentIndex];
+  if(expected===undefined) return;
+  const correct = ch.toLowerCase() === expected.toLowerCase();
+  registerResult(expected, correct);
+  posResults[currentIndex] = correct;
+  flashFeedback(correct);
+  if(navigator.vibrate){ try{ navigator.vibrate(correct?8:30); }catch(e){} }
+  currentIndex++;
+  updateHeaderStats();
+  renderProgress();
+  const cleared = checkAndHandleMastery();
+  if(currentIndex >= currentSequence.length){
+    renderTarget();
+    if(!cleared) onItemComplete();
+  } else {
+    renderTarget();
+    maybeShowSwitchHint();
+  }
+  saveState();
+}
+function registerResult(expected, correct){
+  const key = expected.toLowerCase();
+  if(!state.perCharStats[key]) state.perCharStats[key] = {attempts:0, correct:0};
+  state.perCharStats[key].attempts++;
+  if(correct) state.perCharStats[key].correct++;
+
+  const level = LEVELS[state.levelIndex];
+  const prog = getLevelProgress(level.id);
+  prog.attempts++;
+  if(correct) prog.correct++;
+  prog.recent.push(correct);
+  if(prog.recent.length>20) prog.recent.shift();
+  const itemKey = lastItem.toLowerCase();
+  if(!prog.seen.includes(itemKey)) prog.seen.push(itemKey);
+
+  sessionTotal++;
+  if(correct) sessionCorrect++;
+  streak = correct ? streak+1 : 0;
+  state.lifetime.totalAttempts++;
+  if(correct) state.lifetime.totalCorrect++;
+  if(streak>state.lifetime.bestStreak) state.lifetime.bestStreak = streak;
+}
+function checkAndHandleMastery(){
+  const idx = state.levelIndex;
+  const level = LEVELS[idx];
+  if(state.clearedLevels.includes(level.id)) return false;
+  if(!checkMastery(idx)) return false;
+  state.clearedLevels.push(level.id);
+  if(idx+1 > state.unlockedUpTo) state.unlockedUpTo = Math.min(LEVELS.length-1, idx+1);
+  saveState();
+  showLevelClear(level, idx);
+  return true;
+}
+function showLevelClear(level, idx){
+  document.getElementById('clear-title').textContent = 'レベルクリア！';
+  document.getElementById('clear-desc').textContent = `「${level.title}」をクリアしたよ。次のレベルに進める！`;
+  const nextBtn = document.getElementById('btn-next-level');
+  nextBtn.style.display = idx+1 < LEVELS.length ? 'block' : 'none';
+  openModal('modal-clear');
+}
+
+/* ---------- キーボード切替 ---------- */
+function setKeyboard(id){
+  uiKeyboard = id;
+  renderKeyboard();
+  maybeShowSwitchHint();
+}
+function maybeShowSwitchHint(){
+  const banner = document.getElementById('switch-hint');
+  const expected = currentSequence[currentIndex];
+  if(expected===undefined){ banner.classList.add('hidden'); return; }
+  const owner = ownerKeyboard(expected);
+  if(owner && owner!==uiKeyboard){
+    const names = {abc:'ABC(英字)', '123':'123', hash:'#+='};
+    banner.textContent = `🔁 「${names[owner]}」キーボードに切り替えてね`;
+    banner.classList.remove('hidden');
+  } else {
+    banner.classList.add('hidden');
+  }
+}
+
+/* ---------- 描画: ターゲット文字列 ---------- */
+function renderTarget(){
+  const el = document.getElementById('target-seq');
+  el.innerHTML = '';
+  currentSequence.forEach((ch,i)=>{
+    const span = document.createElement('span');
+    span.className = 'tchar';
+    span.textContent = ch===' ' ? '⎵' : ch;
+    if(i<currentIndex) span.classList.add(posResults[i] ? 'done-correct' : 'done-wrong');
+    else if(i===currentIndex) span.classList.add('current');
+    else span.classList.add('pending');
+    el.appendChild(span);
+  });
+  document.getElementById('level-title').textContent = LEVELS[state.levelIndex].title;
+}
+function flashFeedback(correct){
+  const el = document.getElementById('feedback');
+  el.textContent = correct ? 'いいね！' : 'ミス';
+  el.className = correct ? 'ok' : 'ng';
+  clearTimeout(flashFeedback._t);
+  flashFeedback._t = setTimeout(()=>{ el.textContent=''; el.className=''; }, 500);
+}
+function updateHeaderStats(){
+  const acc = sessionTotal ? Math.round(sessionCorrect/sessionTotal*100) : 100;
+  document.getElementById('stat-acc').textContent = acc+'%';
+  document.getElementById('stat-streak').textContent = streak;
+  const elapsedMin = (Date.now()-levelStartTime)/60000;
+  const cpm = elapsedMin>0.05 ? Math.round(sessionCorrect/elapsedMin) : 0;
+  document.getElementById('stat-cpm').textContent = cpm;
+}
+function renderProgress(){
+  const level = LEVELS[state.levelIndex];
+  const prog = getLevelProgress(level.id);
+  const req = levelRequirement(level);
+  const attemptsRatio = Math.min(1, prog.attempts/req);
+  const recent = prog.recent.slice(-20);
+  const acc = recent.length ? recent.filter(Boolean).length/recent.length : 0;
+  const seenRatio = Math.min(1, prog.seen.length/levelSeenTarget(level));
+  const accRatio = Math.min(1, acc/0.85);
+  const overall = Math.min(attemptsRatio, seenRatio, accRatio);
+  document.getElementById('progress-fill').style.width = Math.round(overall*100)+'%';
+}
+
+/* ---------- 描画: キーボード ---------- */
+function hintOpacityForLevel(idx){
+  if(idx<=1) return 1;
+  if(idx<=3) return 0.55;
+  return 0.28;
+}
+function renderKeyboard(){
+  const el = document.getElementById('keyboard-container');
+  el.innerHTML = '';
+  el.appendChild(uiKeyboard==='abc' ? buildAbcKeyboard() : buildSymbolKeyboard(uiKeyboard));
+}
+function buildAbcKeyboard(){
+  const wrap = document.createElement('div');
+  wrap.className = 'kb kb-abc';
+  ABC_ROWS.forEach(row=>{
+    const rowEl = document.createElement('div');
+    rowEl.className = 'kb-row';
+    row.forEach(keyDef=> rowEl.appendChild(buildFlickKey(keyDef)));
+    wrap.appendChild(rowEl);
+  });
+  const bottom = document.createElement('div');
+  bottom.className = 'kb-row kb-bottom';
+  bottom.appendChild(buildFuncButton('123','', ()=>setKeyboard('123')));
+  bottom.appendChild(buildFuncButton('space','wide', ()=>handleInputChar(' ')));
+  bottom.appendChild(buildFuncButton('⌫','', ()=>{}));
+  wrap.appendChild(bottom);
+  return wrap;
+}
+function buildFlickKey(keyDef){
+  const btn = document.createElement('div');
+  btn.className = 'key flick-key';
+  const hintOpacity = hintOpacityForLevel(state.levelIndex);
+  ['up','left','center','right','down'].forEach(dir=>{
+    if(keyDef.dirs[dir]===undefined) return;
+    const s = document.createElement('span');
+    s.className = 'klabel k-'+dir;
+    s.textContent = keyDef.dirs[dir].toUpperCase();
+    s.style.opacity = dir==='center' ? 1 : hintOpacity;
+    btn.appendChild(s);
+  });
+  attachFlickHandlers(btn, keyDef);
+  return btn;
+}
+function detectDirection(dx,dy){
+  const dist = Math.hypot(dx,dy);
+  if(dist < 18) return 'center';
+  const angle = Math.atan2(dy,dx) * 180/Math.PI;
+  if(angle>=-45 && angle<45) return 'right';
+  if(angle>=45 && angle<135) return 'down';
+  if(angle>=-135 && angle<-45) return 'up';
+  return 'left';
+}
+function attachFlickHandlers(btn, keyDef){
+  let active=false, pid=null, startX=0, startY=0;
+  btn.addEventListener('pointerdown', e=>{
+    active = true; pid = e.pointerId; startX = e.clientX; startY = e.clientY;
+    try{ btn.setPointerCapture(pid); }catch(err){}
+    btn.classList.add('pressed');
+    showGuide(btn, keyDef, 'center');
+    e.preventDefault();
+  });
+  btn.addEventListener('pointermove', e=>{
+    if(!active || e.pointerId!==pid) return;
+    let dir = detectDirection(e.clientX-startX, e.clientY-startY);
+    if(keyDef.dirs[dir]===undefined) dir='center';
+    showGuide(btn, keyDef, dir);
+  });
+  const finish = e=>{
+    if(!active || e.pointerId!==pid) return;
+    active = false;
+    btn.classList.remove('pressed');
+    let dir = detectDirection(e.clientX-startX, e.clientY-startY);
+    if(keyDef.dirs[dir]===undefined) dir='center';
+    hideGuide();
+    const ch = keyDef.dirs[dir];
+    if(ch!==undefined) handleInputChar(ch);
+  };
+  btn.addEventListener('pointerup', finish);
+  btn.addEventListener('pointercancel', ()=>{ active=false; btn.classList.remove('pressed'); hideGuide(); });
+}
+function showGuide(btn, keyDef, activeDir){
+  const guide = document.getElementById('flick-guide');
+  const rect = btn.getBoundingClientRect();
+  guide.style.left = (rect.left+rect.width/2)+'px';
+  guide.style.top = rect.top+'px';
+  guide.classList.remove('hidden');
+  const map = {up:'.fg-up', left:'.fg-left', center:'.fg-center', right:'.fg-right', down:'.fg-down'};
+  Object.keys(map).forEach(dir=>{
+    const slot = guide.querySelector(map[dir]);
+    slot.textContent = keyDef.dirs[dir]!==undefined ? keyDef.dirs[dir].toUpperCase() : '';
+    slot.classList.toggle('active', dir===activeDir);
+  });
+}
+function hideGuide(){
+  document.getElementById('flick-guide').classList.add('hidden');
+}
+function buildSymbolKeyboard(kind){
+  const rows = kind==='123' ? NUM_ROWS : HASH_ROWS;
+  const wrap = document.createElement('div');
+  wrap.className = 'kb kb-sym';
+  wrap.appendChild(buildTapRow(rows.row1));
+  wrap.appendChild(buildTapRow(rows.row2));
+  const row3 = document.createElement('div');
+  row3.className = 'kb-row kb-row3';
+  row3.appendChild(buildFuncButton(kind==='123' ? '#+=' : '123', '', ()=> setKeyboard(kind==='123' ? 'hash' : '123')));
+  rows.row3mid.forEach(ch=> row3.appendChild(buildTapKey(ch)));
+  row3.appendChild(buildFuncButton('⌫','', ()=>{}));
+  wrap.appendChild(row3);
+  const row4 = document.createElement('div');
+  row4.className = 'kb-row kb-bottom';
+  row4.appendChild(buildFuncButton('ABC','', ()=>setKeyboard('abc')));
+  row4.appendChild(buildFuncButton('space','wide', ()=>handleInputChar(' ')));
+  row4.appendChild(buildFuncButton('return','', ()=>{}));
+  wrap.appendChild(row4);
+  return wrap;
+}
+function buildTapRow(chars){
+  const row = document.createElement('div');
+  row.className = 'kb-row kb-row10';
+  chars.forEach(ch=> row.appendChild(buildTapKey(ch)));
+  return row;
+}
+function buildTapKey(ch){
+  const btn = document.createElement('div');
+  btn.className = 'key tap-key';
+  btn.textContent = ch;
+  btn.addEventListener('pointerup', ()=>handleInputChar(ch));
+  return btn;
+}
+function buildFuncButton(label, extraClass, onClick){
+  const btn = document.createElement('div');
+  btn.className = 'key func-key '+extraClass;
+  btn.textContent = label;
+  btn.addEventListener('pointerup', onClick);
+  return btn;
+}
+
+/* ---------- モーダル ---------- */
+function openModal(id){ document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
+document.querySelectorAll('[data-close]').forEach(b=>{
+  b.addEventListener('click', ()=> closeModal(b.dataset.close));
+});
+
+function renderLevelList(){
+  const el = document.getElementById('level-list');
+  el.innerHTML = '';
+  LEVELS.forEach((level, idx)=>{
+    const locked = idx > state.unlockedUpTo;
+    const cleared = state.clearedLevels.includes(level.id);
+    const isCurrent = idx===state.levelIndex;
+    const item = document.createElement('div');
+    item.className = 'level-item' + (locked?' locked':'') + (isCurrent?' current':'');
+    const req = levelRequirement(level);
+    const prog = getLevelProgress(level.id);
+    item.innerHTML = `
+      <div>
+        <div class="level-name">${idx+1}. ${level.title}</div>
+        <div class="level-sub">${prog.attempts}/${req} 回練習ずみ</div>
+      </div>
+      <div class="badge ${locked?'lock':(isCurrent?'now':(cleared?'':''))}">${locked?'🔒':(cleared?'クリア':(isCurrent?'今ここ':'挑戦'))}</div>
+    `;
+    item.addEventListener('click', ()=>{
+      if(locked) return;
+      startLevel(idx);
+    });
+    el.appendChild(item);
+  });
+}
+
+function renderStats(){
+  const el = document.getElementById('stats-body');
+  const lt = state.lifetime;
+  const acc = lt.totalAttempts ? Math.round(lt.totalCorrect/lt.totalAttempts*100) : 0;
+  let html = `
+    <div class="stat-line"><span>通算 正解率</span><b>${acc}%</b></div>
+    <div class="stat-line"><span>通算 入力数</span><b>${lt.totalAttempts}</b></div>
+    <div class="stat-line"><span>最高連続正解</span><b>${lt.bestStreak}</b></div>
+    <div class="stat-line"><span>クリア済みレベル</span><b>${state.clearedLevels.length} / ${LEVELS.length}</b></div>
+  `;
+  const weak = Object.entries(state.perCharStats)
+    .filter(([,s])=>s.attempts>=3)
+    .map(([ch,s])=>({ch, rate: 1-s.correct/s.attempts, attempts:s.attempts}))
+    .sort((a,b)=>b.rate-a.rate)
+    .slice(0,6);
+  html += '<h2 style="margin-top:16px;">苦手な文字トップ6</h2>';
+  if(weak.length===0){
+    html += '<p class="help-text">まだデータがたりないよ。練習を続けよう！</p>';
+  } else {
+    weak.forEach(w=>{
+      html += `<div class="weak-item"><span>${w.ch===' '?'(space)':w.ch}</span><span>ミス率 ${Math.round(w.rate*100)}%（${w.attempts}回中）</span></div>`;
+    });
+  }
+  el.innerHTML = html;
+}
+
+/* ---------- イベント配線 ---------- */
+document.getElementById('btn-levels').addEventListener('click', ()=>{ renderLevelList(); openModal('modal-levels'); });
+document.getElementById('btn-stats').addEventListener('click', ()=>{ renderStats(); openModal('modal-stats'); });
+document.getElementById('btn-help').addEventListener('click', ()=> openModal('modal-help'));
+document.getElementById('btn-reset').addEventListener('click', ()=>{
+  if(confirm('すべての進捗をリセットしますか？この操作は取り消せません。')){
+    localStorage.removeItem(STORAGE_KEY);
+    location.reload();
+  }
+});
+document.getElementById('btn-next-level').addEventListener('click', ()=>{
+  closeModal('modal-clear');
+  const nextIdx = Math.min(LEVELS.length-1, state.levelIndex+1);
+  startLevel(nextIdx);
+});
+document.getElementById('btn-stay-level').addEventListener('click', ()=>{
+  closeModal('modal-clear');
+  onItemComplete();
+});
+
+/* ---------- 初期化 ---------- */
+function init(){
+  state = loadState();
+  startLevel(state.levelIndex);
+}
+init();
+</script>
+</body>
+</html>
