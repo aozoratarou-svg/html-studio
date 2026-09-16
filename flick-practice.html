@@ -333,14 +333,20 @@ function checkMastery(levelIdx){
 }
 
 /* ---------- ドリル選択（苦手を重点的に出す） ---------- */
+function itemWeight(item){
+  const chars = item.toLowerCase().split('').filter(c=>c!==' ');
+  if(chars.length===0) return 3;
+  const total = chars.reduce((sum,c)=>{
+    const s = state.perCharStats[c];
+    if(!s || s.attempts===0) return sum+3;
+    const errRate = 1 - s.correct/s.attempts;
+    return sum + 1 + errRate*5;
+  }, 0);
+  return total/chars.length;
+}
 function pickNextItem(level){
   const pool = level.pool;
-  const weights = pool.map(item=>{
-    const s = state.perCharStats[item.toLowerCase()];
-    if(!s || s.attempts===0) return 3;
-    const errRate = 1 - s.correct/s.attempts;
-    return 1 + errRate*5;
-  });
+  const weights = pool.map(itemWeight);
   if(pool.length>1 && lastItem){
     const idx = pool.indexOf(lastItem);
     if(idx>=0) weights[idx]*=0.15;
@@ -496,7 +502,7 @@ function renderProgress(){
   const acc = recent.length ? recent.filter(Boolean).length/recent.length : 0;
   const seenRatio = Math.min(1, prog.seen.length/levelSeenTarget(level));
   const accRatio = Math.min(1, acc/0.85);
-  const overall = Math.min(attemptsRatio, seenRatio, accRatio || (prog.attempts===0?0:1));
+  const overall = Math.min(attemptsRatio, seenRatio, accRatio);
   document.getElementById('progress-fill').style.width = Math.round(overall*100)+'%';
 }
 
