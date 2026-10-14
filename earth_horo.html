@@ -2,7 +2,8 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <title>Origami Globe Transformation</title>
     <!-- Tailwind CSS for UI styling -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -14,8 +15,9 @@
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://unpkg.com/topojson-client@3"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #0f172a; font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif; }
-        #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+        html, body { height: 100%; overscroll-behavior: none; -webkit-text-size-adjust: 100%; }
+        body { margin: 0; overflow: hidden; touch-action: none; background-color: #0f172a; font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif; }
+        #canvas-container { width: 100vw; height: 100vh; height: 100dvh; touch-action: none; position: absolute; top: 0; left: 0; z-index: 1; }
         
         /* Floating UI Panel */
         #ui-panel {
@@ -44,6 +46,23 @@
         .tab-active { border-bottom-width: 2px; color: #fff !important; }
         #tab-pop.tab-active { border-color: #38bdf8; }
         #tab-mig.tab-active { border-color: #10b981; }
+    
+        #ui-panel .overflow-y-auto { -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; }
+        /* iPhone / narrow screens: bottom sheet, tap handle to collapse */
+        @media (max-width: 640px) {
+            #ui-panel {
+                top: auto !important; right: 8px !important; left: 8px !important;
+                bottom: calc(8px + env(safe-area-inset-bottom)) !important;
+                width: auto !important;
+                max-height: 48vh; max-height: 48dvh;
+            }
+            #ui-drag-handle { cursor: pointer; padding: 14px; }
+            #ui-panel.collapsed .overflow-y-auto { display: none; }
+            #ui-panel.collapsed #ui-drag-handle { border-bottom-width: 0; border-radius: 0.75rem; }
+            input[type=range] { height: 28px; }
+            input[type=range]::-webkit-slider-thumb { height: 24px; width: 24px; margin-top: -10px; }
+            .state-btn, #play-btn, button { min-height: 36px; }
+        }
     </style>
 </head>
 <body>
@@ -130,7 +149,13 @@
         let isDragging = false;
         let startX, startY, initialLeft, initialTop;
 
+        const isMobileLayout = () => window.matchMedia('(max-width: 640px)').matches;
+        dragHandle.addEventListener('click', () => {
+            if (isMobileLayout()) uiPanel.classList.toggle('collapsed');
+        });
+
         function dragStart(e) {
+            if (isMobileLayout()) return;
             isDragging = true;
             const clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
             const clientY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
@@ -185,6 +210,14 @@
 
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
         camera.position.set(0, -15, 45);
+
+        // Portrait screens (iPhone): pull the camera back so the whole map fits
+        function fitCameraToAspect() {
+            const a = window.innerWidth / window.innerHeight;
+            const k = a < 1 ? Math.min(2.2, 1 / a) : 1;
+            camera.position.setLength(Math.hypot(0, -15, 45) * k);
+        }
+        fitCameraToAspect();
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -673,7 +706,7 @@
 
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); fitCameraToAspect();
         });
 
         updateGeometry(currentProgress);
